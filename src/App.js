@@ -4,6 +4,8 @@ import Hero from './components/Hero';
 import FeaturedDestinations from './components/FeaturedDestinations';
 import AiSchedule from './components/AiSchedule'; // Import file mới
 import './App.css'; // Quan trọng nhất là dòng này!
+import ChatAI from './components/ChatAI'; // Import file mới
+
 function App() {
   const [searchData, setSearchData] = useState(null);
 
@@ -24,6 +26,7 @@ function App() {
       {searchData && <AiSchedule data={searchData} />}
 
       <FeaturedDestinations />
+      <ChatAI />
     </div>
   );
 }

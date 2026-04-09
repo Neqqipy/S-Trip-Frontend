@@ -139,8 +139,8 @@ const AiSchedule = ({ data: initialData }) => {
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', backgroundColor: '#ecfdf5', color: '#10b981', padding: '12px 24px', borderRadius: '99px', fontSize: '18px', fontWeight: '700', marginBottom: '25px' }}>
           <FontAwesomeIcon icon={faWandMagicSparkles} /> Lịch trình AI đề xuất
         </div>
-        <h1 style={{ fontSize: '65px', fontWeight: '900' }}>Kế hoạch cho <span style={{ color: '#10b981' }}>{initialData.location}</span></h1>
-        <p style={{ fontSize: '28px', color: '#6b7280' }}>Chuyến đi <b>{initialData.days}</b> | {initialData.budget} VNĐ/Người</p>
+        <h1 style={{ fontSize: '65px', fontWeight: '900' }}>Kế hoạch hoàn hảo cho <span style={{ color: '#10b981' }}>{initialData.location}</span></h1>
+        <p style={{ fontSize: '28px', color: '#6b7280' }}>Chuyến đi <b>{initialData.days}</b> | {initialData.budget} VNĐ/Người của bạn</p>
       </div>
 
       <div style={{ fontSize: '36px', fontWeight: '900', margin: '60px 0 30px 0' }}>🛌 Chỗ ở đề xuất</div>

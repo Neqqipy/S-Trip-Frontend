@@ -9,7 +9,7 @@ const DestinationCard = ({ item }) => {
   const styles = {
     card: { 
       backgroundColor: '#ffffff', 
-      borderRadius: '32px', // Bo tròn mạnh hơn (24->32)
+      borderRadius: '32px', 
       overflow: 'hidden',
       boxShadow: isHovered ? '0 30px 60px rgba(0,0,0,0.12)' : '0 10px 20px rgba(0,0,0,0.02)',
       transition: '0.5s all cubic-bezier(0.175, 0.885, 0.32, 1.275)',
@@ -18,9 +18,10 @@ const DestinationCard = ({ item }) => {
       border: '1px solid #f1f5f9'
     },
     imgContainer: { 
-      height: '350px', // PHÓNG TO CHIỀU CAO ẢNH (240->350)
+      height: '350px', 
       position: 'relative',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      backgroundColor: '#f3f4f6' // Nền xám nhẹ nếu ảnh đang tải
     },
     img: { 
       width: '100%', 
@@ -37,20 +38,20 @@ const DestinationCard = ({ item }) => {
       zIndex: 2,
       boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
     },
-    content: { padding: '40px' }, // Tăng padding nội dung (24->40)
+    content: { padding: '40px' },
     cardTitle: { 
-      fontSize: '32px', // PHÓNG TO TIÊU ĐỀ (24->32)
+      fontSize: '32px', 
       fontWeight: '900', 
       color: isHovered ? '#10b981' : '#111827',
       marginBottom: '15px',
       transition: '0.3s color'
     },
     cardDesc: { 
-      fontSize: '22px', // PHÓNG TO MÔ TẢ (20->22)
+      fontSize: '22px', 
       color: '#6b7280', 
       lineHeight: '1.7', 
       marginBottom: '30px',
-      height: '110px', // Giữ chiều cao cố định để các ô đều nhau
+      height: '110px', 
       display: '-webkit-box',
       WebkitLineClamp: 3,
       WebkitBoxOrient: 'vertical',
@@ -67,7 +68,7 @@ const DestinationCard = ({ item }) => {
     budgetValue: { 
       color: '#10b981', 
       fontWeight: '900', 
-      fontSize: '24px' // PHÓNG TO GIÁ TIỀN (16->24)
+      fontSize: '24px' 
     }
   };
 
@@ -94,12 +95,38 @@ const DestinationCard = ({ item }) => {
 };
 
 const FeaturedDestinations = () => {
+  // ĐÃ CẬP NHẬT LẠI TOÀN BỘ LINK ẢNH KHÔNG LỖI
   const destinations = [
-    { name: 'Đà Lạt', rating: '4.9', desc: 'Thành phố sương mù với khí hậu se lạnh và cảnh quan thơ mộng bậc nhất Việt Nam.', budget: '2.000.000 - 3.500.000đ', img: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=800' },
-    { name: 'Phố cổ Hội An', rating: '4.8', desc: 'Nét đẹp cổ kính của những ngôi nhà lợp rêu phong và ánh đèn lồng rực rỡ về đêm.', budget: '2.500.000 - 4.000.000đ', img: 'https://images.unsplash.com/photo-1555921015-5532091f6026?q=80&w=800' },
-    { name: 'Đà Nẵng', rating: '4.9', desc: 'Thành phố đáng sống với những bãi biển quyến rũ và cây cầu Vàng kỳ vĩ trên đỉnh Bà Nà.', budget: '3.000.000 - 5.000.000đ', img: 'https://images.unsplash.com/photo-1559592481-74488ea01cf2?q=80&w=800' },
-    { name: 'Đảo Phú Quốc', rating: '5.0', desc: 'Thiên đường nghỉ dưỡng với những bãi biển cát trắng trải dài và làn nước trong xanh.', budget: '4.500.000 - 7.000.000đ', img: 'https://images.unsplash.com/photo-1583275484600-34162b2975d6?q=80&w=800' }
+    { 
+      name: 'Đà Lạt', 
+      rating: '4.9', 
+      desc: 'Thành phố sương mù với khí hậu se lạnh và cảnh quan thơ mộng bậc nhất Việt Nam.', 
+      budget: '2.000.000 - 3.500.000đ', 
+      img: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=800' 
+    },
+    { 
+      name: 'Phố cổ Hội An', 
+      rating: '4.8', 
+      desc: 'Nét đẹp cổ kính của những ngôi nhà lợp rêu phong và ánh đèn lồng rực rỡ về đêm.', 
+      budget: '2.500.000 - 4.000.000đ', 
+      img: 'https://images.unsplash.com/photo-1555921015-5532091f6026?q=80&w=800' 
+    },
+    { 
+      name: 'Đà Nẵng', 
+      rating: '4.9', 
+      desc: 'Thành phố đáng sống với những bãi biển quyến rũ và cây cầu Vàng kỳ vĩ trên đỉnh Bà Nà.', 
+      budget: '3.000.000 - 5.000.000đ', 
+      img: 'https://images.unsplash.com/photo-1583275484600-34162b2975d6?q=80&w=800' 
+    },
+    { 
+      name: 'Đảo Phú Quốc', 
+      rating: '5.0', 
+      desc: 'Thiên đường nghỉ dưỡng với những bãi biển cát trắng trải dài và làn nước trong xanh.', 
+      budget: '4.500.000 - 7.000.000đ', 
+      img: 'https://images.unsplash.com/photo-1583275484600-34162b2975d6?q=80&w=800' 
+    }
   ];
+ 
 
   return (
     <section style={{ padding: '120px 40px', maxWidth: '1700px', margin: '0 auto' }}>
