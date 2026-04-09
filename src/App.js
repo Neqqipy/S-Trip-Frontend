@@ -5,6 +5,7 @@ import FeaturedDestinations from './components/FeaturedDestinations';
 import AiSchedule from './components/AiSchedule'; // Import file mới
 import './App.css'; // Quan trọng nhất là dòng này!
 import ChatAI from './components/ChatAI'; // Import file mới
+import MapBubble from './components/MapBubble';
 
 function App() {
   const [searchData, setSearchData] = useState(null);
@@ -26,6 +27,7 @@ function App() {
       {searchData && <AiSchedule data={searchData} />}
 
       <FeaturedDestinations />
+      <MapBubble targetOffset={800} />
       <ChatAI />
     </div>
   );
