@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Thêm useEffect vào đây
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faWandMagicSparkles, faHandPointer, faHotel, faUtensils, 
@@ -6,7 +6,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { faCalendar as faRegularCalendar } from '@fortawesome/free-regular-svg-icons';
 
-// === COMPONENT CON: LỰA CHỌN TRONG POP-UP ===
+// === COMPONENT CON: LỰA CHỌN TRONG POP-UP (Giữ nguyên) ===
 const OptionItem = ({ opt, onSelect }) => {
   const [isHovered, setIsHovered] = useState(false);
   const styles = {
@@ -21,7 +21,6 @@ const OptionItem = ({ opt, onSelect }) => {
       padding: '10px 20px', borderRadius: '12px', fontSize: '22px', fontWeight: '800'
     }
   };
-
   return (
     <div style={styles.card} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onClick={() => onSelect(opt)}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -34,7 +33,7 @@ const OptionItem = ({ opt, onSelect }) => {
   );
 };
 
-// === COMPONENT CON: THẺ HIỂN THỊ LỊCH TRÌNH ===
+// === COMPONENT CON: THẺ HIỂN THỊ LỊCH TRÌNH (Giữ nguyên) ===
 const PlaceCard = ({ type, data, onEdit }) => {
   const [isHovered, setIsHovered] = useState(false);
   const isTour = type === 'Điểm tham quan';
@@ -75,7 +74,6 @@ const PlaceCard = ({ type, data, onEdit }) => {
 
 // === COMPONENT CHÍNH ===
 const AiSchedule = ({ data: initialData }) => {
-  // Kho dữ liệu để người dùng đổi
   const optionsRepo = {
     'Khách sạn': [
       { name: "Colline Hotel Đà Lạt", rating: "4.8", price: "1.200.000đ/đêm", desc: "Khách sạn 4 sao ngay trung tâm chợ Đà Lạt." },
@@ -92,12 +90,29 @@ const AiSchedule = ({ data: initialData }) => {
     ]
   };
 
-  // State lưu trữ toàn bộ lịch trình hiện tại
   const [currentHotel, setCurrentHotel] = useState(optionsRepo['Khách sạn'][0]);
-  const [dailyPlans, setDailyPlans] = useState([
-    { day: 1, tour: optionsRepo['Điểm tham quan'][0], food: optionsRepo['Địa điểm ăn uống'][0] },
-    { day: 2, tour: optionsRepo['Điểm tham quan'][2], food: optionsRepo['Địa điểm ăn uống'][1] }
-  ]);
+  
+  // 1. CHỖ QUAN TRỌNG: Thay vì để mặc định 2 ngày, ta để mảng rỗng ban đầu
+  const [dailyPlans, setDailyPlans] = useState([]);
+
+  // 2. CHỖ QUAN TRỌNG: Tự động tính toán số ngày khi nhận được dữ liệu mới
+  useEffect(() => {
+    if (initialData && initialData.days) {
+      // Lấy số từ chuỗi "5 ngày 4 đêm" -> kết quả là 5
+      const numDays = parseInt(initialData.days.split(' ')[0]) || 2;
+      
+      const newPlans = [];
+      for (let i = 1; i <= numDays; i++) {
+        newPlans.push({
+          day: i,
+          // Lấy xoay vòng dữ liệu trong kho để demo
+          tour: optionsRepo['Điểm tham quan'][i % optionsRepo['Điểm tham quan'].length],
+          food: optionsRepo['Địa điểm ăn uống'][i % optionsRepo['Địa điểm ăn uống'].length]
+        });
+      }
+      setDailyPlans(newPlans);
+    }
+  }, [initialData]); // Mỗi khi bấm Tìm kiếm, useEffect này sẽ chạy lại
 
   const [modal, setModal] = useState({ show: false, type: '', day: null });
 
@@ -119,7 +134,6 @@ const AiSchedule = ({ data: initialData }) => {
 
   return (
     <div style={{ maxWidth: '1700px', margin: '0 auto', padding: '60px' }}>
-      {/* POP-UP CHỌN ĐỊA ĐIỂM */}
       {modal.show && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setModal({ show: false })}>
           <div style={{ backgroundColor: 'white', borderRadius: '40px', width: '900px', padding: '50px', position: 'relative' }} onClick={e => e.stopPropagation()}>
@@ -134,7 +148,6 @@ const AiSchedule = ({ data: initialData }) => {
         </div>
       )}
 
-      {/* HEADER */}
       <div style={{ textAlign: 'center', marginBottom: '80px' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', backgroundColor: '#ecfdf5', color: '#10b981', padding: '12px 24px', borderRadius: '99px', fontSize: '18px', fontWeight: '700', marginBottom: '25px' }}>
           <FontAwesomeIcon icon={faWandMagicSparkles} /> Lịch trình AI đề xuất
@@ -147,6 +160,8 @@ const AiSchedule = ({ data: initialData }) => {
       <PlaceCard type="Khách sạn" data={currentHotel} onEdit={() => setModal({ show: true, type: 'Khách sạn' })} />
 
       <div style={{ fontSize: '36px', fontWeight: '900', margin: '60px 0 30px 0' }}>🧩 Lịch trình chi tiết</div>
+      
+      {/* VÒNG LẶP .MAP() Ở ĐÂY SẼ TỰ HIỆN ĐÚNG SỐ NGÀY TRONG DAILYPLANS */}
       {dailyPlans.map(d => (
         <div key={d.day} style={{ backgroundColor: 'white', padding: '50px', borderRadius: '40px', marginBottom: '40px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
           <div style={{ fontSize: '32px', fontWeight: '900', marginBottom: '35px' }}>
