@@ -7,3 +7,17 @@
 input, button, select, textarea, span, div {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
 }
+
+/* Hiệu ứng rung ngang màn hình khi có lỗi */
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  50% { transform: translateX(10px); }
+  75% { transform: translateX(-10px); }
+  100% { transform: translateX(0); }
+}
+
+/* Class được React thêm vào khi có ô trống */
+.shake {
+  animation: shake 0.5s;
+}
