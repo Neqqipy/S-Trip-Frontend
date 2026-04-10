@@ -11,15 +11,28 @@ import MapBubble from './MapBubble';
 const optionsRepo = {
   'Khách sạn': [
     { name: "Colline Hotel", rating: "4.8", price: "1.200.000đ/đêm", desc: "Khách sạn 4 sao hiện đại ngay trung tâm Đà Lạt." },
-    { name: "Terracotta Resort", rating: "4.7", price: "1.500.000đ/đêm", desc: "Không gian xanh mát bên bờ hồ Tuyền Lâm." }
+    { name: "Terracotta Resort", rating: "4.7", price: "1.500.000đ/đêm", desc: "Không gian xanh mát bên bờ hồ Tuyền Lâm." },
+    { name: "Ana Mandara Villas", rating: "4.9", price: "2.500.000đ/đêm", desc: "Khu nghỉ dưỡng biệt thự Pháp cổ điển và lãng mạn." },
+    { name: "Swiss-Belresort", rating: "4.6", price: "1.100.000đ/đêm", desc: "Kiến trúc Châu Âu giữa lòng sân Golf thung lũng." },
+    { name: "Dalat Palace", rating: "4.8", price: "3.200.000đ/đêm", desc: "Biểu tượng sang trọng và lịch sử của thành phố ngàn hoa." }
   ],
   'Điểm tham quan': [
-    { name: "Săn mây Cầu Đất", rating: "4.9", price: "150.000đ", desc: "Đón bình minh rực rỡ tại đồi chè." },
-    { name: "Thung lũng tình yêu", rating: "4.5", price: "250.000đ", desc: "Thơ mộng cho các cặp đôi." }
+    { name: "Săn mây Cầu Đất", rating: "4.9", price: "150.000đ", desc: "Đón bình minh rực rỡ tại đồi chè xanh mướt." },
+    { name: "Thung lũng tình yêu", rating: "4.5", price: "250.000đ", desc: "Không gian thơ mộng dành riêng cho các cặp đôi." },
+    { name: "Thác Datanla", rating: "4.7", price: "170.000đ", desc: "Trải nghiệm máng trượt xuyên rừng dài nhất Đông Nam Á." },
+    { name: "Đỉnh Langbiang", rating: "4.8", price: "50.000đ", desc: "Chinh phục nóc nhà Đà Lạt bằng xe Jeep chuyên dụng." },
+    { name: "Ga Đà Lạt", rating: "4.6", price: "10.000đ", desc: "Ga tàu cổ kính nhất Việt Nam với kiến trúc Pháp độc đáo." },
+    { name: "Chợ Đêm Đà Lạt", rating: "4.5", price: "Miễn phí", desc: "Thiên đường ẩm thực đường phố và đồ len lưu niệm." },
+    { name: "Vườn hoa Thành phố", rating: "4.4", price: "60.000đ", desc: "Nơi hội tụ hàng trăm loài hoa khoe sắc quanh năm." }
   ],
   'Địa điểm ăn uống': [
-    { name: "Lẩu bò Ba Toa", rating: "4.6", price: "250.000đ", desc: "Đặc sản lẩu gỗ trứ danh." },
-    { name: "Bánh căn Nhà Chung", rating: "4.7", price: "80.000đ", desc: "Bánh căn giòn rụm với nước chấm đậm đà." }
+    { name: "Lẩu bò Ba Toa", rating: "4.6", price: "250.000đ", desc: "Đặc sản lẩu gỗ trứ danh đậm đà hương vị núi rừng." },
+    { name: "Bánh căn Nhà Chung", rating: "4.7", price: "80.000đ", desc: "Bánh căn giòn rụm với nước chấm xíu mại đậm đà." },
+    { name: "Nem nướng Bà Hùng", rating: "4.5", price: "60.000đ", desc: "Món nem nướng gia truyền với nước chấm tương đậu đặc trưng." },
+    { name: "Bánh ướt lòng gà Long", rating: "4.6", price: "45.000đ", desc: "Sự kết hợp hoàn hảo giữa bánh ướt dẻo và lòng gà giòn." },
+    { name: "Kem bơ Thanh Thảo", rating: "4.8", price: "35.000đ", desc: "Món tráng miệng 'quốc dân' không thể bỏ qua khi tới Đà Lạt." },
+    { name: "Bún bò bốc khói Chu Gia", rating: "4.7", price: "65.000đ", desc: "Tô bún bò nóng hổi trong thố đá nghi ngút khói." },
+    { name: "Tiệm gà Túi Mơ To", rating: "4.9", price: "150.000đ", desc: "Thưởng thức gà nướng trong khu vườn cúc họa mi cực chill." }
   ]
 };
 
