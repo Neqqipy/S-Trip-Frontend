@@ -116,14 +116,14 @@ const FeaturedDestinations = () => {
       rating: '4.9', 
       desc: 'Thành phố đáng sống với những bãi biển quyến rũ và cây cầu Vàng kỳ vĩ trên đỉnh Bà Nà.', 
       budget: '3.000.000 - 5.000.000đ', 
-      img: 'https://images.unsplash.com/photo-1583275484600-34162b2975d6?q=80&w=800' 
+      img: 'https://dulich3mien.vn/wp-content/uploads/2021/12/Hinh-anh-cau-vang-Da-Nang.jpg'
     },
     { 
       name: 'Đảo Phú Quốc', 
       rating: '5.0', 
       desc: 'Thiên đường nghỉ dưỡng với những bãi biển cát trắng trải dài và làn nước trong xanh.', 
       budget: '4.500.000 - 7.000.000đ', 
-      img: 'https://images.unsplash.com/photo-1583275484600-34162b2975d6?q=80&w=800' 
+      img: 'https://media-cdn-v2.laodong.vn/Storage/NewsPortal/2022/11/1/1111548/Bai-Dai-Phu-Quoc-1.jpg'
     }
   ];
  
