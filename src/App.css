@@ -21,3 +21,15 @@ input, button, select, textarea, span, div {
 .shake {
   animation: shake 0.5s;
 }
+
+/* Loại bỏ margin/padding mặc định của trình duyệt trên thẻ body */
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box; /* Đảm bảo padding không làm tăng kích thước phần tử */
+}
+
+/* Đảm bảo chiều cao tối đa cho các thẻ cha */
+html, body, #root {
+  height: 100%;
+}
