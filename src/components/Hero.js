@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-// Import Font Awesome
+// Giữ nguyên bộ Font Awesome của Hưng
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faMagnifyingGlass, 
@@ -11,6 +11,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 const Hero = ({ onSearch }) => {
+  // Giữ nguyên cấu trúc State nội bộ
   const [location, setLocation] = useState('');
   const [days, setDays] = useState('');
   const [budget, setBudget] = useState('');
@@ -18,10 +19,10 @@ const Hero = ({ onSearch }) => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [hoveredTag, setHoveredTag] = useState(null);
 
-  // Quản lý các ô trống và hiệu ứng rung
   const [emptyFields, setEmptyFields] = useState({});
   const [shake, setShake] = useState(false); 
 
+  // Giữ nguyên dữ liệu cũ của Hưng
   const provinces = ["An Giang", "Bà Rịa - Vũng Tàu", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Đà Lạt","Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"];
   const dayOptions = ["2 ngày 1 đêm", "3 ngày 2 đêm", "4 ngày 3 đêm", "5 ngày 4 đêm"];
   const budgetOptions = ["1.000.000đ", "2.000.000đ", "3.000.000đ", "5.000.000đ"];
@@ -52,9 +53,9 @@ const Hero = ({ onSearch }) => {
     }
   };
 
-  // Kiểm tra xem có bất kỳ ô nào đang trống không để bật viền đỏ
   const isAnyFieldEmpty = Object.keys(emptyFields).length > 0;
 
+  // Giữ nguyên 100% Styles của Hưng
   const styles = {
     hero: {
       width: '100vw', height: '65vh', minHeight: '650px', position: 'relative',
@@ -63,14 +64,12 @@ const Hero = ({ onSearch }) => {
       backgroundImage: `linear-gradient(rgba(17, 24, 39, 0.4), rgba(17, 24, 39, 0.4)), url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=2000')`,
       backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', color: 'white', textAlign: 'center'
     },
-    // KHÔI PHỤC: Viền đỏ sát ngoài cho toàn bộ ô tìm kiếm
     searchContainer: {
       backgroundColor: '#ffffff', borderRadius: '9999px', padding: '20px', 
       display: 'flex', alignItems: 'center', width: '98%', maxWidth: '1600px',
       marginTop: '60px', position: 'relative',
       transition: '0.3s all ease',
       boxShadow: isAnyFieldEmpty ? '0 0 25px rgba(239, 68, 68, 0.5)' : '0 20px 50px rgba(0, 0, 0, 0.3)',
-      // Viền đỏ bao quanh toàn bộ khi có lỗi
       border: isAnyFieldEmpty ? '4px solid #ef4444' : '4px solid transparent',
     },
     searchItem: (isLast) => ({
@@ -115,16 +114,15 @@ const Hero = ({ onSearch }) => {
         className={shake ? 'shake' : ''} 
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ĐỊA ĐIỂM - Hưng có thể xóa và nhập tự do */}
+        {/* ĐỊA ĐIỂM */}
         <div style={styles.searchItem(false)}>
           <div style={styles.label(activeDropdown === 'loc')}>Địa điểm</div>
           <input 
             style={styles.input} 
-            placeholder={emptyFields.location ? "Nhi chọn địa điểm nha!" : "Bạn muốn đi đâu?"} 
+            placeholder={emptyFields.location ? "Hãy chọn địa điểm!" : "Bạn muốn đi đâu?"} 
             value={location} 
             onChange={(e) => {
               setLocation(e.target.value);
-              // Tắt viền đỏ khi Nhi đã bắt đầu điền/xóa thông tin
               if (e.target.value) {
                 const updatedFields = { ...emptyFields };
                 delete updatedFields.location;
@@ -141,7 +139,6 @@ const Hero = ({ onSearch }) => {
                   onClick={() => {
                     setLocation(p); 
                     setActiveDropdown(null);
-                    // Tắt đánh dấu lỗi cho ô này
                     const updatedFields = { ...emptyFields };
                     delete updatedFields.location;
                     setEmptyFields(updatedFields);
@@ -155,12 +152,16 @@ const Hero = ({ onSearch }) => {
           )}
         </div>
 
-        {/* SỐ NGÀY */}
+        {/* SỐ NGÀY: Đã bỏ readOnly để Hưng xóa và gõ tay */}
         <div style={styles.searchItem(false)}>
           <div style={styles.label(activeDropdown === 'days')}>Số ngày</div>
-          <input style={styles.input} 
-            placeholder={emptyFields.days ? "Bao nhiêu ngày nè?" : "VD: 3 ngày 2 đêm"} 
-            value={days} onFocus={() => setActiveDropdown('days')} readOnly />
+          <input 
+            style={styles.input} 
+            placeholder={emptyFields.days ? "Bao nhiêu ngày?" : "VD: 3 ngày 2 đêm"} 
+            value={days} 
+            onChange={(e) => setDays(e.target.value)} // Thêm để gõ tay
+            onFocus={() => setActiveDropdown('days')} 
+          />
           {activeDropdown === 'days' && (
             <div style={styles.dropdown}>
               {dayOptions.map(d => (
@@ -182,12 +183,16 @@ const Hero = ({ onSearch }) => {
           )}
         </div>
 
-        {/* NGÂN SÁCH */}
+        {/* NGÂN SÁCH: Đã bỏ readOnly để Hưng xóa và gõ tay */}
         <div style={styles.searchItem(false)}>
           <div style={styles.label(activeDropdown === 'budget')}>Ngân sách</div>
-          <input style={styles.input} 
-            placeholder={emptyFields.budget ? "Nhi dự định chi bao nhiêu?" : "Ví dụ: 2.000.000đ"} 
-            value={budget} onFocus={() => setActiveDropdown('budget')} readOnly />
+          <input 
+            style={styles.input} 
+            placeholder={emptyFields.budget ? "Kinh phí bao nhiêu?" : "Ví dụ: 3.000.000đ"} 
+            value={budget} 
+            onChange={(e) => setBudget(e.target.value)} // Thêm để gõ tay
+            onFocus={() => setActiveDropdown('budget')} 
+          />
           {activeDropdown === 'budget' && (
             <div style={styles.dropdown}>
               {budgetOptions.map(b => (
@@ -209,12 +214,16 @@ const Hero = ({ onSearch }) => {
           )}
         </div>
 
-        {/* SỞ THÍCH */}
+        {/* SỞ THÍCH: Đã bỏ readOnly để Hưng xóa và gõ tay */}
         <div style={styles.searchItem(true)}>
           <div style={styles.label(activeDropdown === 'interest')}>Sở thích</div>
-          <input style={styles.input} 
-            placeholder={emptyFields.interest ? "Gu của Nhi là gì?" : "Nghỉ dưỡng..."} 
-            value={interest} onFocus={() => setActiveDropdown('interest')} readOnly />
+          <input 
+            style={styles.input} 
+            placeholder={emptyFields.interest ? "Gu của bạn là gì?" : "Nghỉ dưỡng..."} 
+            value={interest} 
+            onChange={(e) => setInterest(e.target.value)} // Thêm để gõ tay
+            onFocus={() => setActiveDropdown('interest')} 
+          />
           {activeDropdown === 'interest' && (
             <div style={styles.dropdown}>
               {interestOptions.map(i => (
@@ -236,7 +245,6 @@ const Hero = ({ onSearch }) => {
           )}
         </div>
         
-        {/* NÚT TÌM KIẾM */}
         <button style={styles.searchBtn} onClick={handleSearchClick}>
           <FontAwesomeIcon icon={faMagnifyingGlass} /> Tìm kiếm
         </button>
@@ -255,7 +263,6 @@ const Hero = ({ onSearch }) => {
             onClick={() => {
               setLocation(city); 
               setActiveDropdown(null);
-              // Tắt viền đỏ khi chọn gợi ý
               const updatedFields = { ...emptyFields };
               delete updatedFields.location;
               setEmptyFields(updatedFields);
