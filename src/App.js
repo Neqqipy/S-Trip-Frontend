@@ -7,27 +7,26 @@ import ChatAI from './components/ChatAI';
 import MapBubble from './components/MapBubble';
 import Footer from './components/Footer';
 import Dashboard from './components/Dashboard';
+import SkeletonLoader from './components/SkeletonLoader'; // Thành phần mới bổ sung
 import './App.css'; 
 
 function App() {
+  // --- QUẢN LÝ TRẠNG THÁI ---
   const [searchData, setSearchData] = useState(null);
   const [activeSection, setActiveSection] = useState('home'); 
+  const [isLoading, setIsLoading] = useState(false); // Trạng thái chờ AI
 
-  // --- CƠ CHẾ SCROLL SPY CHÍNH XÁC 100% ---
+  // --- 1. TỰ ĐỘNG THEO DÕI VỊ TRÍ CUỘN (SCROLL SPY) ---
   useEffect(() => {
     const handleScroll = () => {
-      // Nếu đang ở Dashboard thì không cần theo dõi cuộn
       if (activeSection === 'dashboard') return;
 
       const heroSection = document.getElementById('hero-section');
       const itinerarySection = document.getElementById('itinerary-section');
-      
-      // Ngưỡng kích hoạt: Ngay khi Section cách đỉnh màn hình 120px (vừa khít dưới Navbar)
-      const threshold = 120; 
+      const threshold = 120; // Ngưỡng kích hoạt dưới Navbar
 
       if (itinerarySection) {
         const rect = itinerarySection.getBoundingClientRect();
-        // Nếu đỉnh của Itinerary đã cuộn lên gần sát Navbar
         if (rect.top <= threshold && rect.bottom >= threshold) {
           setActiveSection('schedule');
           return;
@@ -46,7 +45,7 @@ function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [activeSection, searchData]);
 
-  // Giữ nguyên cấu trúc scrollToSection của Hưng
+  // --- 2. HÀM ĐIỀU HƯỚNG MƯỢT MÀ ---
   const scrollToSection = (id) => {
     if (id === 'dashboard') {
       setActiveSection('dashboard');
@@ -55,69 +54,91 @@ function App() {
     }
 
     setActiveSection('home');
-    const element = document.getElementById(id);
-    if (element) {
-      // Tính toán vị trí cuộn trừ đi chiều cao Navbar để không bị che tiêu đề
-      const offset = 100; 
-      const elementPosition = element.getBoundingClientRect().top + window.scrollY;
-      const offsetPosition = elementPosition - offset;
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
-
-      setActiveSection(id === 'hero-section' ? 'home' : 'schedule');
-    }
+    // Chờ một chút để React render lại trang Home trước khi cuộn
+    setTimeout(() => {
+      const element = document.getElementById(id);
+      if (element) {
+        const offset = 100; // Khoảng cách trừ hao cho Navbar
+        const elementPosition = element.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({
+          top: elementPosition - offset,
+          behavior: 'smooth'
+        });
+        setActiveSection(id === 'hero-section' ? 'home' : 'schedule');
+      }
+    }, 10);
   };
 
-  const handleRefresh = () => window.location.reload();
+  // --- 3. LÀM MỚI TRANG (NÚT LOGO) ---
+  const handleRefresh = () => {
+    window.location.reload();
+  };
 
+  // --- 4. XỬ LÝ TÌM KIẾM & GIẢ LẬP LOADING ---
   const handleSearch = (data) => {
-    setSearchData(data);
+    setIsLoading(true);
+    setSearchData(null); // Tạm ẩn kết quả cũ
+    
+    // Cuộn xuống vùng kết quả để thấy Skeleton
     setTimeout(() => scrollToSection('itinerary-section'), 100);
+
+    // Giả lập thời gian AI "suy nghĩ" 2 giây
+    setTimeout(() => {
+      setSearchData(data);
+      setIsLoading(false);
+    }, 2000);
   };
 
+  // --- 5. LƯU LỊCH TRÌNH VÀO LOCALSTORAGE (PHẦN 2) ---
   const handleSaveTrip = (trip) => {
     const currentSaved = JSON.parse(localStorage.getItem('s_trip_saved_trips') || '[]');
     const isExisted = currentSaved.some(t => t.location === trip.location && t.days === trip.days);
+    
     if (!isExisted) {
       localStorage.setItem('s_trip_saved_trips', JSON.stringify([...currentSaved, trip]));
-      alert('Đã lưu lịch trình!');
+      alert('Đã lưu lịch trình vào tài khoản của bạn!');
     } else {
-      alert('Lịch trình đã tồn tại.');
+      alert('Lịch trình này đã tồn tại trong danh sách lưu.');
     }
   };
 
   return (
     <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', margin: 0, padding: 0 }}>
+      {/* NAVBAR SÁT MÉP TRÊN */}
       <Navbar 
         activeSection={activeSection} 
         onNavigate={scrollToSection} 
         onRefresh={handleRefresh} 
       />
       
-      {/* 1. XÓA paddingTop: '80px' ở đây để ảnh nền Hero bắt đầu từ sát mép trên */}
+      {/* KHÔNG DÙNG padding ở đây để ảnh nền Hero bắt đầu sát đỉnh */}
       <div> 
         {activeSection === 'dashboard' ? (
-          <div style={{ paddingTop: '110px' }}> {/* Chỉ Dashboard mới cần đẩy xuống */}
+          /* TRANG CÁ NHÂN (Cần padding riêng để không bị đè) */
+          <div style={{ paddingTop: '110px' }}>
             <Dashboard onBack={() => scrollToSection('hero-section')} />
           </div>
         ) : (
+          /* TRANG CHỦ */
           <>
             <div id="hero-section">
-              {/* 2. Chúng ta sẽ thêm padding vào BÊN TRONG Hero ở bước dưới */}
+              {/* Lưu ý: Hưng cần thêm paddingTop: '110px' vào Hero.js để khớp nội dung */}
               <Hero onSearch={handleSearch} />
             </div>
             
-            <div style={{ paddingTop: '50px' }}> {/* Tạo khoảng cách cho các phần dưới */}
-              {searchData && (
-                <div id="itinerary-section">
-                  <AiSchedule data={searchData} onSave={() => handleSaveTrip(searchData)} />
-                </div>
+            <div id="itinerary-section">
+              {/* HIỂN THỊ SKELETON KHI ĐANG TẢI */}
+              {isLoading && <SkeletonLoader />}
+              
+              {searchData && !isLoading && (
+                <AiSchedule 
+                  data={searchData} 
+                  onSave={() => handleSaveTrip(searchData)} 
+                />
               )}
-              <FeaturedDestinations />
             </div>
+
+            <FeaturedDestinations />
           </>
         )}
 
