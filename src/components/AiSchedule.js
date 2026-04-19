@@ -7,7 +7,7 @@ import {
 import { faCalendar as faRegularCalendar } from '@fortawesome/free-regular-svg-icons';
 import MapBubble from './MapBubble'; 
 
-// === DỮ LIỆU MẪU ===
+// === DỮ LIỆU MẪU (Giữ nguyên của Hưng) ===
 const optionsRepo = {
   'Khách sạn': [
     { name: "Colline Hotel", rating: "4.8", price: "1.200.000đ/đêm", desc: "Khách sạn 4 sao hiện đại ngay trung tâm Đà Lạt." },
@@ -36,7 +36,7 @@ const optionsRepo = {
   ]
 };
 
-// === COMPONENT CON: LỰA CHỌN TRONG POP-UP ===
+// === COMPONENT CON (Giữ nguyên của Hưng) ===
 const OptionItem = ({ opt, onSelect }) => {
   const [isHovered, setIsHovered] = useState(false);
   return (
@@ -60,7 +60,6 @@ const OptionItem = ({ opt, onSelect }) => {
   );
 };
 
-// === COMPONENT CON: THẺ HIỂN THỊ CHI TIẾT ===
 const PlaceCard = ({ type, data, onEdit, locationName, setMapQuery }) => {
   const isHotel = type === 'Khách sạn';
   const mainColor = isHotel ? '#3b82f6' : (type === 'Điểm tham quan' ? '#8b5cf6' : '#f97316');
@@ -102,8 +101,8 @@ const PlaceCard = ({ type, data, onEdit, locationName, setMapQuery }) => {
   );
 };
 
-// === COMPONENT CHÍNH ===
-const AiSchedule = ({ data: initialData }) => {
+// === COMPONENT CHÍNH: Nhận thêm prop onSave ===
+const AiSchedule = ({ data: initialData, onSave }) => {
   const [currentHotel, setCurrentHotel] = useState(optionsRepo['Khách sạn'][0]);
   const [dailyPlans, setDailyPlans] = useState([]);
   const [mapQuery, setMapQuery] = useState('');
@@ -140,7 +139,7 @@ const AiSchedule = ({ data: initialData }) => {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px' }}>
-      {/* POP-UP (Giữ nguyên) */}
+      {/* POP-UP */}
       {modal.show && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={() => setModal({ show: false })}>
           <div style={{ backgroundColor: 'white', borderRadius: '30px', width: '600px', padding: '40px', position: 'relative' }} onClick={e => e.stopPropagation()}>
@@ -162,13 +161,12 @@ const AiSchedule = ({ data: initialData }) => {
         <div style={{ fontSize: '32px', fontWeight: '900', marginBottom: '25px' }}>🛌 Chỗ ở đề xuất</div>
         <div style={{ 
           display: 'flex', 
-          flexDirection: 'column', // Chỉnh ở đây để xếp dọc
+          flexDirection: 'column', 
           gap: '20px', 
           backgroundColor: '#f8fafc', 
           padding: '25px', 
           borderRadius: '40px' 
         }}>
-          {/* Thẻ khách sạn nằm trên */}
           <PlaceCard 
             type="Khách sạn" 
             data={currentHotel} 
@@ -177,7 +175,6 @@ const AiSchedule = ({ data: initialData }) => {
             onEdit={() => setModal({ show: true, type: 'Khách sạn' })} 
           />
           
-          {/* Bản đồ nằm dưới */}
           <div style={{ borderRadius: '25px', overflow: 'hidden', height: '500px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
             <iframe
               title="hotel-map"
@@ -201,6 +198,33 @@ const AiSchedule = ({ data: initialData }) => {
           </div>
         </div>
       ))}
+
+      {/* BỔ SUNG: Nút Lưu lịch trình */}
+      <div style={{ textAlign: 'center', marginTop: '60px', paddingBottom: '40px' }}>
+        <button 
+          onClick={onSave} // Gọi hàm lưu từ App.js truyền xuống
+          style={{ 
+            backgroundColor: '#10b981', 
+            color: 'white', 
+            padding: '20px 50px', 
+            borderRadius: '9999px', 
+            border: 'none', 
+            fontWeight: '800', 
+            fontSize: '22px', 
+            cursor: 'pointer',
+            boxShadow: '0 10px 30px rgba(16, 185, 129, 0.4)',
+            transition: '0.3s all ease',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          💾 Lưu lịch trình vào Dashboard
+        </button>
+      </div>
+
       <MapBubble targetOffset={450} />
     </div>
   );
