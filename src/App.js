@@ -6,6 +6,7 @@ import AiSchedule from './components/AiSchedule';
 import './App.css'; 
 import ChatAI from './components/ChatAI'; 
 import MapBubble from './components/MapBubble';
+import Footer from './components/Footer';
 
 function App() {
   const [searchData, setSearchData] = useState(null);
@@ -53,6 +54,7 @@ function App() {
       <FeaturedDestinations />
       <MapBubble targetOffset={800} data={searchData} />
       <ChatAI />
+      <Footer />
     </div>
   );
 }

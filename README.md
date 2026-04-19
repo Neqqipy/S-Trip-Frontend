@@ -6,6 +6,12 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 
 In the project directory, you can run:
 
+### Install all dependencies:
+Ensure you install the specific FontAwesome packages, especially the Brands icons to avoid errors in the Footer:
+
+npm install
+npm install @fortawesome/react-fontawesome @fortawesome/free-solid-svg-icons @fortawesome/free-regular-svg-icons @fortawesome/free-brands-svg-icons
+
 ### `npm start`
 
 Runs the app in the development mode.\
