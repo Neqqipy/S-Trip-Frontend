@@ -149,7 +149,7 @@ function App() {
         )}
 
         <MapBubble targetOffset={800} data={searchData} />
-        <ChatAI />
+        <ChatAI tripData={searchData} />
       </div>
 
       {/* HIỂN THỊ THÔNG BÁO */}
