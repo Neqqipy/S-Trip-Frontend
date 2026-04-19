@@ -7,14 +7,17 @@ import ChatAI from './components/ChatAI';
 import MapBubble from './components/MapBubble';
 import Footer from './components/Footer';
 import Dashboard from './components/Dashboard';
-import SkeletonLoader from './components/SkeletonLoader'; // Thành phần mới bổ sung
+import SkeletonLoader from './components/SkeletonLoader';
+import Toast from './components/Toast';
+import NotFound from './components/NotFound';
 import './App.css'; 
 
 function App() {
   // --- QUẢN LÝ TRẠNG THÁI ---
   const [searchData, setSearchData] = useState(null);
   const [activeSection, setActiveSection] = useState('home'); 
-  const [isLoading, setIsLoading] = useState(false); // Trạng thái chờ AI
+  const [isLoading, setIsLoading] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   // --- 1. TỰ ĐỘNG THEO DÕI VỊ TRÍ CUỘN (SCROLL SPY) ---
   useEffect(() => {
@@ -54,11 +57,10 @@ function App() {
     }
 
     setActiveSection('home');
-    // Chờ một chút để React render lại trang Home trước khi cuộn
     setTimeout(() => {
       const element = document.getElementById(id);
       if (element) {
-        const offset = 100; // Khoảng cách trừ hao cho Navbar
+        const offset = 100; 
         const elementPosition = element.getBoundingClientRect().top + window.scrollY;
         window.scrollTo({
           top: elementPosition - offset,
@@ -74,62 +76,57 @@ function App() {
     window.location.reload();
   };
 
-  // --- 4. XỬ LÝ TÌM KIẾM & GIẢ LẬP LOADING ---
+  // --- 4. THÔNG BÁO (TOAST) ---
+  const showNotification = (msg, type = 'success') => {
+    setToast({ show: true, message: msg, type });
+  };
+
+  // --- 5. XỬ LÝ TÌM KIẾM & LOADING ---
   const handleSearch = (data) => {
     setIsLoading(true);
-    setSearchData(null); // Tạm ẩn kết quả cũ
+    setSearchData(null); 
     
-    // Cuộn xuống vùng kết quả để thấy Skeleton
     setTimeout(() => scrollToSection('itinerary-section'), 100);
 
-    // Giả lập thời gian AI "suy nghĩ" 2 giây
+    // Giả lập AI xử lý trong 2 giây
     setTimeout(() => {
       setSearchData(data);
       setIsLoading(false);
     }, 2000);
   };
 
-  // --- 5. LƯU LỊCH TRÌNH VÀO LOCALSTORAGE (PHẦN 2) ---
+  // --- 6. LƯU LỊCH TRÌNH (LOCALSTORAGE) ---
   const handleSaveTrip = (trip) => {
     const currentSaved = JSON.parse(localStorage.getItem('s_trip_saved_trips') || '[]');
     const isExisted = currentSaved.some(t => t.location === trip.location && t.days === trip.days);
     
     if (!isExisted) {
       localStorage.setItem('s_trip_saved_trips', JSON.stringify([...currentSaved, trip]));
-      alert('Đã lưu lịch trình vào tài khoản của bạn!');
+      showNotification('Đã lưu lịch trình vào tài khoản!');
     } else {
-      alert('Lịch trình này đã tồn tại trong danh sách lưu.');
+      showNotification('Lịch trình này đã tồn tại.', 'error');
     }
   };
 
   return (
     <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', margin: 0, padding: 0 }}>
-      {/* NAVBAR SÁT MÉP TRÊN */}
+      {/* NAVBAR SÁT ĐỈNH */}
       <Navbar 
         activeSection={activeSection} 
         onNavigate={scrollToSection} 
         onRefresh={handleRefresh} 
       />
       
-      {/* KHÔNG DÙNG padding ở đây để ảnh nền Hero bắt đầu sát đỉnh */}
       <div> 
-        {activeSection === 'dashboard' ? (
-          /* TRANG CÁ NHÂN (Cần padding riêng để không bị đè) */
-          <div style={{ paddingTop: '110px' }}>
-            <Dashboard onBack={() => scrollToSection('hero-section')} />
-          </div>
-        ) : (
-          /* TRANG CHỦ */
+        {/* ĐIỀU HƯỚNG SECTION CHÍNH */}
+        {activeSection === 'home' || activeSection === 'schedule' ? (
           <>
             <div id="hero-section">
-              {/* Lưu ý: Hưng cần thêm paddingTop: '110px' vào Hero.js để khớp nội dung */}
               <Hero onSearch={handleSearch} />
             </div>
             
             <div id="itinerary-section">
-              {/* HIỂN THỊ SKELETON KHI ĐANG TẢI */}
               {isLoading && <SkeletonLoader />}
-              
               {searchData && !isLoading && (
                 <AiSchedule 
                   data={searchData} 
@@ -140,11 +137,29 @@ function App() {
 
             <FeaturedDestinations />
           </>
+        ) : activeSection === 'dashboard' ? (
+          <div style={{ paddingTop: '110px' }}>
+            <Dashboard onBack={() => scrollToSection('hero-section')} />
+          </div>
+        ) : (
+          /* TRANG 404 */
+          <div style={{ paddingTop: '110px' }}>
+            <NotFound onBackHome={() => scrollToSection('hero-section')} />
+          </div>
         )}
 
         <MapBubble targetOffset={800} data={searchData} />
         <ChatAI />
       </div>
+
+      {/* HIỂN THỊ THÔNG BÁO */}
+      {toast.show && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast({ ...toast, show: false })} 
+        />
+      )}
 
       <Footer onNavigate={scrollToSection} />
     </div>
