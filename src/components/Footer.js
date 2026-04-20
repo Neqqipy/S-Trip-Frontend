@@ -57,7 +57,7 @@ const Footer = ({ onNavigate }) => { // Nhận hàm điều hướng từ App
           <ul style={styles.linkList}>
             {/* Click vào Email/SĐT sẽ tự mở app tương ứng */}
             <li><a href="mailto:contact@s-trip.vn" style={styles.link}><FontAwesomeIcon icon={faEnvelope} /> contact@s-trip.vn</a></li>
-            <li><a href="tel:+8424120319" style={styles.link}><FontAwesomeIcon icon={faPhone} /> +84 7894 41629</a></li>
+            <li><a href="tel:+84789441629" style={styles.link}><FontAwesomeIcon icon={faPhone} /> +84 7894 41629</a></li>
           </ul>
         </div>
       </div>

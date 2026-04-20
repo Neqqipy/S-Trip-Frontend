@@ -1,231 +1,257 @@
 import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faWandMagicSparkles, faHotel, faUtensils, 
-  faMapLocationDot, faPenToSquare, faStar, faXmark, faLocationArrow
+import {
+  faWandMagicSparkles, faHotel, faUtensils, faMapLocationDot,
+  faPenToSquare, faStar, faXmark, faLocationArrow, faPlane,
+  faSun, faCloudSun, faMoon
 } from '@fortawesome/free-solid-svg-icons';
 import { faCalendar as faRegularCalendar } from '@fortawesome/free-regular-svg-icons';
-import MapBubble from './MapBubble'; 
 
-// === DỮ LIỆU MẪU (Giữ nguyên của Hưng) ===
-const optionsRepo = {
+// 📦 Mock data dự phòng khi backend không trả về dữ liệu
+const mockRepo = {
   'Khách sạn': [
-    { name: "Colline Hotel", rating: "4.8", price: "1.200.000đ/đêm", desc: "Khách sạn 4 sao hiện đại ngay trung tâm Đà Lạt." },
-    { name: "Terracotta Resort", rating: "4.7", price: "1.500.000đ/đêm", desc: "Không gian xanh mát bên bờ hồ Tuyền Lâm." },
-    { name: "Ana Mandara Villas", rating: "4.9", price: "2.500.000đ/đêm", desc: "Khu nghỉ dưỡng biệt thự Pháp cổ điển và lãng mạn." },
-    { name: "Swiss-Belresort", rating: "4.6", price: "1.100.000đ/đêm", desc: "Kiến trúc Châu Âu giữa lòng sân Golf thung lũng." },
-    { name: "Dalat Palace", rating: "4.8", price: "3.200.000đ/đêm", desc: "Biểu tượng sang trọng và lịch sử của thành phố ngàn hoa." }
+    { name: "Colline Hotel", rating: "4.8", price: "1.200.000đ/đêm", desc: "Khách sạn 4 sao hiện đại ngay trung tâm." },
+    { name: "Terracotta Resort", rating: "4.7", price: "1.500.000đ/đêm", desc: "Không gian xanh mát bên bờ hồ." }
   ],
   'Điểm tham quan': [
-    { name: "Săn mây Cầu Đất", rating: "4.9", price: "150.000đ", desc: "Đón bình minh rực rỡ tại đồi chè xanh mướt." },
-    { name: "Thung lũng tình yêu", rating: "4.5", price: "250.000đ", desc: "Không gian thơ mộng dành riêng cho các cặp đôi." },
-    { name: "Thác Datanla", rating: "4.7", price: "170.000đ", desc: "Trải nghiệm máng trượt xuyên rừng dài nhất Đông Nam Á." },
-    { name: "Đỉnh Langbiang", rating: "4.8", price: "50.000đ", desc: "Chinh phục nóc nhà Đà Lạt bằng xe Jeep chuyên dụng." },
-    { name: "Ga Đà Lạt", rating: "4.6", price: "10.000đ", desc: "Ga tàu cổ kính nhất Việt Nam với kiến trúc Pháp độc đáo." },
-    { name: "Chợ Đêm Đà Lạt", rating: "4.5", price: "Miễn phí", desc: "Thiên đường ẩm thực đường phố và đồ len lưu niệm." },
-    { name: "Vườn hoa Thành phố", rating: "4.4", price: "60.000đ", desc: "Nơi hội tụ hàng trăm loài hoa khoe sắc quanh năm." }
+    { name: "Địa điểm tham quan 1", rating: "4.8", price: "150.000đ", desc: "Địa điểm nổi tiếng tại điểm đến." },
+    { name: "Địa điểm tham quan 2", rating: "4.5", price: "200.000đ", desc: "Trải nghiệm độc đáo không thể bỏ qua." },
+    { name: "Địa điểm tham quan 3", rating: "4.7", price: "170.000đ", desc: "Khám phá vẻ đẹp thiên nhiên." }
   ],
   'Địa điểm ăn uống': [
-    { name: "Lẩu bò Ba Toa", rating: "4.6", price: "250.000đ", desc: "Đặc sản lẩu gỗ trứ danh đậm đà hương vị núi rừng." },
-    { name: "Bánh căn Nhà Chung", rating: "4.7", price: "80.000đ", desc: "Bánh căn giòn rụm với nước chấm xíu mại đậm đà." },
-    { name: "Nem nướng Bà Hùng", rating: "4.5", price: "60.000đ", desc: "Món nem nướng gia truyền với nước chấm tương đậu đặc trưng." },
-    { name: "Bánh ướt lòng gà Long", rating: "4.6", price: "45.000đ", desc: "Sự kết hợp hoàn hảo giữa bánh ướt dẻo và lòng gà giòn." },
-    { name: "Kem bơ Thanh Thảo", rating: "4.8", price: "35.000đ", desc: "Món tráng miệng 'quốc dân' không thể bỏ qua khi tới Đà Lạt." },
-    { name: "Bún bò bốc khói Chu Gia", rating: "4.7", price: "65.000đ", desc: "Tô bún bò nóng hổi trong thố đá nghi ngút khói." },
-    { name: "Tiệm gà Túi Mơ To", rating: "4.9", price: "150.000đ", desc: "Thưởng thức gà nướng trong khu vườn cúc họa mi cực chill." }
+    { name: "Nhà hàng địa phương 1", rating: "4.6", price: "250.000đ", desc: "Đặc sản địa phương đậm đà hương vị." },
+    { name: "Quán ăn ngon 2", rating: "4.7", price: "80.000đ", desc: "Món ăn truyền thống giá bình dân." },
+    { name: "Quán ăn ngon 3", rating: "4.8", price: "120.000đ", desc: "Ẩm thực đặc trưng vùng miền." }
   ]
 };
 
-// === COMPONENT CON (Giữ nguyên của Hưng) ===
-const OptionItem = ({ opt, onSelect }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  return (
-    <div 
-      style={{
-        padding: '25px', borderRadius: '20px', cursor: 'pointer', transition: '0.3s',
-        border: isHovered ? '3px solid #10b981' : '2px solid #f1f5f9',
-        backgroundColor: 'white', marginBottom: '12px'
-      }} 
-      onMouseEnter={() => setIsHovered(true)} 
-      onMouseLeave={() => setIsHovered(false)} 
-      onClick={() => onSelect(opt)}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ fontWeight: '800', fontSize: '24px' }}>{opt.name}</span>
-        <span style={{ color: '#eab308' }}><FontAwesomeIcon icon={faStar} /> {opt.rating}</span>
-      </div>
-      <p style={{ color: '#64748b', margin: '5px 0' }}>{opt.desc}</p>
-      <span style={{ color: '#10b981', fontWeight: '800' }}>{opt.price}</span>
-    </div>
-  );
-};
+const normalizeActivity = (item) => ({
+  name: item.name,
+  rating: item.rating || "4.5",
+  price: item.price || "Giá tùy chọn",
+  desc: item.desc || "",
+  thumbnail: item.thumbnail || null,
+});
 
-const PlaceCard = ({ type, data, onEdit, locationName, setMapQuery }) => {
+// 🎨 PlaceCard
+const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onEdit }) => {
   const isHotel = type === 'Khách sạn';
-  const mainColor = isHotel ? '#3b82f6' : (type === 'Điểm tham quan' ? '#8b5cf6' : '#f97316');
+  const isFlight = type === 'Chuyến bay';
+  const icon = isHotel ? faHotel : (isFlight ? faPlane : (type === 'Địa điểm ăn uống' ? faUtensils : faMapLocationDot));
+  const mainColor = isHotel ? '#3b82f6' : (isFlight ? '#10b981' : (type === 'Điểm tham quan' ? '#8b5cf6' : '#f97316'));
+  const sessionIcon = sessionLabel === 'Sáng' ? faSun : (sessionLabel === 'Chiều' ? faCloudSun : faMoon);
 
   return (
     <div style={{
-      backgroundColor: 'white', borderRadius: '28px', padding: '30px', display: 'flex', gap: '25px', 
-      border: '1px solid #f1f5f9', transition: '0.3s', flex: 1, position: 'relative',
-      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+      backgroundColor: 'white', borderRadius: '35px', padding: '35px', display: 'flex', gap: '30px',
+      border: '1px solid #f1f5f9', flex: 1, boxShadow: '0 4px 10px rgba(0,0,0,0.05)', alignItems: 'center'
     }}>
-      <div style={{ fontSize: '40px', color: mainColor }}>
-        <FontAwesomeIcon icon={isHotel ? faHotel : (type === 'Điểm tham quan' ? faMapLocationDot : faUtensils)} />
+      <div style={{ width: '140px', height: '140px', flexShrink: 0, borderRadius: '25px', overflow: 'hidden', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        {data.thumbnail ? (
+          <img src={data.thumbnail} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <FontAwesomeIcon icon={sessionLabel ? sessionIcon : icon} style={{ fontSize: '40px', color: mainColor }} />
+        )}
       </div>
 
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '13px', fontWeight: '800', color: mainColor, textTransform: 'uppercase' }}>{type}</div>
-        <div style={{ fontSize: '26px', fontWeight: '900', color: '#111827' }}>{data.name}</div>
-        <div style={{ display: 'flex', gap: '15px', margin: '5px 0' }}>
-           <span style={{ color: '#eab308', fontWeight: '700' }}><FontAwesomeIcon icon={faStar} /> {data.rating}</span>
-           <span style={{ color: '#10b981', fontWeight: '700' }}>{data.price}</span>
+        <div style={{ fontSize: '14px', fontWeight: '800', color: mainColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          {sessionLabel ? `${sessionLabel} · ${type}` : type}
         </div>
-        
-        <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-          <button 
-            onClick={() => setMapQuery(`${data.name} ${locationName}`)} 
-            style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', backgroundColor: mainColor, color: 'white', fontWeight: '700', cursor: 'pointer' }}
-          >
-            <FontAwesomeIcon icon={faLocationArrow} /> Xem vị trí
-          </button>
-          <button 
-            onClick={onEdit} 
-            style={{ padding: '10px 20px', borderRadius: '12px', border: `1px solid ${mainColor}`, color: mainColor, backgroundColor: 'white', fontWeight: '700', cursor: 'pointer' }}
-          >
-            Đổi lựa chọn
-          </button>
+        <div style={{ fontSize: '22px', fontWeight: '900', color: '#111827', margin: '8px 0' }}>{data.name || data.airline}</div>
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+          <span style={{ color: '#eab308', fontWeight: '700' }}><FontAwesomeIcon icon={faStar} /> {data.rating || 'N/A'}</span>
+          <span style={{ color: '#10b981', fontWeight: '800' }}>{data.price}</span>
+        </div>
+        <div style={{ fontSize: '14px', color: '#64748b', marginTop: '6px' }}>{data.desc}</div>
+
+        <div style={{ display: 'flex', gap: '15px', marginTop: '15px' }}>
+          {!isFlight && (
+            <button
+              onClick={() => setMapQuery(`${data.name} ${locationName}`)}
+              style={{ padding: '12px 25px', borderRadius: '15px', border: 'none', backgroundColor: '#3b82f6', color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}
+            >
+              <FontAwesomeIcon icon={faLocationArrow} /> Vị trí
+            </button>
+          )}
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              style={{ padding: '8px 16px', borderRadius: '10px', border: `1px solid ${mainColor}`, color: mainColor, backgroundColor: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}
+            >
+              <FontAwesomeIcon icon={faPenToSquare} /> Đổi
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-// === COMPONENT CHÍNH: Nhận thêm prop onSave ===
+// ── COMPONENT CHÍNH ──────────────────────────────────────────
 const AiSchedule = ({ data: initialData, onSave }) => {
-  const [currentHotel, setCurrentHotel] = useState(optionsRepo['Khách sạn'][0]);
+  const numDays = parseInt(initialData?.days?.toString().split(' ')[0]) || 3;
   const [dailyPlans, setDailyPlans] = useState([]);
   const [mapQuery, setMapQuery] = useState('');
-  const [modal, setModal] = useState({ show: false, type: '', day: null });
+  const [modal, setModal] = useState({ show: false, type: '', day: null, session: '', subType: '' });
+
+  const realTours = (initialData.realTours || []).map(normalizeActivity);
+  const realFoods = (initialData.realFoods || []).map(normalizeActivity);
+  const toursPool = realTours.length > 0 ? realTours : mockRepo['Điểm tham quan'];
+  const foodsPool = realFoods.length > 0 ? realFoods : mockRepo['Địa điểm ăn uống'];
+
+  const [currentHotel, setCurrentHotel] = useState(() => {
+    if (initialData.realHotels?.length > 0) {
+      const h = initialData.realHotels[0];
+      return {
+        name: h.name, rating: h.rating,
+        price: h.price_per_night?.toLocaleString() + "đ/đêm" || "Liên hệ",
+        thumbnail: h.thumbnail, desc: "Lựa chọn tốt nhất dựa trên ngân sách."
+      };
+    }
+    return mockRepo['Khách sạn'][0];
+  });
 
   useEffect(() => {
-    if (initialData && initialData.location) {
-      const numDays = parseInt(initialData.days.split(' ')[0]) || 2;
-      const newPlans = [];
-      for (let i = 1; i <= numDays; i++) {
-        newPlans.push({
-          day: i,
-          tour: optionsRepo['Điểm tham quan'][i % optionsRepo['Điểm tham quan'].length],
-          food: optionsRepo['Địa điểm ăn uống'][i % optionsRepo['Địa điểm ăn uống'].length]
-        });
-      }
-      setDailyPlans(newPlans);
-      setMapQuery(`${currentHotel.name} ${initialData.location}`);
+    const plans = [];
+    for (let i = 0; i < numDays; i++) {
+      plans.push({
+        day: i + 1,
+          morning: {
+            tour: toursPool[(i * 3) % toursPool.length],
+            food: foodsPool[(i * 3) % foodsPool.length]
+          },
+          afternoon: {
+            tour: toursPool[(i * 3 + 1) % toursPool.length],
+            food: foodsPool[(i * 3 + 1) % foodsPool.length]
+          },
+          evening: {
+            tour: toursPool[(i * 3 + 2) % toursPool.length],
+            food: foodsPool[(i * 3 + 2) % foodsPool.length]
+        }
+      });
     }
-  }, [initialData, currentHotel]);
+    setDailyPlans(plans);
+    setMapQuery(`${currentHotel.name} ${initialData.location}`);
+  }, [initialData.location, numDays]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpdate = (newVal) => {
     if (modal.type === 'Khách sạn') {
       setCurrentHotel(newVal);
       setMapQuery(`${newVal.name} ${initialData.location}`);
     } else {
-      const updated = dailyPlans.map(d => 
-        d.day === modal.day ? { ...d, [modal.type === 'Điểm tham quan' ? 'tour' : 'food']: newVal } : d
-      );
-      setDailyPlans(updated);
+      setDailyPlans(prev => prev.map(d => d.day === modal.day 
+        ? { ...d, [modal.session]: { ...d[modal.session], [modal.subType]: newVal } } 
+        : d));
     }
-    setModal({ show: false, type: '', day: null });
+    setModal({ show: false, type: '', day: null, session: '', subType: '' });
   };
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px' }}>
-      {/* POP-UP */}
+      {/* MODAL ĐỔI LỰA CHỌN */}
       {modal.show && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={() => setModal({ show: false })}>
-          <div style={{ backgroundColor: 'white', borderRadius: '30px', width: '600px', padding: '40px', position: 'relative' }} onClick={e => e.stopPropagation()}>
-            <button style={{ position: 'absolute', top: '20px', right: '20px', border: 'none', background: 'none', fontSize: '30px', cursor: 'pointer' }} onClick={() => setModal({ show: false })}><FontAwesomeIcon icon={faXmark} color="#9ca3af" /></button>
-            <h2 style={{ fontSize: '30px', fontWeight: '900', marginBottom: '25px' }}>Đổi {modal.type.toLowerCase()}</h2>
-            {optionsRepo[modal.type].map((opt, i) => <OptionItem key={i} opt={opt} onSelect={handleUpdate} />)}
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={() => setModal({ show: false })}>
+          <div style={{ backgroundColor: 'white', borderRadius: '35px', width: '550px', padding: '35px', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '25px' }}>
+              <h2 style={{ fontSize: '26px', fontWeight: '900' }}>Chọn {modal.type} tại {initialData.location}</h2>
+              <FontAwesomeIcon icon={faXmark} style={{ cursor: 'pointer', fontSize: '28px', color: '#9ca3af' }} onClick={() => setModal({ show: false })} />
+            </div>
+            {(modal.type === 'Khách sạn' ? mockRepo['Khách sạn'] : (modal.subType === 'tour' ? toursPool : foodsPool)).map((opt, i) => (
+              <div key={i} onClick={() => handleUpdate(opt)} style={{ padding: '20px', borderRadius: '20px', border: '2px solid #f1f5f9', marginBottom: '10px', cursor: 'pointer' }}>
+                <div style={{ fontWeight: '800' }}>{opt.name} · <span style={{ color: '#eab308' }}>{opt.rating}⭐</span></div>
+                <div style={{ color: '#10b981', fontWeight: '700' }}>{opt.price}</div>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* HEADER */}
-      <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-        <h1 style={{ fontSize: '50px', fontWeight: '900', color: '#111827' }}>Khám phá <span style={{ color: '#10b981' }}>{initialData.location}</span></h1>
-        <p style={{ fontSize: '20px', color: '#64748b' }}>Hành trình {initialData.days} dành cho bạn</p>
+      <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+        <h1 style={{ fontSize: '80px', fontWeight: '900' }}>
+          <FontAwesomeIcon icon={faWandMagicSparkles} style={{ color: '#10b981', marginRight: '18px' }} />
+          Hành trình tại <span style={{ color: '#10b981' }}>{initialData.location}</span>
+        </h1>
+        <p style={{ fontSize: '28px', color: '#64748b' }}>Hành trình {numDays} ngày của bạn sẵn sàng ✨</p>
       </div>
 
-      {/* KHU VỰC CHỖ Ở + BẢN ĐỒ */}
+      {/* 1. CHUYẾN BAY */}
+      {initialData.realFlights?.length > 0 && (
+        <div style={{ marginBottom: '55px' }}>
+          <div style={{ fontSize: '28px', fontWeight: '800', marginBottom: '20px' }}>✈️ Chuyến bay đề xuất</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
+            {initialData.realFlights.slice(0, 2).map((f, i) => (
+              <PlaceCard key={i} type="Chuyến bay" data={{
+                airline: f.airline, price: f.price?.toLocaleString() + "đ",
+                thumbnail: f.thumbnail, desc: `Hãng bay: ${f.airline} · Thời gian bay: ${f.total_duration} phút`
+              }} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 2. KHÁCH SẠN */}
       <div style={{ marginBottom: '60px' }}>
-        <div style={{ fontSize: '32px', fontWeight: '900', marginBottom: '25px' }}>🛌 Chỗ ở đề xuất</div>
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '20px', 
-          backgroundColor: '#f8fafc', 
-          padding: '25px', 
-          borderRadius: '40px' 
-        }}>
-          <PlaceCard 
-            type="Khách sạn" 
-            data={currentHotel} 
-            locationName={initialData.location}
-            setMapQuery={setMapQuery}
-            onEdit={() => setModal({ show: true, type: 'Khách sạn' })} 
+        <div style={{ fontSize: '28px', fontWeight: '800', marginBottom: '20px' }}>
+          🛌 Chỗ ở {initialData.realHotels?.length > 0 ? '(Dữ liệu thực)' : '(Gợi ý)'}
+        </div>
+        <div style={{ backgroundColor: '#f8fafc', padding: '30px', borderRadius: '40px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
+          <PlaceCard
+            type="Khách sạn" data={currentHotel} locationName={initialData.location}
+            setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Khách sạn' })}
           />
-          
-          <div style={{ borderRadius: '25px', overflow: 'hidden', height: '500px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-            <iframe
-              title="hotel-map"
-              width="100%" height="100%" style={{ border: 0 }} loading="lazy" allowFullScreen
-              src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&t=&z=16&ie=UTF8&iwloc=near&output=embed`}
-            ></iframe>
+          <div style={{ borderRadius: '25px', overflow: 'hidden', height: '450px', border: '1px solid #e2e8f0' }}>
+            <iframe title="map" width="100%" height="100%" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`}></iframe>
           </div>
         </div>
       </div>
 
-      {/* LỊCH TRÌNH CHI TIẾT */}
-      <div style={{ fontSize: '32px', fontWeight: '900', marginBottom: '25px' }}>🧩 Lịch trình chi tiết</div>
+      {/* 3. LỊCH TRÌNH 3 BUỔI */}
+      <div style={{ fontSize: '28px', fontWeight: '800', marginBottom: '25px' }}>🧩 Kế hoạch chi tiết theo buổi</div>
       {dailyPlans.map(d => (
-        <div key={d.day} style={{ marginBottom: '40px' }}>
-          <div style={{ fontSize: '26px', fontWeight: '800', marginBottom: '20px', color: '#10b981' }}>
+        <div key={d.day} style={{ marginBottom: '45px', padding: '35px', backgroundColor: '#f8fafc', borderRadius: '40px' }}>
+          <div style={{ fontWeight: '900', color: '#10b981', fontSize: '26px', marginBottom: '30px' }}>
             <FontAwesomeIcon icon={faRegularCalendar} /> Ngày {d.day}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <PlaceCard type="Điểm tham quan" data={d.tour} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day })} />
-            <PlaceCard type="Địa điểm ăn uống" data={d.food} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day })} />
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '35px' }}>
+            {/* Morning Row */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div style={{ fontWeight: '800', color: '#64748b', fontSize: '14px' }}><FontAwesomeIcon icon={faSun} /> BUỔI SÁNG</div>
+              <div style={{ display: 'flex', gap: '25px' }}>
+                <PlaceCard type="Điểm tham quan" sessionLabel="Sáng" data={d.morning.tour} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'morning', subType: 'tour' })} />
+                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Sáng" data={d.morning.food} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'morning', subType: 'food' })} />
+              </div>
+            </div>
+
+            {/* Afternoon Row */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div style={{ fontWeight: '800', color: '#64748b', fontSize: '14px' }}><FontAwesomeIcon icon={faCloudSun} /> BUỔI CHIỀU</div>
+              <div style={{ display: 'flex', gap: '25px' }}>
+                <PlaceCard type="Điểm tham quan" sessionLabel="Chiều" data={d.afternoon.tour} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'afternoon', subType: 'tour' })} />
+                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Chiều" data={d.afternoon.food} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'afternoon', subType: 'food' })} />
+              </div>
+            </div>
+
+            {/* Evening Row */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div style={{ fontWeight: '800', color: '#64748b', fontSize: '14px' }}><FontAwesomeIcon icon={faMoon} /> BUỔI TỐI</div>
+              <div style={{ display: 'flex', gap: '25px' }}>
+                <PlaceCard type="Điểm tham quan" sessionLabel="Tối" data={d.evening.tour} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'evening', subType: 'tour' })} />
+                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Tối" data={d.evening.food} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'evening', subType: 'food' })} />
+              </div>
+            </div>
           </div>
         </div>
       ))}
-
-      {/* BỔ SUNG: Nút Lưu lịch trình */}
+ 
+      {/* NÚT LƯU */}
       <div style={{ textAlign: 'center', marginTop: '60px', paddingBottom: '40px' }}>
-        <button 
-          onClick={onSave} // Gọi hàm lưu từ App.js truyền xuống
-          style={{ 
-            backgroundColor: '#10b981', 
-            color: 'white', 
-            padding: '20px 50px', 
-            borderRadius: '9999px', 
-            border: 'none', 
-            fontWeight: '800', 
-            fontSize: '22px', 
-            cursor: 'pointer',
-            boxShadow: '0 10px 30px rgba(16, 185, 129, 0.4)',
-            transition: '0.3s all ease',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '12px'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
+        <button onClick={onSave} style={{ backgroundColor: '#10b981', color: 'white', padding: '22px 65px', borderRadius: '99px', border: 'none', fontWeight: '800', fontSize: '24px', cursor: 'pointer', boxShadow: '0 12px 35px rgba(16,129,129,0.4)' }}>
           💾 Lưu lịch trình vào Dashboard
         </button>
       </div>
-
-      <MapBubble targetOffset={450} />
     </div>
   );
 };

@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import FeaturedDestinations from './components/FeaturedDestinations';
-import AiSchedule from './components/AiSchedule'; 
-import ChatAI from './components/ChatAI'; 
+import AiSchedule from './components/AiSchedule';
+import ChatAI from './components/ChatAI';
 import MapBubble from './components/MapBubble';
 import Footer from './components/Footer';
 import Dashboard from './components/Dashboard';
 import SkeletonLoader from './components/SkeletonLoader';
 import Toast from './components/Toast';
-import NotFound from './components/NotFound';
-import './App.css'; 
+import { fetchTripPlan } from './services/api';
+import './App.css';
 
 function App() {
   // --- QUẢN LÝ TRẠNG THÁI ---
@@ -22,16 +22,27 @@ function App() {
   // --- 1. TỰ ĐỘNG THEO DÕI VỊ TRÍ CUỘN (SCROLL SPY) ---
   useEffect(() => {
     const handleScroll = () => {
+      // Không spy khi đang ở trang Dashboard
       if (activeSection === 'dashboard') return;
 
       const heroSection = document.getElementById('hero-section');
       const itinerarySection = document.getElementById('itinerary-section');
-      const threshold = 120; // Ngưỡng kích hoạt dưới Navbar
+      const featuredSection = document.getElementById('featured-section');
+      const threshold = 150; // Ngưỡng kích hoạt dưới Navbar
 
-      if (itinerarySection) {
+      // Kiểm tra theo thứ tự ưu tiên ngược từ dưới lên
+      if (itinerarySection && searchData) {
         const rect = itinerarySection.getBoundingClientRect();
         if (rect.top <= threshold && rect.bottom >= threshold) {
           setActiveSection('schedule');
+          return;
+        }
+      }
+
+      if (featuredSection) {
+        const rect = featuredSection.getBoundingClientRect();
+        if (rect.top <= threshold) {
+          setActiveSection('featured');
           return;
         }
       }
@@ -46,7 +57,7 @@ function App() {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [activeSection, searchData]);
+  }, [activeSection, searchData]); // Lắng nghe searchData để biết khi nào Lịch trình xuất hiện
 
   // --- 2. HÀM ĐIỀU HƯỚNG MƯỢT MÀ ---
   const scrollToSection = (id) => {
@@ -56,70 +67,78 @@ function App() {
       return;
     }
 
+    // Nếu quay về Home, đưa trạng thái về home ngay
     setActiveSection('home');
+    
     setTimeout(() => {
       const element = document.getElementById(id);
       if (element) {
-        const offset = 100; 
+        const offset = 90; // Khoảng cách trừ hao cho Navbar cố định
         const elementPosition = element.getBoundingClientRect().top + window.scrollY;
         window.scrollTo({
           top: elementPosition - offset,
           behavior: 'smooth'
         });
-        setActiveSection(id === 'hero-section' ? 'home' : 'schedule');
+        
+        // Cập nhật trạng thái Active dựa trên mục tiêu cuộn
+        if (id === 'itinerary-section') setActiveSection('schedule');
+        else if (id === 'featured-section') setActiveSection('featured');
+        else setActiveSection('home');
       }
     }, 10);
   };
 
-  // --- 3. LÀM MỚI TRANG (NÚT LOGO) ---
-  const handleRefresh = () => {
-    window.location.reload();
-  };
-
-  // --- 4. THÔNG BÁO (TOAST) ---
-  const showNotification = (msg, type = 'success') => {
-    setToast({ show: true, message: msg, type });
-  };
-
-  // --- 5. XỬ LÝ TÌM KIẾM & LOADING ---
-  const handleSearch = (data) => {
+  // --- 3. XỬ LÝ TÌM KIẾM (Gửi đủ 5 tham số đồng bộ) ---
+  const handleSearch = async (formData) => {
     setIsLoading(true);
     setSearchData(null); 
-    
-    setTimeout(() => scrollToSection('itinerary-section'), 100);
+    setActiveSection('home');
 
-    // Giả lập AI xử lý trong 2 giây
+    // Tự động cuộn chờ (giống code tham khảo)
     setTimeout(() => {
-      setSearchData(data);
-      setIsLoading(false);
-    }, 2000);
+      const el = document.getElementById('itinerary-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+
+    const result = await fetchTripPlan(
+      formData.location, 
+      formData.budget, 
+      formData.days,
+      formData.origin,
+      formData.passengers
+    );
+
+    if (result) {
+      setSearchData({
+        ...formData,
+        realHotels:  result.hotels  || [],
+        realFlights: result.flights || [],
+        realTours:   result.tours   || [],
+        realFoods:   result.foods   || [],
+      });
+      setToast({ show: true, message: 'Đã AI hóa lịch trình thực tế cho bạn!', type: 'success' });
+    } else {
+      setToast({ show: true, message: 'Lỗi kết nối Backend!', type: 'error' });
+    }
+    setIsLoading(false);
   };
 
-  // --- 6. LƯU LỊCH TRÌNH (LOCALSTORAGE) ---
-  const handleSaveTrip = (trip) => {
-    const currentSaved = JSON.parse(localStorage.getItem('s_trip_saved_trips') || '[]');
-    const isExisted = currentSaved.some(t => t.location === trip.location && t.days === trip.days);
-    
-    if (!isExisted) {
-      localStorage.setItem('s_trip_saved_trips', JSON.stringify([...currentSaved, trip]));
-      showNotification('Đã lưu lịch trình vào tài khoản!');
-    } else {
-      showNotification('Lịch trình này đã tồn tại.', 'error');
-    }
-  };
+  // Biến kiểm tra để Navbar biết khi nào được mở khóa nút Lịch trình
+  const hasItinerary = !!searchData && !isLoading;
 
   return (
     <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', margin: 0, padding: 0 }}>
-      {/* NAVBAR SÁT ĐỈNH */}
+      {/* NAVBAR: Nhận prop hasItinerary để xử lý trạng thái nút */}
       <Navbar 
         activeSection={activeSection} 
         onNavigate={scrollToSection} 
-        onRefresh={handleRefresh} 
+        onRefresh={() => window.location.reload()}
+        hasItinerary={hasItinerary}
       />
       
       <div> 
         {/* ĐIỀU HƯỚNG SECTION CHÍNH */}
-        {activeSection === 'home' || activeSection === 'schedule' ? (
+        {activeSection !== 'dashboard' ? (
           <>
             <div id="hero-section">
               <Hero onSearch={handleSearch} />
@@ -130,21 +149,19 @@ function App() {
               {searchData && !isLoading && (
                 <AiSchedule 
                   data={searchData} 
-                  onSave={() => handleSaveTrip(searchData)} 
+                  onSave={() => setToast({ show: true, message: 'Đã lưu vào Dashboard!', type: 'success' })} 
                 />
               )}
             </div>
 
-            <FeaturedDestinations />
+            <div id="featured-section">
+              <FeaturedDestinations onNavigate={scrollToSection} />
+            </div>
           </>
-        ) : activeSection === 'dashboard' ? (
+        ) : (
+          /* TRANG DASHBOARD */
           <div style={{ paddingTop: '110px' }}>
             <Dashboard onBack={() => scrollToSection('hero-section')} />
-          </div>
-        ) : (
-          /* TRANG 404 */
-          <div style={{ paddingTop: '110px' }}>
-            <NotFound onBackHome={() => scrollToSection('hero-section')} />
           </div>
         )}
 
