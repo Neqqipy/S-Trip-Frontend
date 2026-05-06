@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faWandMagicSparkles, faHotel, faUtensils, faMapLocationDot,
   faPenToSquare, faStar, faXmark, faLocationArrow, faPlane,
-  faSun, faCloudSun, faMoon
+  faSun, faCloudSun, faMoon, faMap
 } from '@fortawesome/free-solid-svg-icons';
 import { faCalendar as faRegularCalendar } from '@fortawesome/free-regular-svg-icons';
 
@@ -33,13 +34,149 @@ const normalizeActivity = (item) => ({
   thumbnail: item.thumbnail || null,
 });
 
+// 🗺️ MAP MODAL POPUP — dùng Portal để thoát khỏi mọi stacking context
+const MapModal = ({ placeName, query, onClose }) => {
+  useEffect(() => {
+    // Khóa scroll trang khi modal mở
+    document.body.style.overflow = 'hidden';
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [onClose]);
+
+  const modalContent = (
+    <>
+      <style>{`
+        @keyframes mapFadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes mapSlideUp { from { transform: translateY(40px) scale(0.97); opacity: 0 } to { transform: translateY(0) scale(1); opacity: 1 } }
+        .map-overlay { animation: mapFadeIn 0.2s ease forwards; }
+        .map-box { animation: mapSlideUp 0.25s ease forwards; }
+        .map-close-btn:hover { background-color: #e2e8f0 !important; }
+      `}</style>
+
+      {/* Overlay — bấm ngoài để đóng */}
+      <div
+        className="map-overlay"
+        onClick={onClose}
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.75)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          zIndex: 999999,
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          padding: '20px',
+          boxSizing: 'border-box',
+        }}
+      >
+        {/* Khung modal — stopPropagation để không đóng khi bấm bên trong */}
+        <div
+          className="map-box"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: 'white',
+            borderRadius: '24px',
+            width: '100%',
+            maxWidth: '760px',
+            overflow: 'hidden',
+            boxShadow: '0 40px 100px rgba(0,0,0,0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {/* Header */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '20px 24px', borderBottom: '1px solid #f1f5f9', flexShrink: 0,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '10px',
+                backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <FontAwesomeIcon icon={faMap} style={{ color: '#3b82f6', fontSize: '17px' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: '17px', fontWeight: '900', color: '#111827' }}>{placeName}</div>
+                <div style={{ fontSize: '12px', color: '#9ca3af' }}>Bản đồ vị trí · Bấm ESC hoặc ra ngoài để đóng</div>
+              </div>
+            </div>
+            <button
+              className="map-close-btn"
+              onClick={onClose}
+              style={{
+                width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
+                border: 'none', backgroundColor: '#f1f5f9',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'background-color 0.15s', fontSize: '16px', color: '#374151',
+              }}
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </div>
+
+          {/* Bản đồ */}
+          <div style={{ height: '450px', flexShrink: 0 }}>
+            <iframe
+              title={`map-popup-${placeName}`}
+              width="100%" height="100%"
+              style={{ border: 0, display: 'block' }}
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`}
+              allowFullScreen
+            />
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            padding: '14px 24px', borderTop: '1px solid #f1f5f9', flexShrink: 0,
+            display: 'flex', justifyContent: 'flex-end',
+          }}>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{
+                padding: '10px 20px', borderRadius: '10px',
+                backgroundColor: '#3b82f6', color: 'white',
+                fontWeight: '700', fontSize: '13px',
+                textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '7px',
+              }}
+            >
+              <FontAwesomeIcon icon={faLocationArrow} /> Mở Google Maps
+            </a>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  // ✅ Portal: render thẳng vào document.body, thoát hoàn toàn khỏi mọi z-index cha
+  return ReactDOM.createPortal(modalContent, document.body);
+};
+
 // 🎨 PlaceCard
-const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onEdit }) => {
+// - Khách sạn: truyền setMapQuery → cập nhật map tĩnh bên dưới (hành vi gốc)
+// - Tham quan / Ăn uống: truyền onShowMap → mở popup modal
+const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit }) => {
   const isHotel = type === 'Khách sạn';
   const isFlight = type === 'Chuyến bay';
   const icon = isHotel ? faHotel : (isFlight ? faPlane : (type === 'Địa điểm ăn uống' ? faUtensils : faMapLocationDot));
   const mainColor = isHotel ? '#3b82f6' : (isFlight ? '#10b981' : (type === 'Điểm tham quan' ? '#8b5cf6' : '#f97316'));
   const sessionIcon = sessionLabel === 'Sáng' ? faSun : (sessionLabel === 'Chiều' ? faCloudSun : faMoon);
+
+  const handleLocation = () => {
+    const query = `${data.name} ${locationName}`;
+    if (setMapQuery) {
+      // Khách sạn: cập nhật map tĩnh bên dưới
+      setMapQuery(query);
+    } else if (onShowMap) {
+      // Tham quan / ăn uống: mở popup
+      onShowMap(query, data.name);
+    }
+  };
 
   return (
     <div style={{
@@ -68,8 +205,13 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onEdit
         <div style={{ display: 'flex', gap: '15px', marginTop: '15px' }}>
           {!isFlight && (
             <button
-              onClick={() => setMapQuery(`${data.name} ${locationName}`)}
-              style={{ padding: '12px 25px', borderRadius: '15px', border: 'none', backgroundColor: '#3b82f6', color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}
+              onClick={handleLocation}
+              style={{
+                padding: '12px 25px', borderRadius: '15px', border: 'none',
+                backgroundColor: '#3b82f6', color: 'white', fontWeight: '700',
+                cursor: 'pointer', fontSize: '12px',
+                display: 'flex', alignItems: 'center', gap: '7px'
+              }}
             >
               <FontAwesomeIcon icon={faLocationArrow} /> Vị trí
             </button>
@@ -92,8 +234,9 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onEdit
 const AiSchedule = ({ data: initialData, onSave }) => {
   const numDays = parseInt(initialData?.days?.toString().split(' ')[0]) || 3;
   const [dailyPlans, setDailyPlans] = useState([]);
-  const [mapQuery, setMapQuery] = useState('');
+  const [mapQuery, setMapQuery] = useState('');           // ← map tĩnh cho khách sạn
   const [modal, setModal] = useState({ show: false, type: '', day: null, session: '', subType: '' });
+  const [mapModal, setMapModal] = useState({ show: false, query: '', placeName: '' }); // ← popup cho tham quan/ăn uống
 
   const realTours = (initialData.realTours || []).map(normalizeActivity);
   const realFoods = (initialData.realFoods || []).map(normalizeActivity);
@@ -117,31 +260,36 @@ const AiSchedule = ({ data: initialData, onSave }) => {
     for (let i = 0; i < numDays; i++) {
       plans.push({
         day: i + 1,
-          morning: {
-            tour: toursPool[(i * 3) % toursPool.length],
-            food: foodsPool[(i * 3) % foodsPool.length]
-          },
-          afternoon: {
-            tour: toursPool[(i * 3 + 1) % toursPool.length],
-            food: foodsPool[(i * 3 + 1) % foodsPool.length]
-          },
-          evening: {
-            tour: toursPool[(i * 3 + 2) % toursPool.length],
-            food: foodsPool[(i * 3 + 2) % foodsPool.length]
+        morning: {
+          tour: toursPool[(i * 3) % toursPool.length],
+          food: foodsPool[(i * 3) % foodsPool.length]
+        },
+        afternoon: {
+          tour: toursPool[(i * 3 + 1) % toursPool.length],
+          food: foodsPool[(i * 3 + 1) % foodsPool.length]
+        },
+        evening: {
+          tour: toursPool[(i * 3 + 2) % toursPool.length],
+          food: foodsPool[(i * 3 + 2) % foodsPool.length]
         }
       });
     }
     setDailyPlans(plans);
-    setMapQuery(`${currentHotel.name} ${initialData.location}`);
+    setMapQuery(`${currentHotel.name} ${initialData.location}`); // ← khởi tạo map khách sạn
   }, [initialData.location, numDays]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 🆕 Hàm mở Map Modal
+  const handleShowMap = (query, placeName) => {
+    setMapModal({ show: true, query, placeName });
+  };
 
   const handleUpdate = (newVal) => {
     if (modal.type === 'Khách sạn') {
       setCurrentHotel(newVal);
-      setMapQuery(`${newVal.name} ${initialData.location}`);
+      setMapQuery(`${newVal.name} ${initialData.location}`); // ← cập nhật map tĩnh khi đổi khách sạn
     } else {
-      setDailyPlans(prev => prev.map(d => d.day === modal.day 
-        ? { ...d, [modal.session]: { ...d[modal.session], [modal.subType]: newVal } } 
+      setDailyPlans(prev => prev.map(d => d.day === modal.day
+        ? { ...d, [modal.session]: { ...d[modal.session], [modal.subType]: newVal } }
         : d));
     }
     setModal({ show: false, type: '', day: null, session: '', subType: '' });
@@ -149,6 +297,16 @@ const AiSchedule = ({ data: initialData, onSave }) => {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px' }}>
+
+      {/* 🗺️ MAP MODAL POPUP */}
+      {mapModal.show && (
+        <MapModal
+          placeName={mapModal.placeName}
+          query={mapModal.query}
+          onClose={() => setMapModal({ show: false, query: '', placeName: '' })}
+        />
+      )}
+
       {/* MODAL ĐỔI LỰA CHỌN */}
       {modal.show && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={() => setModal({ show: false })}>
@@ -185,7 +343,7 @@ const AiSchedule = ({ data: initialData, onSave }) => {
               <PlaceCard key={i} type="Chuyến bay" data={{
                 airline: f.airline, price: f.price?.toLocaleString() + "đ",
                 thumbnail: f.thumbnail, desc: `Hãng bay: ${f.airline} · Thời gian bay: ${f.total_duration} phút`
-              }} />
+              }} locationName={initialData.location} onShowMap={handleShowMap} />
             ))}
           </div>
         </div>
@@ -197,10 +355,15 @@ const AiSchedule = ({ data: initialData, onSave }) => {
           🛌 Chỗ ở {initialData.realHotels?.length > 0 ? '(Dữ liệu thực)' : '(Gợi ý)'}
         </div>
         <div style={{ backgroundColor: '#f8fafc', padding: '30px', borderRadius: '40px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
+          {/* Khách sạn dùng setMapQuery → cập nhật map tĩnh bên dưới */}
           <PlaceCard
-            type="Khách sạn" data={currentHotel} locationName={initialData.location}
-            setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Khách sạn' })}
+            type="Khách sạn"
+            data={currentHotel}
+            locationName={initialData.location}
+            setMapQuery={setMapQuery}
+            onEdit={() => setModal({ show: true, type: 'Khách sạn' })}
           />
+          {/* Map tĩnh giữ nguyên như ban đầu */}
           <div style={{ borderRadius: '25px', overflow: 'hidden', height: '450px', border: '1px solid #e2e8f0' }}>
             <iframe title="map" width="100%" height="100%" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`}></iframe>
           </div>
@@ -214,38 +377,38 @@ const AiSchedule = ({ data: initialData, onSave }) => {
           <div style={{ fontWeight: '900', color: '#10b981', fontSize: '26px', marginBottom: '30px' }}>
             <FontAwesomeIcon icon={faRegularCalendar} /> Ngày {d.day}
           </div>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '35px' }}>
-            {/* Morning Row */}
+            {/* Morning */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ fontWeight: '800', color: '#64748b', fontSize: '14px' }}><FontAwesomeIcon icon={faSun} /> BUỔI SÁNG</div>
               <div style={{ display: 'flex', gap: '25px' }}>
-                <PlaceCard type="Điểm tham quan" sessionLabel="Sáng" data={d.morning.tour} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'morning', subType: 'tour' })} />
-                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Sáng" data={d.morning.food} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'morning', subType: 'food' })} />
+                <PlaceCard type="Điểm tham quan" sessionLabel="Sáng" data={d.morning.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'morning', subType: 'tour' })} />
+                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Sáng" data={d.morning.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'morning', subType: 'food' })} />
               </div>
             </div>
 
-            {/* Afternoon Row */}
+            {/* Afternoon */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ fontWeight: '800', color: '#64748b', fontSize: '14px' }}><FontAwesomeIcon icon={faCloudSun} /> BUỔI CHIỀU</div>
               <div style={{ display: 'flex', gap: '25px' }}>
-                <PlaceCard type="Điểm tham quan" sessionLabel="Chiều" data={d.afternoon.tour} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'afternoon', subType: 'tour' })} />
-                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Chiều" data={d.afternoon.food} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'afternoon', subType: 'food' })} />
+                <PlaceCard type="Điểm tham quan" sessionLabel="Chiều" data={d.afternoon.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'afternoon', subType: 'tour' })} />
+                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Chiều" data={d.afternoon.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'afternoon', subType: 'food' })} />
               </div>
             </div>
 
-            {/* Evening Row */}
+            {/* Evening */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ fontWeight: '800', color: '#64748b', fontSize: '14px' }}><FontAwesomeIcon icon={faMoon} /> BUỔI TỐI</div>
               <div style={{ display: 'flex', gap: '25px' }}>
-                <PlaceCard type="Điểm tham quan" sessionLabel="Tối" data={d.evening.tour} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'evening', subType: 'tour' })} />
-                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Tối" data={d.evening.food} locationName={initialData.location} setMapQuery={setMapQuery} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'evening', subType: 'food' })} />
+                <PlaceCard type="Điểm tham quan" sessionLabel="Tối" data={d.evening.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'evening', subType: 'tour' })} />
+                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Tối" data={d.evening.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'evening', subType: 'food' })} />
               </div>
             </div>
           </div>
         </div>
       ))}
- 
+
       {/* NÚT LƯU */}
       <div style={{ textAlign: 'center', marginTop: '60px', paddingBottom: '40px' }}>
         <button onClick={onSave} style={{ backgroundColor: '#10b981', color: 'white', padding: '22px 65px', borderRadius: '99px', border: 'none', fontWeight: '800', fontSize: '24px', cursor: 'pointer', boxShadow: '0 12px 35px rgba(16,129,129,0.4)' }}>
