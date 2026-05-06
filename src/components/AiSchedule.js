@@ -277,7 +277,7 @@ const AiSchedule = ({ data: initialData, onSave }) => {
     setDailyPlans(plans);
     const cleanHotelName = currentHotel.name.split('-')[0].trim();
     setMapQuery(`${currentHotel.name} ${initialData.location}`); // ← khởi tạo map khách sạn
-  }, [initialData.location, numDays, toursPool, foodsPool]);
+  }, [initialData.location, numDays]);
 
   // 🆕 Hàm mở Map Modal
   const handleShowMap = (query, placeName) => {

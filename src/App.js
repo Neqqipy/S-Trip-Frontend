@@ -10,6 +10,7 @@ import Dashboard from './components/Dashboard';
 import SkeletonLoader from './components/SkeletonLoader';
 import Toast from './components/Toast';
 import { fetchTripPlan } from './services/api';
+import { enrichPlacesWithCoords } from './services/geocodeUtils';
 import './App.css';
 
 function App() {
@@ -110,6 +111,7 @@ function App() {
     );
 
     if (result) {
+      // Set data ngay để AiSchedule render trước
       setSearchData({
         ...formData,
         realHotels:  result.hotels  || [],
@@ -118,6 +120,17 @@ function App() {
         realFoods:   result.foods   || [],
       });
       setToast({ show: true, message: 'Đã AI hóa lịch trình thực tế cho bạn!', type: 'success' });
+
+      // Geocode ngầm sau khi render — enrich lat/lng cho MapBubble dùng
+      enrichPlacesWithCoords(formData.location, result.tours || [], result.foods || [])
+        .then(({ tours: enrichedTours, foods: enrichedFoods }) => {
+          setSearchData(prev => prev ? {
+            ...prev,
+            realTours: enrichedTours,
+            realFoods: enrichedFoods,
+          } : prev);
+        })
+        .catch(() => {}); // Geocode thất bại → giữ nguyên data gốc
     } else {
       setToast({ show: true, message: 'Lỗi kết nối Backend!', type: 'error' });
     }

@@ -5,6 +5,7 @@ import {
   faXmark, faUtensils, faMapLocationDot, faRoute,
   faSun, faCloudSun, faMoon, faSpinner
 } from '@fortawesome/free-solid-svg-icons';
+import { enrichPlacesWithCoords } from '../services/geocodeUtils';
 
 // ── Mock fallback ─────────────────────────────────────────────
 const mockTours = [
@@ -33,55 +34,66 @@ function buildDayPlaces(data) {
     const places = [];
     SESSION_META.forEach((s, si) => {
       const idx = i * 3 + si;
-      places.push({ session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'tour', name: toursPool[idx % toursPool.length].name, thumbnail: toursPool[idx % toursPool.length].thumbnail || null });
-      places.push({ session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'food', name: foodsPool[idx % foodsPool.length].name, thumbnail: foodsPool[idx % foodsPool.length].thumbnail || null });
+      const tour = toursPool[idx % toursPool.length];
+      const food = foodsPool[idx % foodsPool.length];
+      // Giữ lại lat/lng nếu backend đã trả về
+      places.push({ session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'tour',
+        name: tour.name, thumbnail: tour.thumbnail || null,
+        lat: tour.lat || tour.latitude || null,
+        lng: tour.lng || tour.longitude || null,
+      });
+      places.push({ session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'food',
+        name: food.name, thumbnail: food.thumbnail || null,
+        lat: food.lat || food.latitude || null,
+        lng: food.lng || food.longitude || null,
+      });
     });
     days.push(places);
   }
   return days;
 }
 
-// ── Geocode tuần tự có delay để tránh rate-limit Nominatim ───
-const geocodeCache = {};
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-async function geocodeSequential(places, location) {
-  const results = [];
-  for (const place of places) {
-    const key = `${place.name} ${location}`;
-    if (geocodeCache[key]) {
-      results.push({ ...place, ...geocodeCache[key] });
-      continue;
-    }
-    try {
-      // Thử tìm với tên đầy đủ trước
-      let res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(key)}&format=json&limit=1&accept-language=vi`,
-        { headers: { 'User-Agent': 'STrip-App/1.0' } }
-      );
-      let data = await res.json();
-
-      // Nếu không tìm được, thử chỉ với tên địa điểm
-      if (!data.length) {
-        await sleep(400);
-        res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place.name)}&format=json&limit=1&accept-language=vi`,
-          { headers: { 'User-Agent': 'STrip-App/1.0' } }
+// ── Lấy tọa độ: hotel (điểm O) + địa điểm trong ngày ────────
+async function resolveMarkers(hotel, places, location) {
+  // --- Geocode khách sạn ---
+  let hotelMarker = null;
+  if (hotel) {
+    const existLat = hotel.lat || hotel.latitude;
+    const existLng = hotel.lng || hotel.longitude;
+    if (existLat && existLng) {
+      hotelMarker = { ...hotel, type: 'hotel', lat: parseFloat(existLat), lng: parseFloat(existLng) };
+    } else {
+      try {
+        const { tours: [enrichedHotel] } = await enrichPlacesWithCoords(
+          location,
+          [{ name: hotel.name, type: 'tour' }],
+          []
         );
-        data = await res.json();
-      }
-
-      if (data.length) {
-        const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-        geocodeCache[key] = coords;
-        results.push({ ...place, ...coords });
-      }
-    } catch {}
-
-    // Delay giữa các request để không bị rate-limit (Nominatim: max 1 req/s)
-    await sleep(500);
+        if (enrichedHotel?.lat) hotelMarker = { ...hotel, type: 'hotel', lat: enrichedHotel.lat, lng: enrichedHotel.lng };
+      } catch {}
+    }
   }
-  return results;
+
+  // --- Geocode địa điểm ngày ---
+  let dayMarkers = [];
+  const allReady = places.every(p => p.lat && p.lng);
+  if (allReady) {
+    dayMarkers = places.filter(p => p.lat && p.lng);
+  } else {
+    const tours = places.filter(p => p.type === 'tour');
+    const foods  = places.filter(p => p.type === 'food');
+    try {
+      const { tours: eTours, foods: eFoods } = await enrichPlacesWithCoords(location, tours, foods);
+      const enrichedMap = {};
+      [...eTours, ...eFoods].forEach(p => { enrichedMap[p.name + p.type] = p; });
+      dayMarkers = places.map(p => enrichedMap[p.name + p.type] || p).filter(p => p.lat && p.lng);
+    } catch {
+      dayMarkers = places.filter(p => p.lat && p.lng);
+    }
+  }
+
+  // Khách sạn là điểm xuất phát đầu tiên (O), rồi mới đến các địa điểm
+  return hotelMarker ? [hotelMarker, ...dayMarkers] : dayMarkers;
 }
 
 // ── Tạo HTML Leaflet + OSRM routing ──────────────────────────
@@ -125,31 +137,55 @@ function buildLeafletHtml(markers) {
       maxZoom: 19
     }).addTo(map);
 
-    const typeColors = { tour: '#8b5cf6', food: '#f97316' };
+    const typeColors = { tour: '#8b5cf6', food: '#f97316', hotel: '#10b981' };
     const latlngs = [];
+    // dayIndex: bỏ qua marker khách sạn (i=0) khi đánh số
+    let dayIdx = 0;
 
-    // Vẽ markers có số thứ tự
     markers.forEach((m, i) => {
-      const color = typeColors[m.type] || '#10b981';
-      const emoji = m.type === 'tour' ? '📍' : '🍜';
-      const html = \`
-        <div style="position:relative;width:36px;height:44px">
+      const isHotel = m.type === 'hotel';
+      const color   = typeColors[m.type] || '#10b981';
+
+      let html;
+      if (isHotel) {
+        // Icon khách sạn đặc biệt — hình nhà, nhãn "KS"
+        html = \`<div style="position:relative;width:42px;height:50px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="42" height="50" viewBox="0 0 42 50">
+            <ellipse cx="21" cy="48" rx="6" ry="2.5" fill="rgba(0,0,0,0.25)"/>
+            <path d="M21 1C12.2 1 5 8.2 5 17c0 11 16 31 16 31s16-20 16-31C37 8.2 29.8 1 21 1z"
+                  fill="#10b981" stroke="white" stroke-width="2"/>
+            <circle cx="21" cy="17" r="10" fill="white"/>
+            <!-- Hình nhà -->
+            <polygon points="21,9 13,16 29,16" fill="#10b981"/>
+            <rect x="16" y="16" width="10" height="8" fill="#10b981"/>
+            <rect x="19" y="19" width="4" height="5" fill="white"/>
+          </svg>
+          <!-- Badge "KS" -->
+          <div style="position:absolute;top:-6px;right:-4px;background:#10b981;color:white;font-size:8px;font-weight:900;padding:2px 4px;border-radius:6px;border:1.5px solid white;font-family:sans-serif">KS</div>
+        </div>\`;
+      } else {
+        dayIdx++;
+        const emoji = m.type === 'tour' ? '📍' : '🍜';
+        html = \`<div style="position:relative;width:36px;height:44px">
           <svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
             <ellipse cx="18" cy="42" rx="5" ry="2" fill="rgba(0,0,0,0.25)"/>
-            <path d="M18 1C10.3 1 4 7.3 4 15c0 9.6 14 27 14 27s14-17.4 14-27C32 7.3 25.7 1 18 1z" 
+            <path d="M18 1C10.3 1 4 7.3 4 15c0 9.6 14 27 14 27s14-17.4 14-27C32 7.3 25.7 1 18 1z"
                   fill="\${color}" stroke="white" stroke-width="1.5"/>
             <circle cx="18" cy="15" r="8" fill="white"/>
-            <text x="18" y="19" text-anchor="middle" font-size="10" font-weight="900" fill="\${color}" font-family="sans-serif">\${i+1}</text>
+            <text x="18" y="19" text-anchor="middle" font-size="10" font-weight="900" fill="\${color}" font-family="sans-serif">\${dayIdx}</text>
           </svg>
         </div>\`;
-      const icon = L.divIcon({ html, iconSize:[36,44], iconAnchor:[18,44], popupAnchor:[0,-46], className:'' });
+      }
+
+      const icon = L.divIcon({ html, iconSize: isHotel?[42,50]:[36,44], iconAnchor: isHotel?[21,50]:[18,44], popupAnchor:[0,-50], className:'' });
       const sessionLabel = m.session || '';
       L.marker([m.lat, m.lng], { icon }).addTo(map)
         .bindPopup(\`
           <div style="font-family:sans-serif;min-width:160px">
+            \${isHotel ? '<div style="font-size:10px;font-weight:800;color:#10b981;text-transform:uppercase;margin-bottom:4px">🏨 Điểm xuất phát</div>' : ''}
             <div style="font-size:13px;font-weight:900;color:#111;margin-bottom:4px">\${m.name}</div>
-            <div style="font-size:11px;color:\${color};font-weight:700">\${emoji} \${m.type === 'tour' ? 'Tham quan' : 'Ăn uống'}</div>
-            \${sessionLabel ? '<div style="font-size:11px;color:#9ca3af;margin-top:2px">Buổi ' + sessionLabel + '</div>' : ''}
+            \${!isHotel ? '<div style="font-size:11px;color:'+color+';font-weight:700">'+( m.type==='tour'?'📍 Tham quan':'🍜 Ăn uống')+'</div>' : ''}
+            \${sessionLabel ? '<div style="font-size:11px;color:#9ca3af;margin-top:2px">Buổi '+sessionLabel+'</div>' : ''}
           </div>\`);
       latlngs.push([m.lat, m.lng]);
     });
@@ -192,6 +228,34 @@ const MapPanel = ({ data, onClose }) => {
   const [mapHtml,     setMapHtml]     = useState('');
   const [loading,     setLoading]     = useState(false);
   const [loadingMsg,  setLoadingMsg]  = useState('');
+  const [panelWidth,  setPanelWidth]  = useState(50); // % màn hình
+  const isDragging = React.useRef(false);
+
+  const onDragStart = (e) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    const onMove = (ev) => {
+      if (!isDragging.current) return;
+      const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const pct = Math.round(((window.innerWidth - clientX) / window.innerWidth) * 100);
+      setPanelWidth(Math.min(80, Math.max(20, pct)));
+    };
+    const onUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup',   onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend',  onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup',   onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend',  onUp);
+  };
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -200,6 +264,15 @@ const MapPanel = ({ data, onClose }) => {
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
   }, [onClose]);
 
+  // Lấy thông tin khách sạn từ data
+  const hotelRaw = data.realHotels?.[0] || null;
+  const hotelInfo = hotelRaw ? {
+    name: hotelRaw.name,
+    lat:  hotelRaw.lat || hotelRaw.latitude || null,
+    lng:  hotelRaw.lng || hotelRaw.longitude || null,
+    thumbnail: hotelRaw.thumbnail || null,
+  } : null;
+
   useEffect(() => {
     let cancelled = false;
     const dayPlaces = allDays[selectedDay] || [];
@@ -207,7 +280,7 @@ const MapPanel = ({ data, onClose }) => {
     setMapHtml('');
     setLoadingMsg('Đang tìm tọa độ địa điểm...');
 
-    geocodeSequential(dayPlaces, data.location).then(results => {
+    resolveMarkers(hotelInfo, dayPlaces, data.location).then(results => {
       if (cancelled) return;
       if (results.length > 0) setLoadingMsg('Đang vẽ tuyến đường...');
       setMapHtml(buildLeafletHtml(results));
@@ -233,12 +306,30 @@ const MapPanel = ({ data, onClose }) => {
         .mb-close:hover    { background:#fee2e2 !important; color:#ef4444 !important; }
         .mb-placerow:hover { background:#f8fafc !important; }
         .mb-spin { animation: mbSpin 1s linear infinite; display:inline-block; }
+        .mb-drag:hover .mb-drag-bar { background: linear-gradient(to bottom, transparent, #10b981, transparent) !important; }
+        .mb-drag:hover .mb-grip     { border-color: #10b981 !important; }
+        .mb-drag:hover .mb-dot      { background-color: #10b981 !important; }
       `}</style>
 
       <div className="mb-overlay" onClick={onClose} style={{ position:'fixed', inset:0, backgroundColor:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', zIndex:999998 }} />
 
-      <div className="mb-panel" style={{ position:'fixed', top:0, right:0, bottom:0, width:'min(780px,100vw)', backgroundColor:'white', zIndex:999999, display:'flex', flexDirection:'column', boxShadow:'-20px 0 60px rgba(0,0,0,0.25)' }}>
+      <div className="mb-panel" style={{ position:'fixed', top:0, right:0, bottom:0, width:`${panelWidth}vw`, minWidth:280, backgroundColor:'white', zIndex:999999, display:'flex', flexDirection:'column', boxShadow:'-20px 0 60px rgba(0,0,0,0.25)' }}>
         
+        {/* ── Thanh kéo resize ── */}
+        <div className="mb-drag" onMouseDown={onDragStart} onTouchStart={onDragStart} title={`Kéo để thay đổi độ rộng (${panelWidth}%)`} style={{ position:"absolute", left:-8, top:0, bottom:0, width:20, cursor:"col-resize", zIndex:10, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div className="mb-drag-bar" style={{ width:4, height:"100%", background:"linear-gradient(to bottom, transparent 0%, #e2e8f0 20%, #e2e8f0 80%, transparent 100%)", transition:"background 0.15s" }} />
+          <div className="mb-grip" style={{ position:"absolute", top:"50%", transform:"translateY(-50%)", width:22, height:52, borderRadius:11, backgroundColor:"white", border:"1.5px solid #d1d5db", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, boxShadow:"0 2px 8px rgba(0,0,0,0.12)", transition:"border-color 0.15s" }}>
+            <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor:"#9ca3af", transition:"background 0.15s" }} />
+            <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor:"#9ca3af", transition:"background 0.15s" }} />
+            <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor:"#9ca3af", transition:"background 0.15s" }} />
+          </div>
+          {/* Badge hiển thị % khi kéo */}
+          {isDragging.current && (
+            <div style={{ position:"absolute", left:-52, top:"50%", transform:"translateY(-50%)", background:"#10b981", color:"white", fontSize:11, fontWeight:800, padding:"4px 8px", borderRadius:8, whiteSpace:"nowrap", boxShadow:"0 2px 6px rgba(0,0,0,0.2)", pointerEvents:"none" }}>
+              {panelWidth}%
+            </div>
+          )}
+        </div>
         {/* Header */}
         <div style={{ padding:'20px 24px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
@@ -289,6 +380,29 @@ const MapPanel = ({ data, onClose }) => {
 
           {/* Danh sách */}
           <div style={{ flex:1, overflowY:'auto', padding:'8px 0' }}>
+
+            {/* Điểm xuất phát — Khách sạn */}
+            {hotelInfo && (
+              <div style={{ marginBottom:4 }}>
+                <div style={{ padding:'8px 20px', display:'flex', alignItems:'center', gap:8, fontSize:11, fontWeight:800, color:'#10b981', textTransform:'uppercase', letterSpacing:'0.5px', position:'sticky', top:0, background:'white', zIndex:1, borderBottom:'1px solid #f8fafc' }}>
+                  🏨 Điểm xuất phát
+                </div>
+                <div style={{ padding:'8px 20px' }}>
+                  <div className="mb-placerow" style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 8px', borderRadius:12 }}>
+                    <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, background:'#10b981', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.15)', border:'2px solid white' }}>
+                      {hotelInfo.thumbnail
+                        ? <img src={hotelInfo.thumbnail} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
+                        : <span style={{ fontSize:14 }}>🏨</span>}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{hotelInfo.name}</div>
+                      <div style={{ fontSize:11, color:'#10b981', fontWeight:700 }}>Khách sạn · Điểm O</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {SESSION_META.map((session) => {
               const sp = dayPlaces.filter(p => p.session === session.label);
               return (
