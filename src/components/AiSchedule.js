@@ -158,8 +158,6 @@ const MapModal = ({ placeName, query, onClose }) => {
 };
 
 // 🎨 PlaceCard
-// - Khách sạn: truyền setMapQuery → cập nhật map tĩnh bên dưới (hành vi gốc)
-// - Tham quan / Ăn uống: truyền onShowMap → mở popup modal
 const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit }) => {
   const isHotel = type === 'Khách sạn';
   const isFlight = type === 'Chuyến bay';
@@ -238,22 +236,24 @@ const AiSchedule = ({ data: initialData, onSave }) => {
   const [modal, setModal] = useState({ show: false, type: '', day: null, session: '', subType: '' });
   const [mapModal, setMapModal] = useState({ show: false, query: '', placeName: '' }); // ← popup cho tham quan/ăn uống
 
+  // ✅ PHẦN THÊM VÀO: Chuẩn hóa dữ liệu thật từ Backend
+  const realHotels = (initialData.realHotels || []).map(h => ({
+    name: h.name,
+    rating: h.rating,
+    price: h.price_per_night?.toLocaleString() + "đ/đêm" || "Liên hệ",
+    thumbnail: h.thumbnail,
+    desc: h.desc || "Lựa chọn tốt nhất dựa trên ngân sách."
+  }));
+
   const realTours = (initialData.realTours || []).map(normalizeActivity);
   const realFoods = (initialData.realFoods || []).map(normalizeActivity);
+  
+  // ✅ PHẦN THÊM VÀO: Tạo Pool dữ liệu (HotelsPool ưu tiên dữ liệu thật)
+  const hotelsPool = realHotels.length > 0 ? realHotels : mockRepo['Khách sạn'];
   const toursPool = realTours.length > 0 ? realTours : mockRepo['Điểm tham quan'];
   const foodsPool = realFoods.length > 0 ? realFoods : mockRepo['Địa điểm ăn uống'];
 
-  const [currentHotel, setCurrentHotel] = useState(() => {
-    if (initialData.realHotels?.length > 0) {
-      const h = initialData.realHotels[0];
-      return {
-        name: h.name, rating: h.rating,
-        price: h.price_per_night?.toLocaleString() + "đ/đêm" || "Liên hệ",
-        thumbnail: h.thumbnail, desc: "Lựa chọn tốt nhất dựa trên ngân sách."
-      };
-    }
-    return mockRepo['Khách sạn'][0];
-  });
+  const [currentHotel, setCurrentHotel] = useState(hotelsPool[0]);
 
   useEffect(() => {
     const plans = [];
@@ -275,8 +275,9 @@ const AiSchedule = ({ data: initialData, onSave }) => {
       });
     }
     setDailyPlans(plans);
+    const cleanHotelName = currentHotel.name.split('-')[0].trim();
     setMapQuery(`${currentHotel.name} ${initialData.location}`); // ← khởi tạo map khách sạn
-  }, [initialData.location, numDays]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialData.location, numDays, toursPool, foodsPool]);
 
   // 🆕 Hàm mở Map Modal
   const handleShowMap = (query, placeName) => {
@@ -286,6 +287,7 @@ const AiSchedule = ({ data: initialData, onSave }) => {
   const handleUpdate = (newVal) => {
     if (modal.type === 'Khách sạn') {
       setCurrentHotel(newVal);
+      const cleanName = newVal.name.split('-')[0].trim();
       setMapQuery(`${newVal.name} ${initialData.location}`); // ← cập nhật map tĩnh khi đổi khách sạn
     } else {
       setDailyPlans(prev => prev.map(d => d.day === modal.day
@@ -315,10 +317,18 @@ const AiSchedule = ({ data: initialData, onSave }) => {
               <h2 style={{ fontSize: '26px', fontWeight: '900' }}>Chọn {modal.type} tại {initialData.location}</h2>
               <FontAwesomeIcon icon={faXmark} style={{ cursor: 'pointer', fontSize: '28px', color: '#9ca3af' }} onClick={() => setModal({ show: false })} />
             </div>
-            {(modal.type === 'Khách sạn' ? mockRepo['Khách sạn'] : (modal.subType === 'tour' ? toursPool : foodsPool)).map((opt, i) => (
-              <div key={i} onClick={() => handleUpdate(opt)} style={{ padding: '20px', borderRadius: '20px', border: '2px solid #f1f5f9', marginBottom: '10px', cursor: 'pointer' }}>
-                <div style={{ fontWeight: '800' }}>{opt.name} · <span style={{ color: '#eab308' }}>{opt.rating}⭐</span></div>
-                <div style={{ color: '#10b981', fontWeight: '700' }}>{opt.price}</div>
+            
+            {/* ✅ PHẦN THAY ĐỔI: Sử dụng hotelsPool và thêm ảnh cho Modal đổi khách sạn */}
+            {(modal.type === 'Khách sạn' ? hotelsPool : (modal.subType === 'tour' ? toursPool : foodsPool)).map((opt, i) => (
+              <div key={i} onClick={() => handleUpdate(opt)} style={{ 
+                  padding: '20px', borderRadius: '20px', border: '2px solid #f1f5f9', marginBottom: '10px', 
+                  cursor: 'pointer', display: 'flex', gap: '15px', alignItems: 'center' 
+                }}>
+                <img src={opt.thumbnail || "https://via.placeholder.com/60"} style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover' }} alt="thumb" />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '800' }}>{opt.name} · <span style={{ color: '#eab308' }}>{opt.rating}⭐</span></div>
+                  <div style={{ color: '#10b981', fontWeight: '700' }}>{opt.price}</div>
+                </div>
               </div>
             ))}
           </div>
@@ -355,7 +365,6 @@ const AiSchedule = ({ data: initialData, onSave }) => {
           🛌 Chỗ ở {initialData.realHotels?.length > 0 ? '(Dữ liệu thực)' : '(Gợi ý)'}
         </div>
         <div style={{ backgroundColor: '#f8fafc', padding: '30px', borderRadius: '40px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
-          {/* Khách sạn dùng setMapQuery → cập nhật map tĩnh bên dưới */}
           <PlaceCard
             type="Khách sạn"
             data={currentHotel}

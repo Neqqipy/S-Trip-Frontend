@@ -9,15 +9,17 @@ export const fetchAutocomplete = async (query) => {
   } catch (error) { return []; }
 };
 
-export const fetchTripPlan = async (location, budget, days = 3, origin, passengers) => {
+export const fetchTripPlan = async (location, budget, days, origin, passengers, departureDate) => {
   try {
-    // Thêm origin và passengers vào Query String để Backend xử lý
-    const url = `${BASE_URL}/api/plan-trip?location=${encodeURIComponent(location)}&budget=${budget}&days=${days}&origin=${encodeURIComponent(origin)}&passengers=${passengers}`;
+    const cleanDays = parseInt(days) || 3; 
+    
+    const cleanBudget = budget.toString().replace(/\D/g, "");
+
+    const url = `${BASE_URL}/api/plan-trip?location=${encodeURIComponent(location)}&budget=${cleanBudget}&days=${cleanDays}&origin=${encodeURIComponent(origin)}&passengers=${passengers}&departure_date=${departureDate}`;
     
     const res = await fetch(url);
     const result = await res.json();
     
-    // Trả về đúng cấu trúc plan để App.js sử dụng
     return result.success ? result.plan : null;
   } catch (error) { 
     console.error("Lỗi fetchTripPlan:", error);

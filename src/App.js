@@ -105,7 +105,8 @@ function App() {
       formData.budget, 
       formData.days,
       formData.origin,
-      formData.passengers
+      formData.passengers,
+      formData.departureDate
     );
 
     if (result) {
