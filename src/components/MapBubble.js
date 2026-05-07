@@ -36,7 +36,6 @@ function buildDayPlaces(data) {
       const idx = i * 3 + si;
       const tour = toursPool[idx % toursPool.length];
       const food = foodsPool[idx % foodsPool.length];
-      // Giữ lại lat/lng nếu backend đã trả về
       places.push({ session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'tour',
         name: tour.name, thumbnail: tour.thumbnail || null,
         lat: tour.lat || tour.latitude || null,
@@ -55,7 +54,6 @@ function buildDayPlaces(data) {
 
 // ── Lấy tọa độ: hotel (điểm O) + địa điểm trong ngày ────────
 async function resolveMarkers(hotel, places, location) {
-  // --- Geocode khách sạn ---
   let hotelMarker = null;
   if (hotel) {
     const existLat = hotel.lat || hotel.latitude;
@@ -74,7 +72,6 @@ async function resolveMarkers(hotel, places, location) {
     }
   }
 
-  // --- Geocode địa điểm ngày ---
   let dayMarkers = [];
   const allReady = places.every(p => p.lat && p.lng);
   if (allReady) {
@@ -92,7 +89,6 @@ async function resolveMarkers(hotel, places, location) {
     }
   }
 
-  // Khách sạn là điểm xuất phát đầu tiên (O), rồi mới đến các địa điểm
   return hotelMarker ? [hotelMarker, ...dayMarkers] : dayMarkers;
 }
 
@@ -107,17 +103,6 @@ function buildLeafletHtml(markers) {
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body, #map { width:100%; height:100%; }
-    .custom-label {
-      background: white;
-      border: 2px solid #10b981;
-      border-radius: 6px;
-      padding: 2px 6px;
-      font-size: 11px;
-      font-weight: 800;
-      color: #111;
-      white-space: nowrap;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    }
   </style>
 </head>
 <body>
@@ -132,88 +117,175 @@ function buildLeafletHtml(markers) {
     }
 
     const map = L.map('map', { zoomControl: true });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '© CARTO © OpenStreetMap', subdomains: 'abcd', maxZoom: 19
     }).addTo(map);
 
-    const typeColors = { tour: '#8b5cf6', food: '#f97316', hotel: '#10b981' };
-    const latlngs = [];
-    // dayIndex: bỏ qua marker khách sạn (i=0) khi đánh số
-    let dayIdx = 0;
+    // Màu tươi sáng trên nền Carto Voyager
+    const pathColors  = ['#00c9a7','#38bdf8','#fb923c','#c084fc','#f87171','#facc15','#f472b6','#818cf8'];
+    const typeColors  = { tour: '#8b5cf6', food: '#f97316', hotel: '#10b981' };
+    const latlngs     = markers.map(m => [m.lat, m.lng]);
+    const legLayers   = []; // { sh, gl, mn }
+    let   activeLeg   = -1;
 
+    // ── Reset (gọi từ cả iframe lẫn React) ──────────────────
+    function resetRoutes() {
+      activeLeg = -1;
+      legLayers.forEach(({ sh, gl, mn }) => {
+        sh.setStyle({ opacity: 0.10 });
+        gl.setStyle({ opacity: 0 });
+        mn.setStyle({ opacity: 0.95, weight: 5 });
+      });
+      // Thông báo React để đồng bộ activeRow
+      if (window._onResetRoutes) window._onResetRoutes();
+    }
+
+    // ── Highlight 1 leg ──────────────────────────────────────
+    function highlightLeg(legIdx) {
+      if (activeLeg === legIdx) { resetRoutes(); return; }
+      activeLeg = legIdx;
+      legLayers.forEach(({ sh, gl, mn }) => {
+        sh.setStyle({ opacity: 0.04 });
+        gl.setStyle({ opacity: 0 });
+        mn.setStyle({ opacity: 0.22, weight: 4 });
+      });
+      const leg = legLayers[legIdx];
+      if (!leg) return;
+      leg.sh.setStyle({ opacity: 0.18 });
+      leg.gl.setStyle({ opacity: 0.45, weight: 16 });
+      leg.mn.setStyle({ opacity: 1, weight: 7 });
+      leg.gl.bringToFront();
+      leg.mn.bringToFront();
+    }
+
+    // ── Click marker → leg ĐI RA; điểm CUỐI → leg ĐI VÀO ──
+    function highlightMarker(markerIdx) {
+      const isLast = markerIdx >= markers.length - 1;
+      const legIdx = isLast ? markerIdx - 1 : markerIdx;
+      if (legIdx < 0) return;
+      highlightLeg(legIdx);
+    }
+
+    // Expose ra window để React gọi được
+    window.highlightLeg  = highlightLeg;
+    window.resetRoutes   = resetRoutes;
+
+    // Click nền map → reset + đồng bộ React
+    map.on('click', resetRoutes);
+
+    // ── Vẽ routes trước (dưới marker) ───────────────────────
+    try {
+      const coordStr = markers.map(m => m.lng+','+m.lat).join(';');
+      const res  = await fetch(
+        'https://router.project-osrm.org/route/v1/driving/'+coordStr
+        +'?overview=false&geometries=geojson&steps=true'
+      );
+      const data = await res.json();
+
+      if (data.code === 'Ok' && data.routes?.[0]?.legs) {
+        data.routes[0].legs.forEach((leg, i) => {
+          const color = pathColors[i % pathColors.length];
+          // Gom tọa độ từ steps của leg
+          const coords = [];
+          (leg.steps || []).forEach(step => {
+            (step.geometry?.coordinates || []).forEach(c => {
+              const pt = [c[1], c[0]];
+              const last = coords[coords.length - 1];
+              if (!last || last[0] !== pt[0] || last[1] !== pt[1]) coords.push(pt);
+            });
+          });
+          if (coords.length < 2) { legLayers.push({ sh:L.polyline([]),gl:L.polyline([]),mn:L.polyline([]) }); return; }
+
+          const sh = L.polyline(coords, { color:'#000', weight:10, opacity:0.10, lineJoin:'round', lineCap:'round' }).addTo(map);
+          const gl = L.polyline(coords, { color,        weight:16, opacity:0,    lineJoin:'round', lineCap:'round' }).addTo(map);
+          const mn = L.polyline(coords, { color,        weight:5,  opacity:0.95, lineJoin:'round', lineCap:'round' }).addTo(map);
+          const li = legLayers.length;
+          mn.on('click', (e) => { L.DomEvent.stopPropagation(e); highlightLeg(li); });
+          gl.on('click', (e) => { L.DomEvent.stopPropagation(e); highlightLeg(li); });
+          legLayers.push({ sh, gl, mn });
+        });
+      } else {
+        markers.forEach((m, i) => {
+          if (!i) return;
+          const prev  = markers[i-1];
+          const color = pathColors[(i-1) % pathColors.length];
+          const coords = [[prev.lat,prev.lng],[m.lat,m.lng]];
+          const sh = L.polyline(coords, { color:'#000', weight:10, opacity:0.10, dashArray:'8 5' }).addTo(map);
+          const gl = L.polyline(coords, { color,        weight:16, opacity:0 }).addTo(map);
+          const mn = L.polyline(coords, { color,        weight:5,  opacity:0.95, dashArray:'8 5' }).addTo(map);
+          const li = legLayers.length;
+          mn.on('click', (e) => { L.DomEvent.stopPropagation(e); highlightLeg(li); });
+          gl.on('click', (e) => { L.DomEvent.stopPropagation(e); highlightLeg(li); });
+          legLayers.push({ sh, gl, mn });
+        });
+      }
+    } catch {
+      markers.forEach((m, i) => {
+        if (!i) return;
+        const prev  = markers[i-1];
+        const color = pathColors[(i-1) % pathColors.length];
+        const coords = [[prev.lat,prev.lng],[m.lat,m.lng]];
+        const sh = L.polyline(coords, { color:'#000', weight:10, opacity:0.10, dashArray:'8 5' }).addTo(map);
+        const gl = L.polyline(coords, { color,        weight:16, opacity:0 }).addTo(map);
+        const mn = L.polyline(coords, { color,        weight:5,  opacity:0.95, dashArray:'8 5' }).addTo(map);
+        const li = legLayers.length;
+        mn.on('click', (e) => { L.DomEvent.stopPropagation(e); highlightLeg(li); });
+        gl.on('click', (e) => { L.DomEvent.stopPropagation(e); highlightLeg(li); });
+        legLayers.push({ sh, gl, mn });
+      });
+    }
+
+    // ── Vẽ markers (trên route) ──────────────────────────────
+    let dayIdx = 0;
     markers.forEach((m, i) => {
       const isHotel = m.type === 'hotel';
       const color   = typeColors[m.type] || '#10b981';
+      if (!isHotel) dayIdx++;
 
       let html;
       if (isHotel) {
-        // Icon khách sạn đặc biệt — hình nhà, nhãn "KS"
         html = \`<div style="position:relative;width:42px;height:50px">
           <svg xmlns="http://www.w3.org/2000/svg" width="42" height="50" viewBox="0 0 42 50">
             <ellipse cx="21" cy="48" rx="6" ry="2.5" fill="rgba(0,0,0,0.25)"/>
-            <path d="M21 1C12.2 1 5 8.2 5 17c0 11 16 31 16 31s16-20 16-31C37 8.2 29.8 1 21 1z"
-                  fill="#10b981" stroke="white" stroke-width="2"/>
+            <path d="M21 1C12.2 1 5 8.2 5 17c0 11 16 31 16 31s16-20 16-31C37 8.2 29.8 1 21 1z" fill="#10b981" stroke="white" stroke-width="2"/>
             <circle cx="21" cy="17" r="10" fill="white"/>
-            <!-- Hình nhà -->
             <polygon points="21,9 13,16 29,16" fill="#10b981"/>
             <rect x="16" y="16" width="10" height="8" fill="#10b981"/>
             <rect x="19" y="19" width="4" height="5" fill="white"/>
           </svg>
-          <!-- Badge "KS" -->
           <div style="position:absolute;top:-6px;right:-4px;background:#10b981;color:white;font-size:8px;font-weight:900;padding:2px 4px;border-radius:6px;border:1.5px solid white;font-family:sans-serif">KS</div>
         </div>\`;
       } else {
-        dayIdx++;
-        const emoji = m.type === 'tour' ? '📍' : '🍜';
         html = \`<div style="position:relative;width:36px;height:44px">
           <svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
             <ellipse cx="18" cy="42" rx="5" ry="2" fill="rgba(0,0,0,0.25)"/>
-            <path d="M18 1C10.3 1 4 7.3 4 15c0 9.6 14 27 14 27s14-17.4 14-27C32 7.3 25.7 1 18 1z"
-                  fill="\${color}" stroke="white" stroke-width="1.5"/>
+            <path d="M18 1C10.3 1 4 7.3 4 15c0 9.6 14 27 14 27s14-17.4 14-27C32 7.3 25.7 1 18 1z" fill="\${color}" stroke="white" stroke-width="1.5"/>
             <circle cx="18" cy="15" r="8" fill="white"/>
             <text x="18" y="19" text-anchor="middle" font-size="10" font-weight="900" fill="\${color}" font-family="sans-serif">\${dayIdx}</text>
           </svg>
         </div>\`;
       }
 
-      const icon = L.divIcon({ html, iconSize: isHotel?[42,50]:[36,44], iconAnchor: isHotel?[21,50]:[18,44], popupAnchor:[0,-50], className:'' });
+      const icon = L.divIcon({ html, iconSize:isHotel?[42,50]:[36,44], iconAnchor:isHotel?[21,50]:[18,44], popupAnchor:[0,-50], className:'' });
       const sessionLabel = m.session || '';
-      L.marker([m.lat, m.lng], { icon }).addTo(map)
-        .bindPopup(\`
-          <div style="font-family:sans-serif;min-width:160px">
-            \${isHotel ? '<div style="font-size:10px;font-weight:800;color:#10b981;text-transform:uppercase;margin-bottom:4px">🏨 Điểm xuất phát</div>' : ''}
-            <div style="font-size:13px;font-weight:900;color:#111;margin-bottom:4px">\${m.name}</div>
-            \${!isHotel ? '<div style="font-size:11px;color:'+color+';font-weight:700">'+( m.type==='tour'?'📍 Tham quan':'🍜 Ăn uống')+'</div>' : ''}
-            \${sessionLabel ? '<div style="font-size:11px;color:#9ca3af;margin-top:2px">Buổi '+sessionLabel+'</div>' : ''}
-          </div>\`);
-      latlngs.push([m.lat, m.lng]);
+      const emoji  = isHotel ? '🏨' : (m.type==='tour' ? '📍' : '🍜');
+      const label  = isHotel ? 'Điểm xuất phát' : (m.type==='tour' ? 'Tham quan' : 'Ăn uống');
+
+      const marker = L.marker([m.lat, m.lng], { icon }).addTo(map);
+      marker.bindPopup(\`<div style="font-family:sans-serif;min-width:160px;padding:4px 0">
+        <div style="font-size:10px;font-weight:800;color:\${color};text-transform:uppercase;margin-bottom:4px">\${emoji} \${label}\${sessionLabel?' · Buổi '+sessionLabel:''}</div>
+        <div style="font-size:14px;font-weight:900;color:#111">\${m.name}</div>
+        \${m.thumbnail?'<img src="'+m.thumbnail+'" style="width:100%;height:80px;object-fit:cover;border-radius:8px;margin-top:8px"/>':''}
+      </div>\`, { maxWidth: 220 });
+
+      // Click marker → highlight đường vào + ra
+      marker.on('click', (e) => {
+        L.DomEvent.stopPropagation(e);
+        highlightMarker(i);
+      });
     });
 
-    // Fit bounds trước
-    const bounds = L.latLngBounds(latlngs);
-    map.fitBounds(bounds, { padding: [40, 40] });
-
-    // Vẽ route theo đường thật bằng OSRM
-    if (latlngs.length > 1) {
-      try {
-        const coordStr = markers.map(m => m.lng + ',' + m.lat).join(';');
-        const url = 'https://router.project-osrm.org/route/v1/driving/' + coordStr
-                  + '?overview=full&geometries=geojson&continue_straight=false';
-        const res  = await fetch(url);
-        const data = await res.json();
-        if (data.code === 'Ok' && data.routes?.[0]) {
-          L.geoJSON(data.routes[0].geometry, {
-            style: { color: '#10b981', weight: 4, opacity: 0.85, lineJoin: 'round', lineCap: 'round' }
-          }).addTo(map);
-        } else {
-          // Fallback: đường thẳng nếu OSRM lỗi
-          L.polyline(latlngs, { color:'#10b981', weight:3, opacity:0.7, dashArray:'8 5' }).addTo(map);
-        }
-      } catch {
-        L.polyline(latlngs, { color:'#10b981', weight:3, opacity:0.7, dashArray:'8 5' }).addTo(map);
-      }
-    }
+    map.fitBounds(L.latLngBounds(latlngs), { padding: [40, 40] });
   })();
   </script>
 </body>
@@ -221,9 +293,8 @@ function buildLeafletHtml(markers) {
 }
 
 // ── Map Panel ─────────────────────────────────────────────────
-const MapPanel = ({ data, editedPlans, onClose }) => {
+const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
   const numDays = parseInt(data.days?.toString().split(' ')[0]) || 3;
-  // Dùng editedPlans (đã chỉnh sửa từ AiSchedule) nếu có, fallback về pool gốc
   const allDays = (editedPlans && editedPlans.length > 0)
     ? editedPlans.map(d => [
         { ...d.morning.tour,   type:'tour', session:'Sáng',  sessionColor:'#f59e0b', sessionIcon:SESSION_META[0].icon },
@@ -238,8 +309,35 @@ const MapPanel = ({ data, editedPlans, onClose }) => {
   const [mapHtml,     setMapHtml]     = useState('');
   const [loading,     setLoading]     = useState(false);
   const [loadingMsg,  setLoadingMsg]  = useState('');
-  const [panelWidth,  setPanelWidth]  = useState(50); // % màn hình
+  const [panelWidth,  setPanelWidth]  = useState(50);
+  const [activeRow,   setActiveRow]   = useState(-1); // legIdx đang highlight
+  const iframeRef  = React.useRef(null);
   const isDragging = React.useRef(false);
+
+  // Khi iframe reset (click nền map / click đường lần 2) → đồng bộ activeRow về -1
+  const syncReset = React.useCallback(() => setActiveRow(-1), []);
+
+  // Gắn callback vào iframe sau khi load xong
+  const onIframeLoad = () => {
+    try {
+      const win = iframeRef.current?.contentWindow;
+      if (win) win._onResetRoutes = syncReset;
+    } catch {}
+  };
+
+  // Gọi highlightLeg trong iframe từ sidebar
+  const callHighlight = (legIdx) => {
+    try {
+      const win = iframeRef.current?.contentWindow;
+      if (!win?.highlightLeg) return;
+      if (activeRow === legIdx) {
+        win.resetRoutes(); // toggle off — _onResetRoutes sẽ set activeRow=-1
+      } else {
+        win.highlightLeg(legIdx);
+        setActiveRow(legIdx);
+      }
+    } catch {}
+  };
 
   const onDragStart = (e) => {
     e.preventDefault();
@@ -274,8 +372,8 @@ const MapPanel = ({ data, editedPlans, onClose }) => {
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
   }, [onClose]);
 
-  // Lấy thông tin khách sạn từ data
-  const hotelRaw = data.realHotels?.[0] || null;
+  // ✅ ĐÃ SỬA: Ưu tiên lấy khách sạn mới (currentHotel) thay vì mặc định
+  const hotelRaw = currentHotel || data.realHotels?.[0] || null;
   const hotelInfo = hotelRaw ? {
     name: hotelRaw.name,
     lat:  hotelRaw.lat || hotelRaw.latitude || null,
@@ -283,20 +381,21 @@ const MapPanel = ({ data, editedPlans, onClose }) => {
     thumbnail: hotelRaw.thumbnail || null,
   } : null;
 
-  // ✅ FIX 3: Tính fingerprint tọa độ của ngày đang xem
-  // Khi AiSchedule patch tọa độ mới vào editedPlans, fingerprint thay đổi → effect chạy lại → bản đồ cập nhật
   const dayPlacesForEffect = allDays[selectedDay] || [];
   const coordFingerprint = dayPlacesForEffect
     .filter(p => p.lat && p.lng)
     .map(p => `${p.name}:${p.lat},${p.lng}`)
     .join('|');
+    
+  // ✅ ĐÃ SỬA: Tạo dấu vân tay cho khách sạn để React biết khi nào vẽ lại bản đồ
+  const hotelFingerprint = hotelInfo ? `${hotelInfo.name}:${hotelInfo.lat},${hotelInfo.lng}` : 'no-hotel';
 
   useEffect(() => {
     let cancelled = false;
     const dayPlaces = allDays[selectedDay] || [];
     setLoading(true);
     setMapHtml('');
-    setLoadingMsg('Đang tìm tọa độ địa điểm...');
+    setActiveRow(-1);
 
     resolveMarkers(hotelInfo, dayPlaces, data.location).then(results => {
       if (cancelled) return;
@@ -306,7 +405,7 @@ const MapPanel = ({ data, editedPlans, onClose }) => {
     });
 
     return () => { cancelled = true; };
-  }, [selectedDay, data.location, coordFingerprint]); // ← FIX: thêm coordFingerprint để react khi tọa độ mới về
+  }, [selectedDay, data.location, coordFingerprint, hotelFingerprint]); // Thêm hotelFingerprint vào theo dõi
 
   const dayPlaces = allDays[selectedDay] || [];
   const typeColor = (t) => t === 'tour' ? '#8b5cf6' : '#f97316';
@@ -341,7 +440,6 @@ const MapPanel = ({ data, editedPlans, onClose }) => {
             <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor:"#9ca3af", transition:"background 0.15s" }} />
             <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor:"#9ca3af", transition:"background 0.15s" }} />
           </div>
-          {/* Badge hiển thị % khi kéo */}
           {isDragging.current && (
             <div style={{ position:"absolute", left:-52, top:"50%", transform:"translateY(-50%)", background:"#10b981", color:"white", fontSize:11, fontWeight:800, padding:"4px 8px", borderRadius:8, whiteSpace:"nowrap", boxShadow:"0 2px 6px rgba(0,0,0,0.2)", pointerEvents:"none" }}>
               {panelWidth}%
@@ -387,7 +485,9 @@ const MapPanel = ({ data, editedPlans, onClose }) => {
             )}
             {!loading && mapHtml && (
               <iframe
-                key={selectedDay + coordFingerprint}
+                ref={iframeRef}
+                onLoad={onIframeLoad}
+                key={selectedDay + coordFingerprint + hotelFingerprint}
                 title="leaflet-map"
                 width="100%" height="100%"
                 style={{ border:0, display:'block' }}
@@ -400,27 +500,38 @@ const MapPanel = ({ data, editedPlans, onClose }) => {
           {/* Danh sách */}
           <div style={{ flex:1, overflowY:'auto', padding:'8px 0' }}>
 
-            {/* Điểm xuất phát — Khách sạn */}
-            {hotelInfo && (
-              <div style={{ marginBottom:4 }}>
-                <div style={{ padding:'8px 20px', display:'flex', alignItems:'center', gap:8, fontSize:11, fontWeight:800, color:'#10b981', textTransform:'uppercase', letterSpacing:'0.5px', position:'sticky', top:0, background:'white', zIndex:1, borderBottom:'1px solid #f8fafc' }}>
-                  🏨 Điểm xuất phát
-                </div>
-                <div style={{ padding:'8px 20px' }}>
-                  <div className="mb-placerow" style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 8px', borderRadius:12 }}>
-                    <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, background:'#10b981', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.15)', border:'2px solid white' }}>
-                      {hotelInfo.thumbnail
-                        ? <img src={hotelInfo.thumbnail} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
-                        : <span style={{ fontSize:14 }}>🏨</span>}
-                    </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:13, fontWeight:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{hotelInfo.name}</div>
-                      <div style={{ fontSize:11, color:'#10b981', fontWeight:700 }}>Khách sạn · Điểm O</div>
+            {/* Khách sạn — leg 0: KS → điểm 1 */}
+            {hotelInfo && (() => {
+              const legIdx  = 0; // leg đầu tiên luôn từ KS
+              const isActive = activeRow === legIdx;
+              return (
+                <div style={{ marginBottom:4 }}>
+                  <div style={{ padding:'8px 20px', display:'flex', alignItems:'center', gap:8, fontSize:11, fontWeight:800, color:'#10b981', textTransform:'uppercase', letterSpacing:'0.5px', position:'sticky', top:0, background:'white', zIndex:1, borderBottom:'1px solid #f8fafc' }}>
+                    🏨 Điểm xuất phát
+                  </div>
+                  <div style={{ padding:'8px 20px' }}>
+                    <div
+                      className="mb-placerow"
+                      onClick={() => callHighlight(legIdx)}
+                      style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 8px', borderRadius:12, cursor:'pointer', transition:'0.15s', background: isActive ? '#10b98115' : 'transparent', outline: isActive ? '2px solid #10b98140' : 'none' }}
+                    >
+                      <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, background:'#10b981', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.15)', border:'2px solid white' }}>
+                        {hotelInfo.thumbnail
+                          ? <img src={hotelInfo.thumbnail} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
+                          : <span style={{ fontSize:14 }}>🏨</span>}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{hotelInfo.name}</div>
+                        <div style={{ fontSize:11, color:'#10b981', fontWeight:700 }}>
+                          Khách sạn · Điểm O
+                          {isActive && <span style={{ marginLeft:6, fontSize:10, opacity:0.7 }}>↗ Đường đang highlight</span>}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {SESSION_META.map((session) => {
               const sp = dayPlaces.filter(p => p.session === session.label);
@@ -432,21 +543,39 @@ const MapPanel = ({ data, editedPlans, onClose }) => {
                   <div style={{ padding:'4px 20px', position:'relative' }}>
                     {sp.length > 1 && <div style={{ position:'absolute', left:36, top:24, bottom:24, width:2, backgroundColor:'#e2e8f0', zIndex:0 }} />}
                     {sp.map((place, pi) => {
-                      const globalIdx = dayPlaces.indexOf(place);
+                      const globalIdx  = dayPlaces.indexOf(place); // 0-based trong dayPlaces
+                      // markerIdx trong markers[] = globalIdx+1 (hotel chiếm index 0)
+                      const markerIdx  = globalIdx + 1;
+                      const isLast     = markerIdx >= dayPlaces.length; // điểm cuối
+                      // Điểm cuối → highlight leg vào (markerIdx-1); còn lại → leg ra (markerIdx)
+                      const legIdx     = isLast ? markerIdx - 1 : markerIdx;
+                      const isActive   = activeRow === legIdx;
                       return (
-                        <div key={pi} className="mb-placerow" style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 8px', borderRadius:12, cursor:'default', transition:'0.15s', position:'relative', zIndex:1, marginBottom:2 }}>
-                          <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, background:typeColor(place.type), display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.15)', border:'2px solid white' }}>
+                        <div
+                          key={pi}
+                          className="mb-placerow"
+                          onClick={() => callHighlight(legIdx)}
+                          style={{
+                            display:'flex', alignItems:'center', gap:12, padding:'10px 8px',
+                            borderRadius:12, cursor:'pointer', transition:'0.15s',
+                            position:'relative', zIndex:1, marginBottom:2,
+                            background: isActive ? `${session.color}15` : 'transparent',
+                            outline: isActive ? `2px solid ${session.color}40` : 'none',
+                          }}
+                        >
+                          <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, background: isActive ? session.color : typeColor(place.type), display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.15)', border:'2px solid white', transition:'0.15s' }}>
                             {place.thumbnail
                               ? <img src={place.thumbnail} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
                               : <FontAwesomeIcon icon={typeIcon(place.type)} style={{ color:'white', fontSize:13 }} />}
                           </div>
-                          <div style={{ position:'absolute', left:34, top:8, width:14, height:14, borderRadius:'50%', backgroundColor:'white', border:`1.5px solid ${typeColor(place.type)}`, fontSize:8, fontWeight:900, color:typeColor(place.type), display:'flex', alignItems:'center', justifyContent:'center', zIndex:2 }}>
+                          <div style={{ position:'absolute', left:34, top:8, width:14, height:14, borderRadius:'50%', backgroundColor:'white', border:`1.5px solid ${isActive ? session.color : typeColor(place.type)}`, fontSize:8, fontWeight:900, color: isActive ? session.color : typeColor(place.type), display:'flex', alignItems:'center', justifyContent:'center', zIndex:2, transition:'0.15s' }}>
                             {globalIdx + 1}
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ fontSize:13, fontWeight:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{place.name}</div>
-                            <div style={{ fontSize:11, color:typeColor(place.type), fontWeight:700 }}>
+                            <div style={{ fontSize:11, color: isActive ? session.color : typeColor(place.type), fontWeight:700 }}>
                               {place.type === 'tour' ? '📍 Tham quan' : '🍜 Ăn uống'}
+                              {isActive && <span style={{ marginLeft:6, fontSize:10, opacity:0.7 }}>↗ Đường đang highlight</span>}
                             </div>
                           </div>
                         </div>
@@ -478,6 +607,20 @@ const MapBubble = ({ targetOffset = 450, data, editedPlans }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [open,      setOpen]      = useState(false);
   const [pulse,     setPulse]     = useState(false);
+  
+  // ✅ ĐÃ SỬA: Quản lý riêng khách sạn để cập nhật mượt mà
+  const [currentHotel, setCurrentHotel] = useState(null);
+
+  useEffect(() => {
+    if (data?.realHotels?.[0]) setCurrentHotel(data.realHotels[0]);
+  }, [data]);
+
+  // ✅ ĐÃ SỬA: Lắng nghe sự kiện khi đổi khách sạn ở màn Lịch trình
+  useEffect(() => {
+    const handleHotelChange = (e) => setCurrentHotel(e.detail);
+    window.addEventListener('sTripHotelChanged', handleHotelChange);
+    return () => window.removeEventListener('sTripHotelChanged', handleHotelChange);
+  }, []);
 
   useEffect(() => {
     if (data) {
@@ -515,7 +658,9 @@ const MapBubble = ({ targetOffset = 450, data, editedPlans }) => {
       >
         <div style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', backgroundColor: isHovered ? 'rgba(255,255,255,0.1)':'rgba(255,255,255,0)', transition:'0.3s' }} />
       </div>
-      {open && data && <MapPanel data={data} editedPlans={editedPlans} onClose={() => setOpen(false)} />}
+      
+      {/* ✅ ĐÃ SỬA: Truyền currentHotel xuống cho MapPanel để vẽ lại */}
+      {open && data && <MapPanel data={data} editedPlans={editedPlans} currentHotel={currentHotel} onClose={() => setOpen(false)} />}
     </>
   );
 };

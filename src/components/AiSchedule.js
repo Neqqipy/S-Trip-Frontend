@@ -325,6 +325,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
   const handleUpdate = (newVal) => {
     if (modal.type === 'Khách sạn') {
       setCurrentHotel(newVal);
+      window.dispatchEvent(new CustomEvent('sTripHotelChanged', { detail: newVal }));
       const cleanName = newVal.name.split('-')[0].trim();
       setMapQuery(`${newVal.name} ${initialData.location}`); // ← cập nhật map tĩnh khi đổi khách sạn
     } else {
