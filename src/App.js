@@ -16,6 +16,7 @@ import './App.css';
 function App() {
   // --- QUẢN LÝ TRẠNG THÁI ---
   const [searchData, setSearchData] = useState(null);
+  const [editedPlans, setEditedPlans] = useState(null);
   const [activeSection, setActiveSection] = useState('home'); 
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -92,7 +93,8 @@ function App() {
   // --- 3. XỬ LÝ TÌM KIẾM (Gửi đủ 5 tham số đồng bộ) ---
   const handleSearch = async (formData) => {
     setIsLoading(true);
-    setSearchData(null); 
+    setSearchData(null);
+    setEditedPlans(null);
     setActiveSection('home');
 
     // Tự động cuộn chờ (giống code tham khảo)
@@ -163,7 +165,8 @@ function App() {
               {searchData && !isLoading && (
                 <AiSchedule 
                   data={searchData} 
-                  onSave={() => setToast({ show: true, message: 'Đã lưu vào Dashboard!', type: 'success' })} 
+                  onSave={() => setToast({ show: true, message: 'Đã lưu vào Dashboard!', type: 'success' })}
+                  onPlanChange={setEditedPlans}
                 />
               )}
             </div>
@@ -179,7 +182,7 @@ function App() {
           </div>
         )}
 
-        <MapBubble targetOffset={800} data={searchData} />
+        <MapBubble targetOffset={800} data={searchData} editedPlans={editedPlans} />
         <ChatAI tripData={searchData} />
       </div>
 

@@ -26,12 +26,15 @@ const mockRepo = {
   ]
 };
 
+// ✅ FIX 1: Giữ lại lat/lng để MapBubble vẽ bản đồ được
 const normalizeActivity = (item) => ({
   name: item.name,
   rating: item.rating || "4.5",
   price: item.price || "Giá tùy chọn",
   desc: item.desc || "",
   thumbnail: item.thumbnail || null,
+  lat: item.lat || item.latitude || null,   // ← THÊM
+  lng: item.lng || item.longitude || null,  // ← THÊM
 });
 
 // 🗺️ MAP MODAL POPUP — dùng Portal để thoát khỏi mọi stacking context
@@ -229,14 +232,14 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
 };
 
 // ── COMPONENT CHÍNH ──────────────────────────────────────────
-const AiSchedule = ({ data: initialData, onSave }) => {
+const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
   const numDays = parseInt(initialData?.days?.toString().split(' ')[0]) || 3;
   const [dailyPlans, setDailyPlans] = useState([]);
   const [mapQuery, setMapQuery] = useState('');           // ← map tĩnh cho khách sạn
   const [modal, setModal] = useState({ show: false, type: '', day: null, session: '', subType: '' });
   const [mapModal, setMapModal] = useState({ show: false, query: '', placeName: '' }); // ← popup cho tham quan/ăn uống
 
-  // ✅ PHẦN THÊM VÀO: Chuẩn hóa dữ liệu thật từ Backend
+  // ✅ Chuẩn hóa dữ liệu thật từ Backend
   const realHotels = (initialData.realHotels || []).map(h => ({
     name: h.name,
     rating: h.rating,
@@ -248,13 +251,14 @@ const AiSchedule = ({ data: initialData, onSave }) => {
   const realTours = (initialData.realTours || []).map(normalizeActivity);
   const realFoods = (initialData.realFoods || []).map(normalizeActivity);
   
-  // ✅ PHẦN THÊM VÀO: Tạo Pool dữ liệu (HotelsPool ưu tiên dữ liệu thật)
+  // ✅ Tạo Pool dữ liệu (ưu tiên dữ liệu thật)
   const hotelsPool = realHotels.length > 0 ? realHotels : mockRepo['Khách sạn'];
   const toursPool = realTours.length > 0 ? realTours : mockRepo['Điểm tham quan'];
   const foodsPool = realFoods.length > 0 ? realFoods : mockRepo['Địa điểm ăn uống'];
 
   const [currentHotel, setCurrentHotel] = useState(hotelsPool[0]);
 
+  // Effect khởi tạo lịch trình theo số ngày & địa điểm
   useEffect(() => {
     const plans = [];
     for (let i = 0; i < numDays; i++) {
@@ -275,9 +279,43 @@ const AiSchedule = ({ data: initialData, onSave }) => {
       });
     }
     setDailyPlans(plans);
+    if (onPlanChange) onPlanChange(plans);
     const cleanHotelName = currentHotel.name.split('-')[0].trim();
-    setMapQuery(`${currentHotel.name} ${initialData.location}`); // ← khởi tạo map khách sạn
-  }, [initialData.location, numDays]);
+    setMapQuery(`${currentHotel.name} ${initialData.location}`);
+  }, [initialData.location, numDays]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ✅ FIX 2: Lắng nghe khi geocode hoàn tất (realTours/realFoods được enrich lat/lng từ App.js)
+  // Patch tọa độ mới vào dailyPlans để MapBubble nhận được và vẽ bản đồ chính xác
+  useEffect(() => {
+    if (!dailyPlans.length) return;
+
+    // Xây bảng tra cứu tọa độ theo tên địa điểm
+    const coordMap = {};
+    [...(initialData.realTours || []), ...(initialData.realFoods || [])].forEach(p => {
+      if (p.lat && p.lng) coordMap[p.name] = { lat: p.lat, lng: p.lng };
+    });
+    if (!Object.keys(coordMap).length) return;
+
+    setDailyPlans(prev => {
+      const updated = prev.map(d => ({
+        ...d,
+        morning: {
+          tour: { ...d.morning.tour, ...(coordMap[d.morning.tour?.name] || {}) },
+          food: { ...d.morning.food, ...(coordMap[d.morning.food?.name] || {}) },
+        },
+        afternoon: {
+          tour: { ...d.afternoon.tour, ...(coordMap[d.afternoon.tour?.name] || {}) },
+          food: { ...d.afternoon.food, ...(coordMap[d.afternoon.food?.name] || {}) },
+        },
+        evening: {
+          tour: { ...d.evening.tour, ...(coordMap[d.evening.tour?.name] || {}) },
+          food: { ...d.evening.food, ...(coordMap[d.evening.food?.name] || {}) },
+        },
+      }));
+      if (onPlanChange) onPlanChange(updated); // ← thông báo MapBubble tọa độ đã sẵn sàng
+      return updated;
+    });
+  }, [initialData.realTours, initialData.realFoods]); // ← chạy lại mỗi khi geocode xong
 
   // 🆕 Hàm mở Map Modal
   const handleShowMap = (query, placeName) => {
@@ -290,9 +328,13 @@ const AiSchedule = ({ data: initialData, onSave }) => {
       const cleanName = newVal.name.split('-')[0].trim();
       setMapQuery(`${newVal.name} ${initialData.location}`); // ← cập nhật map tĩnh khi đổi khách sạn
     } else {
-      setDailyPlans(prev => prev.map(d => d.day === modal.day
-        ? { ...d, [modal.session]: { ...d[modal.session], [modal.subType]: newVal } }
-        : d));
+      setDailyPlans(prev => {
+        const next = prev.map(d => d.day === modal.day
+          ? { ...d, [modal.session]: { ...d[modal.session], [modal.subType]: newVal } }
+          : d);
+        if (onPlanChange) onPlanChange(next); // 🔗 Thông báo MapBubble địa điểm vừa đổi
+        return next;
+      });
     }
     setModal({ show: false, type: '', day: null, session: '', subType: '' });
   };
@@ -318,7 +360,6 @@ const AiSchedule = ({ data: initialData, onSave }) => {
               <FontAwesomeIcon icon={faXmark} style={{ cursor: 'pointer', fontSize: '28px', color: '#9ca3af' }} onClick={() => setModal({ show: false })} />
             </div>
             
-            {/* ✅ PHẦN THAY ĐỔI: Sử dụng hotelsPool và thêm ảnh cho Modal đổi khách sạn */}
             {(modal.type === 'Khách sạn' ? hotelsPool : (modal.subType === 'tour' ? toursPool : foodsPool)).map((opt, i) => (
               <div key={i} onClick={() => handleUpdate(opt)} style={{ 
                   padding: '20px', borderRadius: '20px', border: '2px solid #f1f5f9', marginBottom: '10px', 

@@ -221,9 +221,19 @@ function buildLeafletHtml(markers) {
 }
 
 // ── Map Panel ─────────────────────────────────────────────────
-const MapPanel = ({ data, onClose }) => {
+const MapPanel = ({ data, editedPlans, onClose }) => {
   const numDays = parseInt(data.days?.toString().split(' ')[0]) || 3;
-  const allDays = buildDayPlaces(data);
+  // Dùng editedPlans (đã chỉnh sửa từ AiSchedule) nếu có, fallback về pool gốc
+  const allDays = (editedPlans && editedPlans.length > 0)
+    ? editedPlans.map(d => [
+        { ...d.morning.tour,   type:'tour', session:'Sáng',  sessionColor:'#f59e0b', sessionIcon:SESSION_META[0].icon },
+        { ...d.morning.food,   type:'food', session:'Sáng',  sessionColor:'#f59e0b', sessionIcon:SESSION_META[0].icon },
+        { ...d.afternoon.tour, type:'tour', session:'Chiều', sessionColor:'#3b82f6', sessionIcon:SESSION_META[1].icon },
+        { ...d.afternoon.food, type:'food', session:'Chiều', sessionColor:'#3b82f6', sessionIcon:SESSION_META[1].icon },
+        { ...d.evening.tour,   type:'tour', session:'Tối',   sessionColor:'#8b5cf6', sessionIcon:SESSION_META[2].icon },
+        { ...d.evening.food,   type:'food', session:'Tối',   sessionColor:'#8b5cf6', sessionIcon:SESSION_META[2].icon },
+      ])
+    : buildDayPlaces(data);
   const [selectedDay, setSelectedDay] = useState(0);
   const [mapHtml,     setMapHtml]     = useState('');
   const [loading,     setLoading]     = useState(false);
@@ -273,6 +283,14 @@ const MapPanel = ({ data, onClose }) => {
     thumbnail: hotelRaw.thumbnail || null,
   } : null;
 
+  // ✅ FIX 3: Tính fingerprint tọa độ của ngày đang xem
+  // Khi AiSchedule patch tọa độ mới vào editedPlans, fingerprint thay đổi → effect chạy lại → bản đồ cập nhật
+  const dayPlacesForEffect = allDays[selectedDay] || [];
+  const coordFingerprint = dayPlacesForEffect
+    .filter(p => p.lat && p.lng)
+    .map(p => `${p.name}:${p.lat},${p.lng}`)
+    .join('|');
+
   useEffect(() => {
     let cancelled = false;
     const dayPlaces = allDays[selectedDay] || [];
@@ -288,7 +306,7 @@ const MapPanel = ({ data, onClose }) => {
     });
 
     return () => { cancelled = true; };
-  }, [selectedDay, data.location]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedDay, data.location, coordFingerprint]); // ← FIX: thêm coordFingerprint để react khi tọa độ mới về
 
   const dayPlaces = allDays[selectedDay] || [];
   const typeColor = (t) => t === 'tour' ? '#8b5cf6' : '#f97316';
@@ -330,6 +348,7 @@ const MapPanel = ({ data, onClose }) => {
             </div>
           )}
         </div>
+
         {/* Header */}
         <div style={{ padding:'20px 24px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
@@ -368,7 +387,7 @@ const MapPanel = ({ data, onClose }) => {
             )}
             {!loading && mapHtml && (
               <iframe
-                key={selectedDay}
+                key={selectedDay + coordFingerprint}
                 title="leaflet-map"
                 width="100%" height="100%"
                 style={{ border:0, display:'block' }}
@@ -455,7 +474,7 @@ const MapPanel = ({ data, onClose }) => {
 };
 
 // ── Nút tròn gốc ─────────────────────────────────────────────
-const MapBubble = ({ targetOffset = 450, data }) => {
+const MapBubble = ({ targetOffset = 450, data, editedPlans }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [open,      setOpen]      = useState(false);
   const [pulse,     setPulse]     = useState(false);
@@ -496,7 +515,7 @@ const MapBubble = ({ targetOffset = 450, data }) => {
       >
         <div style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', backgroundColor: isHovered ? 'rgba(255,255,255,0.1)':'rgba(255,255,255,0)', transition:'0.3s' }} />
       </div>
-      {open && data && <MapPanel data={data} onClose={() => setOpen(false)} />}
+      {open && data && <MapPanel data={data} editedPlans={editedPlans} onClose={() => setOpen(false)} />}
     </>
   );
 };
