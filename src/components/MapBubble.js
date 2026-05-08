@@ -128,7 +128,7 @@ function buildLeafletHtml(markers) {
     const legLayers   = []; // { sh, gl, mn }
     let   activeLeg   = -1;
 
-    // ── Reset (gọi từ cả iframe lẫn React) ──────────────────
+    // ── Reset ────────────────────────────────────────────────
     function resetRoutes() {
       activeLeg = -1;
       legLayers.forEach(({ sh, gl, mn }) => {
@@ -136,11 +136,11 @@ function buildLeafletHtml(markers) {
         gl.setStyle({ opacity: 0 });
         mn.setStyle({ opacity: 0.95, weight: 5 });
       });
-      // Thông báo React để đồng bộ activeRow
-      if (window._onResetRoutes) window._onResetRoutes();
+      // Thông báo React: không có leg nào active
+      if (window._onHighlightChange) window._onHighlightChange(-1);
     }
 
-    // ── Highlight 1 leg ──────────────────────────────────────
+    // ── Highlight 1 leg + thông báo React ────────────────────
     function highlightLeg(legIdx) {
       if (activeLeg === legIdx) { resetRoutes(); return; }
       activeLeg = legIdx;
@@ -156,9 +156,11 @@ function buildLeafletHtml(markers) {
       leg.mn.setStyle({ opacity: 1, weight: 7 });
       leg.gl.bringToFront();
       leg.mn.bringToFront();
+      // Thông báo React: legIdx đang active → highlight 2 đầu mút
+      if (window._onHighlightChange) window._onHighlightChange(legIdx);
     }
 
-    // ── Click marker → leg ĐI RA; điểm CUỐI → leg ĐI VÀO ──
+    // ── Click marker → leg ĐI RA; điểm CUỐI → leg ĐI VÀO ───
     function highlightMarker(markerIdx) {
       const isLast = markerIdx >= markers.length - 1;
       const legIdx = isLast ? markerIdx - 1 : markerIdx;
@@ -167,8 +169,8 @@ function buildLeafletHtml(markers) {
     }
 
     // Expose ra window để React gọi được
-    window.highlightLeg  = highlightLeg;
-    window.resetRoutes   = resetRoutes;
+    window.highlightLeg = highlightLeg;
+    window.resetRoutes  = resetRoutes;
 
     // Click nền map → reset + đồng bộ React
     map.on('click', resetRoutes);
@@ -310,34 +312,47 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
   const [loading,     setLoading]     = useState(false);
   const [loadingMsg,  setLoadingMsg]  = useState('');
   const [panelWidth,  setPanelWidth]  = useState(50);
-  const [activeRow,   setActiveRow]   = useState(-1); // legIdx đang highlight
+  const [activeLeg,   setActiveLeg]   = useState(-1); // legIdx đang highlight (-1 = không có)
   const iframeRef  = React.useRef(null);
   const isDragging = React.useRef(false);
 
-  // Khi iframe reset (click nền map / click đường lần 2) → đồng bộ activeRow về -1
-  const syncReset = React.useCallback(() => setActiveRow(-1), []);
-
-  // Gắn callback vào iframe sau khi load xong
-  const onIframeLoad = () => {
+  // Gắn callback vào iframe sau khi load — nhận thông báo từ Leaflet
+  const onIframeLoad = React.useCallback(() => {
     try {
       const win = iframeRef.current?.contentWindow;
-      if (win) win._onResetRoutes = syncReset;
+      if (!win) return;
+      // Leaflet gọi callback này mỗi khi highlight/reset thay đổi
+      win._onHighlightChange = (legIdx) => setActiveLeg(legIdx);
     } catch {}
-  };
+  }, []);
 
-  // Gọi highlightLeg trong iframe từ sidebar
-  const callHighlight = (legIdx) => {
+  // Sidebar gọi highlight → đồng bộ cả iframe lẫn activeLeg
+  const callHighlight = React.useCallback((legIdx) => {
     try {
       const win = iframeRef.current?.contentWindow;
       if (!win?.highlightLeg) return;
-      if (activeRow === legIdx) {
-        win.resetRoutes(); // toggle off — _onResetRoutes sẽ set activeRow=-1
+      if (activeLeg === legIdx) {
+        win.resetRoutes(); // toggle off → Leaflet sẽ gọi _onHighlightChange(-1)
       } else {
-        win.highlightLeg(legIdx);
-        setActiveRow(legIdx);
+        win.highlightLeg(legIdx); // Leaflet sẽ gọi _onHighlightChange(legIdx)
       }
     } catch {}
-  };
+  }, [activeLeg]);
+
+  // Tính markerIdx và legIdx cho 1 place trong dayPlaces
+  // markers[] = [hotel(0), place0(1), place1(2), ..., placeN(N+1)]
+  // leg[i] nối markers[i] → markers[i+1]
+  // → place tại globalIdx trong dayPlaces có markerIdx = globalIdx+1
+  // → leg đi ra = markerIdx (= globalIdx+1); leg đi vào = markerIdx-1 (= globalIdx)
+  // → điểm cuối (markerIdx = markers.length-1) chỉ có leg vào = markerIdx-1
+  //
+  // Với leg[L]: đầu mút gồm markerIdx=L (từ) và markerIdx=L+1 (đến)
+  // → place có globalIdx = L-1 (nếu L>0) và globalIdx = L (nếu L < dayPlaces.length)
+  // → hotel (markerIdx=0) là đầu mút của leg[0]
+  //
+  // isMarkerActive(markerIdx): marker này thuộc đầu mút của activeLeg không?
+  const isMarkerActive = (markerIdx) =>
+    activeLeg >= 0 && (markerIdx === activeLeg || markerIdx === activeLeg + 1);
 
   const onDragStart = (e) => {
     e.preventDefault();
@@ -395,7 +410,8 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
     const dayPlaces = allDays[selectedDay] || [];
     setLoading(true);
     setMapHtml('');
-    setActiveRow(-1);
+    setActiveLeg(-1);
+    setLoadingMsg('Đang tìm tọa độ địa điểm...');
 
     resolveMarkers(hotelInfo, dayPlaces, data.location).then(results => {
       if (cancelled) return;
@@ -500,10 +516,11 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
           {/* Danh sách */}
           <div style={{ flex:1, overflowY:'auto', padding:'8px 0' }}>
 
-            {/* Khách sạn — leg 0: KS → điểm 1 */}
+            {/* Khách sạn — markerIdx=0, là đầu mút của leg[0] */}
             {hotelInfo && (() => {
-              const legIdx  = 0; // leg đầu tiên luôn từ KS
-              const isActive = activeRow === legIdx;
+              const markerIdx = 0;
+              const legIdx    = 0; // leg ra từ KS
+              const isActive  = isMarkerActive(markerIdx);
               return (
                 <div style={{ marginBottom:4 }}>
                   <div style={{ padding:'8px 20px', display:'flex', alignItems:'center', gap:8, fontSize:11, fontWeight:800, color:'#10b981', textTransform:'uppercase', letterSpacing:'0.5px', position:'sticky', top:0, background:'white', zIndex:1, borderBottom:'1px solid #f8fafc' }}>
@@ -513,9 +530,9 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                     <div
                       className="mb-placerow"
                       onClick={() => callHighlight(legIdx)}
-                      style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 8px', borderRadius:12, cursor:'pointer', transition:'0.15s', background: isActive ? '#10b98115' : 'transparent', outline: isActive ? '2px solid #10b98140' : 'none' }}
+                      style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 8px', borderRadius:12, cursor:'pointer', transition:'0.15s', background: isActive ? '#10b98118' : 'transparent', outline: isActive ? '2px solid #10b98150' : 'none' }}
                     >
-                      <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, background:'#10b981', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.15)', border:'2px solid white' }}>
+                      <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, background: isActive ? '#059669' : '#10b981', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.15)', border:'2px solid white', transition:'0.15s' }}>
                         {hotelInfo.thumbnail
                           ? <img src={hotelInfo.thumbnail} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
                           : <span style={{ fontSize:14 }}>🏨</span>}
@@ -524,7 +541,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                         <div style={{ fontSize:13, fontWeight:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{hotelInfo.name}</div>
                         <div style={{ fontSize:11, color:'#10b981', fontWeight:700 }}>
                           Khách sạn · Điểm O
-                          {isActive && <span style={{ marginLeft:6, fontSize:10, opacity:0.7 }}>↗ Đường đang highlight</span>}
+                          {isActive && <span style={{ marginLeft:6, fontSize:10, opacity:0.8 }}>↗ highlight</span>}
                         </div>
                       </div>
                     </div>
@@ -543,24 +560,24 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                   <div style={{ padding:'4px 20px', position:'relative' }}>
                     {sp.length > 1 && <div style={{ position:'absolute', left:36, top:24, bottom:24, width:2, backgroundColor:'#e2e8f0', zIndex:0 }} />}
                     {sp.map((place, pi) => {
-                      const globalIdx  = dayPlaces.indexOf(place); // 0-based trong dayPlaces
-                      // markerIdx trong markers[] = globalIdx+1 (hotel chiếm index 0)
-                      const markerIdx  = globalIdx + 1;
-                      const isLast     = markerIdx >= dayPlaces.length; // điểm cuối
-                      // Điểm cuối → highlight leg vào (markerIdx-1); còn lại → leg ra (markerIdx)
-                      const legIdx     = isLast ? markerIdx - 1 : markerIdx;
-                      const isActive   = activeRow === legIdx;
+                      const globalIdx = dayPlaces.indexOf(place);
+                      const markerIdx = globalIdx + 1; // +1 vì hotel ở index 0
+                      const isLast    = markerIdx >= dayPlaces.length; // điểm cuối
+                      // Leg để highlight khi click: ra (markerIdx) hoặc vào nếu là cuối (markerIdx-1)
+                      const clickLeg  = isLast ? markerIdx - 1 : markerIdx;
+                      // Row sáng nếu marker này là đầu hoặc cuối của activeLeg
+                      const isActive  = isMarkerActive(markerIdx);
                       return (
                         <div
                           key={pi}
                           className="mb-placerow"
-                          onClick={() => callHighlight(legIdx)}
+                          onClick={() => callHighlight(clickLeg)}
                           style={{
                             display:'flex', alignItems:'center', gap:12, padding:'10px 8px',
                             borderRadius:12, cursor:'pointer', transition:'0.15s',
                             position:'relative', zIndex:1, marginBottom:2,
-                            background: isActive ? `${session.color}15` : 'transparent',
-                            outline: isActive ? `2px solid ${session.color}40` : 'none',
+                            background: isActive ? `${session.color}18` : 'transparent',
+                            outline: isActive ? `2px solid ${session.color}50` : 'none',
                           }}
                         >
                           <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, background: isActive ? session.color : typeColor(place.type), display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.15)', border:'2px solid white', transition:'0.15s' }}>
@@ -572,10 +589,10 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                             {globalIdx + 1}
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontSize:13, fontWeight:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{place.name}</div>
+                            <div style={{ fontSize:13, fontWeight:isActive?900:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{place.name}</div>
                             <div style={{ fontSize:11, color: isActive ? session.color : typeColor(place.type), fontWeight:700 }}>
                               {place.type === 'tour' ? '📍 Tham quan' : '🍜 Ăn uống'}
-                              {isActive && <span style={{ marginLeft:6, fontSize:10, opacity:0.7 }}>↗ Đường đang highlight</span>}
+                              {isActive && <span style={{ marginLeft:6, fontSize:10, opacity:0.8 }}>↗ highlight</span>}
                             </div>
                           </div>
                         </div>

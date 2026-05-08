@@ -27,7 +27,18 @@ export const fetchTripPlan = async (location, budget, days, origin, passengers, 
   }
 };
 
-export const sendChatMessage = async (messages, context = {}) => {
+export const fetchDirections = async (origin, destination) => {
+  try {
+    const url = `${BASE_URL}/api/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    return data.success ? data.modes : [];
+  } catch (e) {
+    console.error("Lỗi fetchDirections:", e);
+    return [];
+  }
+};
+ = async (messages, context = {}) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 60000);
 
@@ -48,4 +59,3 @@ export const sendChatMessage = async (messages, context = {}) => {
     return { success: false, text: "Mạng có chút vấn đề, bạn thử lại nhé!" };
   }
 };
-
