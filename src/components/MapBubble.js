@@ -6,6 +6,7 @@ import {
   faSun, faCloudSun, faMoon, faSpinner
 } from '@fortawesome/free-solid-svg-icons';
 import { enrichPlacesWithCoords } from '../services/geocodeUtils';
+import { fetchDirections } from '../services/api';
 
 // ── Mock fallback ─────────────────────────────────────────────
 const mockTours = [
@@ -312,7 +313,9 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
   const [loading,     setLoading]     = useState(false);
   const [loadingMsg,  setLoadingMsg]  = useState('');
   const [panelWidth,  setPanelWidth]  = useState(50);
-  const [activeLeg,   setActiveLeg]   = useState(-1); // legIdx đang highlight (-1 = không có)
+  const [activeLeg,   setActiveLeg]   = useState(-1);
+  const [directions,  setDirections]  = useState(null);
+  const [loadingDir,  setLoadingDir]  = useState(false);
   const iframeRef  = React.useRef(null);
   const isDragging = React.useRef(false);
 
@@ -338,6 +341,22 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
       }
     } catch {}
   }, [activeLeg]);
+
+  // Fetch khoảng cách/thời gian khi activeLeg thay đổi
+  useEffect(() => {
+    if (activeLeg < 0) { setDirections(null); return; }
+    const dp = allDays[selectedDay] || [];
+    const from = activeLeg === 0 ? hotelInfo : dp[activeLeg - 1];
+    const to   = dp[activeLeg];
+    if (!from || !to) return;
+    setLoadingDir(true);
+    const origin = from.lat && from.lng ? `${from.lat},${from.lng}` : from.name;
+    const dest   = to.lat   && to.lng   ? `${to.lat},${to.lng}`     : to.name;
+    fetchDirections(origin, dest).then(modes => {
+      setDirections({ from, to, modes: modes || [] });
+      setLoadingDir(false);
+    }).catch(() => setLoadingDir(false));
+  }, [activeLeg, selectedDay]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tính markerIdx và legIdx cho 1 place trong dayPlaces
   // markers[] = [hotel(0), place0(1), place1(2), ..., placeN(N+1)]
@@ -438,6 +457,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
         .mb-daytab:hover   { background:#f0fdf4 !important; }
         .mb-close:hover    { background:#fee2e2 !important; color:#ef4444 !important; }
         .mb-placerow:hover { background:#f8fafc !important; }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .mb-spin { animation: mbSpin 1s linear infinite; display:inline-block; }
         .mb-drag:hover .mb-drag-bar { background: linear-gradient(to bottom, transparent, #10b981, transparent) !important; }
         .mb-drag:hover .mb-grip     { border-color: #10b981 !important; }
@@ -513,7 +533,8 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
             )}
           </div>
 
-          {/* Danh sách */}
+          {/* Danh sách + Directions panel */}
+          <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
           <div style={{ flex:1, overflowY:'auto', padding:'8px 0' }}>
 
             {/* Khách sạn — markerIdx=0, là đầu mút của leg[0] */}
@@ -538,8 +559,8 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                           : <span style={{ fontSize:14 }}>🏨</span>}
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:13, fontWeight:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{hotelInfo.name}</div>
-                        <div style={{ fontSize:11, color:'#10b981', fontWeight:700 }}>
+                        <div style={{ fontSize:16, fontWeight:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{hotelInfo.name}</div>
+                        <div style={{ fontSize:12, color:'#10b981', fontWeight:700 }}>
                           Khách sạn · Điểm O
                           {isActive && <span style={{ marginLeft:6, fontSize:10, opacity:0.8 }}>↗ highlight</span>}
                         </div>
@@ -589,8 +610,8 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                             {globalIdx + 1}
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontSize:13, fontWeight:isActive?900:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{place.name}</div>
-                            <div style={{ fontSize:11, color: isActive ? session.color : typeColor(place.type), fontWeight:700 }}>
+                            <div style={{ fontSize:16, fontWeight:isActive?900:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{place.name}</div>
+                            <div style={{ fontSize:12, color: isActive ? session.color : typeColor(place.type), fontWeight:700 }}>
                               {place.type === 'tour' ? '📍 Tham quan' : '🍜 Ăn uống'}
                               {isActive && <span style={{ marginLeft:6, fontSize:10, opacity:0.8 }}>↗ highlight</span>}
                             </div>
@@ -602,6 +623,58 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                 </div>
               );
             })}
+          </div>
+
+            {/* Panel khoảng cách & thời gian khi highlight */}
+            <div style={{
+              flexShrink:0, borderTop: activeLeg >= 0 ? '2px solid #10b98130' : '1px solid #f1f5f9',
+              background: activeLeg >= 0 ? '#f0fdf4' : '#fafafa',
+              transition: '0.2s', minHeight: activeLeg >= 0 ? 140 : 36,
+              padding: activeLeg >= 0 ? '14px 18px' : '8px 18px',
+              display:'flex', flexDirection:'column', gap:8,
+            }}>
+              {activeLeg < 0 && (
+                <div style={{ fontSize:12, color:'#9ca3af', textAlign:'center' }}>
+                  Click vào đường hoặc địa điểm để xem khoảng cách
+                </div>
+              )}
+              {activeLeg >= 0 && (
+                <>
+                  <div style={{ fontSize:13, fontWeight:900, color:'#059669', display:'flex', alignItems:'center', gap:6 }}>
+                    <span>🗺️</span>
+                    <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {directions ? `${directions.from?.name} → ${directions.to?.name}` : 'Đang tải...'}
+                    </span>
+                  </div>
+                  {loadingDir && (
+                    <div style={{ display:'flex', alignItems:'center', gap:8, color:'#9ca3af', fontSize:12 }}>
+                      <FontAwesomeIcon icon={faSpinner} style={{ animation:'spin 1s linear infinite' }} />
+                      Đang tải thông tin di chuyển...
+                    </div>
+                  )}
+                  {!loadingDir && directions?.modes?.length > 0 && (
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px 12px' }}>
+                      {directions.modes.map((m, i) => (
+                        <div key={i} style={{
+                          display:'flex', alignItems:'center', gap:7,
+                          background:'white', borderRadius:10, padding:'7px 10px',
+                          border:'1px solid #d1fae5', fontSize:13,
+                        }}>
+                          <span style={{ fontSize:16 }}>{m.icon}</span>
+                          <div>
+                            <div style={{ fontWeight:800, color:'#111', fontSize:13 }}>{m.duration}</div>
+                            <div style={{ color:'#6b7280', fontSize:11 }}>{m.distance}{m.estimated ? ' ~' : ''}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {!loadingDir && (!directions?.modes || directions.modes.length === 0) && (
+                    <div style={{ fontSize:12, color:'#9ca3af' }}>Không lấy được dữ liệu di chuyển</div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 

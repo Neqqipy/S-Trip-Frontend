@@ -11,25 +11,21 @@ export const fetchAutocomplete = async (query) => {
 
 export const fetchTripPlan = async (location, budget, days, origin, passengers, departureDate) => {
   try {
-    const cleanDays = parseInt(days) || 3; 
-    
+    const cleanDays   = parseInt(days) || 3;
     const cleanBudget = budget.toString().replace(/\D/g, "");
-
     const url = `${BASE_URL}/api/plan-trip?location=${encodeURIComponent(location)}&budget=${cleanBudget}&days=${cleanDays}&origin=${encodeURIComponent(origin)}&passengers=${passengers}&departure_date=${departureDate}`;
-    
-    const res = await fetch(url);
+    const res    = await fetch(url);
     const result = await res.json();
-    
     return result.success ? result.plan : null;
-  } catch (error) { 
+  } catch (error) {
     console.error("Lỗi fetchTripPlan:", error);
-    return null; 
+    return null;
   }
 };
 
 export const fetchDirections = async (origin, destination) => {
   try {
-    const url = `${BASE_URL}/api/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+    const url  = `${BASE_URL}/api/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
     const res  = await fetch(url);
     const data = await res.json();
     return data.success ? data.modes : [];
@@ -38,19 +34,18 @@ export const fetchDirections = async (origin, destination) => {
     return [];
   }
 };
- = async (messages, context = {}) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000);
 
+export const sendChatMessage = async (messages, context = {}) => {
+  const controller = new AbortController();
+  const timeoutId  = setTimeout(() => controller.abort(), 60000);
   try {
     const lastUserMsg = messages[messages.length - 1].content;
     const res = await fetch(`${BASE_URL}/api/chat-gemini`, {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: lastUserMsg, location: context.location }),
-      signal: controller.signal
+      body:    JSON.stringify({ message: lastUserMsg, location: context.location }),
+      signal:  controller.signal,
     });
-
     clearTimeout(timeoutId);
     const data = await res.json();
     return data;
