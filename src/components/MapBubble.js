@@ -6,7 +6,6 @@ import {
   faSun, faCloudSun, faMoon, faSpinner
 } from '@fortawesome/free-solid-svg-icons';
 import { enrichPlacesWithCoords } from '../services/geocodeUtils';
-import { fetchDirections } from '../services/api';
 
 // ── Mock fallback ─────────────────────────────────────────────
 const mockTours = [
@@ -163,8 +162,7 @@ function buildLeafletHtml(markers) {
 
     // ── Click marker → leg ĐI RA; điểm CUỐI → leg ĐI VÀO ───
     function highlightMarker(markerIdx) {
-      const isLast = markerIdx >= markers.length - 1;
-      const legIdx = isLast ? markerIdx - 1 : markerIdx;
+      const legIdx = markerIdx === 0 ? 0 : markerIdx - 1;
       if (legIdx < 0) return;
       highlightLeg(legIdx);
     }
@@ -295,6 +293,56 @@ function buildLeafletHtml(markers) {
 </html>`;
 }
 
+// ── Tính khoảng cách Haversine (không cần network) ──────────
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+  const dLat  = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function calcDirectionsLocal(fromLat, fromLng, toLat, toLng) {
+  const dist    = haversineMeters(fromLat, fromLng, toLat, toLng) * 1.3; // hệ số đường thực tế
+  const fmt  = (s) => { const h = Math.floor(s/3600), m = Math.max(1, Math.floor((s%3600)/60)); return h > 0 ? `${h} giờ ${m} phút` : `${m} phút`; };
+  const fmtD = (m) => m >= 1000 ? `${(m/1000).toFixed(1)} km` : `${Math.round(m)} m`;
+  const drive = dist / 9;   // ~32 km/h đô thị
+  return [
+    { icon:'🚗', label:'Ô tô',    speed:'32 km/h', duration:fmt(drive),        distance:fmtD(dist), estimated:true },
+    { icon:'🏍️', label:'Xe máy', speed:'30 km/h', duration:fmt(drive * 1.05), distance:fmtD(dist), estimated:true },
+    { icon:'🚲', label:'Xe đạp', speed:'15 km/h', duration:fmt(dist / 4.2),   distance:fmtD(dist), estimated:true },
+    { icon:'🚶', label:'Đi bộ',  speed:'5 km/h',  duration:fmt(dist / 1.35),  distance:fmtD(dist), estimated:true },
+    { icon:'🚌', label:'Xe buýt',speed:'22 km/h', duration:fmt(drive * 1.45), distance:fmtD(dist), estimated:true },
+  ];
+}
+
+// ── OSRM (chính xác) → fallback Haversine (luôn có) ─────────
+async function getDirectionsOSRM(fromLat, fromLng, toLat, toLng) {
+  try {
+    const res  = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=false`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    const data = await res.json();
+    if (data.code !== 'Ok' || !data.routes?.[0]) return calcDirectionsLocal(fromLat, fromLng, toLat, toLng);
+    const { distance, duration } = data.routes[0];
+    const fmt  = (s) => { const h = Math.floor(s/3600), m = Math.max(1, Math.floor((s%3600)/60)); return h > 0 ? `${h} giờ ${m} phút` : `${m} phút`; };
+    const fmtD = (m) => m >= 1000 ? `${(m/1000).toFixed(1)} km` : `${Math.round(m)} m`;
+    const fmtSpd = (mps) => `${Math.round(mps * 3.6)} km/h`;
+    const carSpd = distance / duration; // m/s thực tế từ OSRM
+    return [
+      { icon:'🚗', label:'Ô tô',    speed:fmtSpd(carSpd),         duration:fmt(duration),          distance:fmtD(distance) },
+      { icon:'🏍️', label:'Xe máy', speed:fmtSpd(carSpd * 0.95),  duration:fmt(duration * 1.05),   distance:fmtD(distance), estimated:true },
+      { icon:'🚲', label:'Xe đạp', speed:'15 km/h',               duration:fmt(distance / 4.2),    distance:fmtD(distance) },
+      { icon:'🚶', label:'Đi bộ',  speed:'5 km/h',                duration:fmt(distance / 1.35),   distance:fmtD(distance) },
+      { icon:'🚌', label:'Xe buýt',speed:fmtSpd(carSpd * 0.65),  duration:fmt(duration * 1.45),   distance:fmtD(distance), estimated:true },
+    ];
+  } catch {
+    // OSRM timeout/lỗi → Haversine (luôn hoạt động)
+    return calcDirectionsLocal(fromLat, fromLng, toLat, toLng);
+  }
+}
+
 // ── Map Panel ─────────────────────────────────────────────────
 const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
   const numDays = parseInt(data.days?.toString().split(' ')[0]) || 3;
@@ -314,6 +362,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
   const [loadingMsg,  setLoadingMsg]  = useState('');
   const [panelWidth,  setPanelWidth]  = useState(50);
   const [activeLeg,   setActiveLeg]   = useState(-1);
+  const [resolvedMarkers, setResolvedMarkers] = useState([]); // markers đã có lat/lng
   const [directions,  setDirections]  = useState(null);
   const [loadingDir,  setLoadingDir]  = useState(false);
   const iframeRef  = React.useRef(null);
@@ -343,20 +392,18 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
   }, [activeLeg]);
 
   // Fetch khoảng cách/thời gian khi activeLeg thay đổi
+  // Dùng resolvedMarkers (đã có lat/lng) → getDirectionsOSRM (OSRM + Haversine fallback)
   useEffect(() => {
-    if (activeLeg < 0) { setDirections(null); return; }
-    const dp = allDays[selectedDay] || [];
-    const from = activeLeg === 0 ? hotelInfo : dp[activeLeg - 1];
-    const to   = dp[activeLeg];
-    if (!from || !to) return;
+    if (activeLeg < 0 || resolvedMarkers.length < 2) { setDirections(null); return; }
+    const from = resolvedMarkers[activeLeg];
+    const to   = resolvedMarkers[activeLeg + 1];
+    if (!from?.lat || !to?.lat) { setDirections(null); return; }
     setLoadingDir(true);
-    const origin = from.lat && from.lng ? `${from.lat},${from.lng}` : from.name;
-    const dest   = to.lat   && to.lng   ? `${to.lat},${to.lng}`     : to.name;
-    fetchDirections(origin, dest).then(modes => {
+    getDirectionsOSRM(from.lat, from.lng, to.lat, to.lng).then(modes => {
       setDirections({ from, to, modes: modes || [] });
       setLoadingDir(false);
-    }).catch(() => setLoadingDir(false));
-  }, [activeLeg, selectedDay]); // eslint-disable-line react-hooks/exhaustive-deps
+    }).catch(() => { setDirections(null); setLoadingDir(false); });
+  }, [activeLeg, resolvedMarkers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tính markerIdx và legIdx cho 1 place trong dayPlaces
   // markers[] = [hotel(0), place0(1), place1(2), ..., placeN(N+1)]
@@ -435,12 +482,13 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
     resolveMarkers(hotelInfo, dayPlaces, data.location).then(results => {
       if (cancelled) return;
       if (results.length > 0) setLoadingMsg('Đang vẽ tuyến đường...');
+      setResolvedMarkers(results); // lưu để directions dùng
       setMapHtml(buildLeafletHtml(results));
       setLoading(false);
     });
 
     return () => { cancelled = true; };
-  }, [selectedDay, data.location, coordFingerprint, hotelFingerprint]); // Thêm hotelFingerprint vào theo dõi
+  }, [selectedDay, data.location, coordFingerprint, hotelFingerprint]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dayPlaces = allDays[selectedDay] || [];
   const typeColor = (t) => t === 'tour' ? '#8b5cf6' : '#f97316';
@@ -486,8 +534,13 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
         {/* Header */}
         <div style={{ padding:'20px 24px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <div style={{ width:42, height:42, borderRadius:12, background:'linear-gradient(135deg,#10b981,#059669)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <FontAwesomeIcon icon={faRoute} style={{ color:'white', fontSize:18 }} />
+            <div style={{ width:42, height:42, borderRadius:14, background:'linear-gradient(135deg,#10b981,#059669)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 12px rgba(16,185,129,0.4)' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="white" fillOpacity="0.95"/>
+                <circle cx="12" cy="9" r="2.5" fill="#10b981"/>
+                <path d="M3 19h18" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.6"/>
+                <path d="M6 16l3-2 4 2 3-2 2 1" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.5"/>
+              </svg>
             </div>
             <div>
               <div style={{ fontSize:17, fontWeight:900, color:'#111827' }}>Bản đồ hành trình · {data.location}</div>
@@ -583,9 +636,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                     {sp.map((place, pi) => {
                       const globalIdx = dayPlaces.indexOf(place);
                       const markerIdx = globalIdx + 1; // +1 vì hotel ở index 0
-                      const isLast    = markerIdx >= dayPlaces.length; // điểm cuối
-                      // Leg để highlight khi click: ra (markerIdx) hoặc vào nếu là cuối (markerIdx-1)
-                      const clickLeg  = isLast ? markerIdx - 1 : markerIdx;
+                      const clickLeg  = markerIdx - 1;
                       // Row sáng nếu marker này là đầu hoặc cuối của activeLeg
                       const isActive  = isMarkerActive(markerIdx);
                       return (
@@ -627,50 +678,127 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
 
             {/* Panel khoảng cách & thời gian khi highlight */}
             <div style={{
-              flexShrink:0, borderTop: activeLeg >= 0 ? '2px solid #10b98130' : '1px solid #f1f5f9',
+              flexShrink:0,
+              borderTop: activeLeg >= 0 ? '1.5px solid #d1fae5' : '1px solid #f1f5f9',
               background: activeLeg >= 0 ? '#f0fdf4' : '#fafafa',
-              transition: '0.2s', minHeight: activeLeg >= 0 ? 140 : 36,
-              padding: activeLeg >= 0 ? '14px 18px' : '8px 18px',
-              display:'flex', flexDirection:'column', gap:8,
+              transition:'background 0.25s',
+              padding: activeLeg >= 0 ? '12px 14px 14px' : '9px 14px',
+              display:'flex', flexDirection:'column', gap:10,
             }}>
+
+              {/* Trạng thái rỗng */}
               {activeLeg < 0 && (
-                <div style={{ fontSize:12, color:'#9ca3af', textAlign:'center' }}>
-                  Click vào đường hoặc địa điểm để xem khoảng cách
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, color:'#9ca3af', fontSize:12 }}>
+                  <span>👆</span> Click vào đường hoặc địa điểm để xem khoảng cách
                 </div>
               )}
+
               {activeLeg >= 0 && (
                 <>
-                  <div style={{ fontSize:13, fontWeight:900, color:'#059669', display:'flex', alignItems:'center', gap:6 }}>
-                    <span>🗺️</span>
-                    <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                      {directions ? `${directions.from?.name} → ${directions.to?.name}` : 'Đang tải...'}
-                    </span>
+                  {/* ── Header: lộ trình + khoảng cách ── */}
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,#10b981,#059669)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 2px 6px rgba(16,185,129,0.35)' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="white"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:10, color:'#6b7280', fontWeight:700, letterSpacing:'0.3px', textTransform:'uppercase' }}>Lộ trình</div>
+                      <div style={{ fontSize:12, fontWeight:800, color:'#065f46', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>
+                        {directions
+                          ? <>{directions.from?.name}<span style={{ color:'#10b981', margin:'0 4px', fontWeight:900 }}>→</span>{directions.to?.name}</>
+                          : 'Đang tải...'}
+                      </div>
+                    </div>
+                    {!loadingDir && directions?.modes?.[0] && (
+                      <div style={{
+                        flexShrink:0, background:'linear-gradient(135deg,#10b981,#059669)',
+                        borderRadius:20, padding:'4px 12px',
+                        fontSize:12, fontWeight:900, color:'white',
+                        whiteSpace:'nowrap', boxShadow:'0 2px 6px rgba(16,185,129,0.3)',
+                        letterSpacing:'0.2px',
+                      }}>
+                        {directions.modes[0].distance}{directions.modes[0].estimated ? ' ~' : ''}
+                      </div>
+                    )}
                   </div>
+
+                  {/* ── Loading ── */}
                   {loadingDir && (
-                    <div style={{ display:'flex', alignItems:'center', gap:8, color:'#9ca3af', fontSize:12 }}>
-                      <FontAwesomeIcon icon={faSpinner} style={{ animation:'spin 1s linear infinite' }} />
-                      Đang tải thông tin di chuyển...
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, color:'#6b7280', fontSize:12, padding:'8px 0' }}>
+                      <FontAwesomeIcon icon={faSpinner} style={{ animation:'mbSpin 1s linear infinite', color:'#10b981', fontSize:14 }} />
+                      Đang tính thời gian di chuyển...
                     </div>
                   )}
-                  {!loadingDir && directions?.modes?.length > 0 && (
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px 12px' }}>
-                      {directions.modes.map((m, i) => (
-                        <div key={i} style={{
-                          display:'flex', alignItems:'center', gap:7,
-                          background:'white', borderRadius:10, padding:'7px 10px',
-                          border:'1px solid #d1fae5', fontSize:13,
-                        }}>
-                          <span style={{ fontSize:16 }}>{m.icon}</span>
-                          <div>
-                            <div style={{ fontWeight:800, color:'#111', fontSize:13 }}>{m.duration}</div>
-                            <div style={{ color:'#6b7280', fontSize:11 }}>{m.distance}{m.estimated ? ' ~' : ''}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+
+                  {/* ── Scroll ngang các phương tiện — Glassmorphism ── */}
+                  {!loadingDir && directions?.modes?.length > 0 && (() => {
+                    const styleMap = {
+                      '🚗':  { from:'#3b82f6', to:'#06b6d4' },
+                      '🏍️': { from:'#f97316', to:'#fbbf24' },
+                      '🚲':  { from:'#22c55e', to:'#10b981' },
+                      '🚶':  { from:'#a855f7', to:'#ec4899' },
+                      '🚌':  { from:'#f43f5e', to:'#f97316' },
+                    };
+                    return (
+                      <div style={{
+                        display:'flex', gap:8, overflowX:'auto', paddingBottom:2,
+                        scrollbarWidth:'none',
+                      }}>
+                        {directions.modes.map((m, i) => {
+                          const s = styleMap[m.icon] || { from:'#64748b', to:'#94a3b8' };
+                          return (
+                            <div key={i} style={{
+                              flexShrink:0, width:82,
+                              borderRadius:20,
+                              background:`linear-gradient(145deg, ${s.from}, ${s.to})`,
+                              padding:'12px 8px 10px',
+                              display:'flex', flexDirection:'column', alignItems:'center', gap:5,
+                              boxShadow:`0 8px 20px ${s.from}55, inset 0 1px 0 rgba(255,255,255,0.35)`,
+                              border:'1px solid rgba(255,255,255,0.3)',
+                              backdropFilter:'blur(10px)',
+                              position:'relative', overflow:'hidden',
+                            }}>
+                              {/* Glare highlight */}
+                              <div style={{
+                                position:'absolute', top:-18, left:-18,
+                                width:60, height:60, borderRadius:'50%',
+                                background:'rgba(255,255,255,0.18)',
+                                pointerEvents:'none',
+                              }}/>
+
+                              <span style={{ fontSize:24, lineHeight:1, filter:'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}>
+                                {m.icon}
+                              </span>
+
+                              <div style={{ fontSize:13, fontWeight:900, color:'white', letterSpacing:'-0.3px', textShadow:'0 1px 4px rgba(0,0,0,0.2)' }}>
+                                {m.duration}
+                              </div>
+
+                              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.85)' }}>
+                                {m.label}
+                              </div>
+
+                              {/* Speed pill */}
+                              <div style={{
+                                background:'rgba(255,255,255,0.22)',
+                                border:'1px solid rgba(255,255,255,0.4)',
+                                borderRadius:99, padding:'2px 8px',
+                                fontSize:10, fontWeight:800, color:'white',
+                                backdropFilter:'blur(4px)',
+                                letterSpacing:'0.2px',
+                              }}>
+                                {m.speed}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
                   {!loadingDir && (!directions?.modes || directions.modes.length === 0) && (
-                    <div style={{ fontSize:12, color:'#9ca3af' }}>Không lấy được dữ liệu di chuyển</div>
+                    <div style={{ fontSize:12, color:'#9ca3af', textAlign:'center', padding:'6px 0' }}>Không lấy được dữ liệu di chuyển</div>
                   )}
                 </>
               )}
@@ -678,14 +806,6 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
           </div>
         </div>
 
-        {/* Footer */}
-        <div style={{ padding:'12px 24px', borderTop:'1px solid #f1f5f9', flexShrink:0, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <span style={{ fontSize:12, color:'#9ca3af' }}>Bấm ESC hoặc click ra ngoài để đóng</span>
-          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.location)}`} target="_blank" rel="noopener noreferrer"
-            style={{ padding:'8px 16px', borderRadius:8, background:'#10b981', color:'white', fontWeight:700, fontSize:12, textDecoration:'none' }}>
-            Mở Google Maps ↗
-          </a>
-        </div>
       </div>
     </>,
     document.body

@@ -55,43 +55,83 @@ const Hero = ({ onSearch }) => {
   const isAnyFieldEmpty = Object.keys(emptyFields).length > 0;
 
   const styles = {
-    hero: {
-      width: '100vw', height: '65vh', minHeight: '700px', position: 'relative',
-      left: '50%', right: '50%', marginLeft: '-50vw', marginRight: '-50vw',
-      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-      backgroundImage: `linear-gradient(rgba(17, 24, 39, 0.4), rgba(17, 24, 39, 0.4)), url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=2000')`,
-      backgroundSize: 'cover', backgroundPosition: 'center', color: 'white', textAlign: 'center'
-    },
-    searchContainer: {
-      backgroundColor: '#ffffff', borderRadius: '9999px', padding: '25px 45px', 
-      display: 'flex', alignItems: 'center', width: '98%', maxWidth: '1780px',
-      marginTop: '60px', position: 'relative', transition: '0.3s all ease',
-      boxShadow: isAnyFieldEmpty ? '0 0 35px rgba(239, 68, 68, 0.6)' : '0 25px 60px rgba(0, 0, 0, 0.4)',
-      border: isAnyFieldEmpty ? '5px solid #ef4444' : '5px solid transparent',
-    },
-    searchItem: (isLast) => ({
-      flex: 1, padding: '10px 20px', textAlign: 'left', 
-      borderRight: isLast ? 'none' : '2px solid #f1f5f9', position: 'relative'
-    }),
-    label: (active) => ({
-      fontSize: '16px', fontWeight: '800', color: active ? '#10b981' : '#9ca3af',
-      textTransform: 'uppercase', marginBottom: '8px'
-    }),
-    input: { fontSize: '24px', fontWeight: '700', color: '#111827', border: 'none', outline: 'none', width: '100%', backgroundColor: 'transparent' },
-    dropdown: {
-      position: 'absolute', top: '120%', left: '0', right: '0', backgroundColor: 'white', borderRadius: '25px',
-      boxShadow: '0 20px 40px rgba(0,0,0,0.2)', overflowY: 'auto', maxHeight: '350px', zIndex: 100, padding: '15px 0'
-    },
-    dropdownItem: { 
-      padding: '15px 30px', color: '#333', cursor: 'pointer', fontSize: '20px', 
-      display: 'flex', alignItems: 'center', gap: '15px', transition: '0.2s'
-    },
-    searchBtn: { 
-      backgroundColor: '#10b981', color: 'white', height: '90px', padding: '0 50px', 
-      borderRadius: '9999px', border: 'none', fontWeight: '900', fontSize: '26px', 
-      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', marginLeft: '15px' 
-    }
-  };
+  hero: {
+    width: '100vw', 
+    // TĂNG CHIỀU CAO: Nới rộng không gian để ảnh núi non lộ ra nhiều hơn
+    height: '70vh', 
+    minHeight: '600px',
+    position: 'relative',
+    left: '50%', right: '50%', marginLeft: '-50vw', marginRight: '-50vw',
+    display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+    backgroundImage: `linear-gradient(rgba(17, 24, 39, 0.4), rgba(17, 24, 39, 0.5)), url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=2000')`,
+    backgroundSize: 'cover', backgroundPosition: 'center', color: 'white', textAlign: 'center',
+    paddingTop: '40px' // Đẩy toàn bộ nội dung xuống một chút cho cân đối với Navbar
+  },
+  searchContainer: {
+    backgroundColor: '#ffffff', 
+    borderRadius: '100px', 
+    padding: '15px 30px',  // Nới lỏng thanh search ra một xíu cho "dễ thở"
+    display: 'flex', alignItems: 'center', 
+    width: '90%',          
+    maxWidth: '1150px',    // Độ rộng vừa phải, không bị tràn màn hình
+    marginTop: '45px',     // Khoảng cách lý tưởng giữa Tiêu đề và Thanh tìm kiếm
+    position: 'relative', 
+    transition: '0.4s all cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+    boxShadow: isAnyFieldEmpty ? '0 0 30px rgba(239, 68, 68, 0.4)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+    border: isAnyFieldEmpty ? '3px solid #ef4444' : '1px solid #e2e8f0',
+  },
+  searchItem: (isLast) => ({
+    flex: 1, 
+    padding: '10px 20px',
+    textAlign: 'left', 
+    borderRight: isLast ? 'none' : '1px solid #f1f5f9',
+    position: 'relative'
+  }),
+  label: (active) => ({
+    fontSize: '12px',      
+    fontWeight: '700', 
+    color: active ? '#10b981' : '#64748b',
+    textTransform: 'uppercase', 
+    letterSpacing: '0.5px',
+    marginBottom: '6px'
+  }),
+  input: { 
+    fontSize: '17px', // Chữ trong ô tìm kiếm to lên một xíu cho rõ ràng
+    fontWeight: '600', 
+    color: '#1e293b', 
+    border: 'none', outline: 'none', width: '100%', backgroundColor: 'transparent',
+    padding: '0'
+  },
+  dropdown: {
+    position: 'absolute', top: '120%', left: '0', right: '0', backgroundColor: 'white', 
+    borderRadius: '20px',
+    boxShadow: '0 15px 30px rgba(0,0,0,0.2)', overflowY: 'auto', 
+    maxHeight: '260px',
+    zIndex: 100, 
+    padding: '12px 0'
+  },
+  dropdownItem: { 
+    padding: '12px 24px',
+    color: '#333', cursor: 'pointer', 
+    fontSize: '16px',
+    display: 'flex', alignItems: 'center', gap: '12px', transition: '0.2s'
+  },
+  searchBtn: { 
+    backgroundColor: '#10b981', 
+    color: 'white', 
+    height: '60px', // Nút tìm kiếm cao vừa phải, ôm gọn gàng
+    padding: '0 35px', 
+    borderRadius: '50px', 
+    border: 'none', 
+    fontWeight: '700', 
+    fontSize: '18px',
+    cursor: 'pointer', 
+    display: 'flex', alignItems: 'center', gap: '10px',
+    marginLeft: '15px',
+    boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.3)',
+    transition: '0.3s'
+  }
+};
 
   return (
     <div style={styles.hero} onClick={() => setActiveDropdown(null)}>

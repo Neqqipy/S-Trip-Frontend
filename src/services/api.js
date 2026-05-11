@@ -54,3 +54,27 @@ export const sendChatMessage = async (messages, context = {}) => {
     return { success: false, text: "Mạng có chút vấn đề, bạn thử lại nhé!" };
   }
 };
+
+export const fetchReviews = async (place, location, limit = 5) => {
+  try {
+    const url  = `${BASE_URL}/api/reviews?place=${encodeURIComponent(place)}&location=${encodeURIComponent(location)}&limit=${limit}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    return data.success ? data : null;
+  } catch (e) {
+    console.error("Lỗi fetchReviews:", e);
+    return null;
+  }
+};
+
+export const fetchImages = async (place, location = 'Vietnam') => {
+  try {
+    const url  = `${BASE_URL}/api/images?place=${encodeURIComponent(place)}&location=${encodeURIComponent(location)}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    return data.success ? data : { images: [] };
+  } catch (e) {
+    console.error("Lỗi fetchImages:", e);
+    return { images: [] };
+  }
+};

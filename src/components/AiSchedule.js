@@ -4,9 +4,10 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faWandMagicSparkles, faHotel, faUtensils, faMapLocationDot,
   faPenToSquare, faStar, faXmark, faLocationArrow, faPlane,
-  faSun, faCloudSun, faMoon, faMap
+  faSun, faCloudSun, faMoon, faMap, faImages, faComments, faSpinner
 } from '@fortawesome/free-solid-svg-icons';
 import { faCalendar as faRegularCalendar } from '@fortawesome/free-regular-svg-icons';
+import { fetchReviews, fetchImages } from '../services/api';
 
 // 📦 Mock data dự phòng khi backend không trả về dữ liệu
 const mockRepo = {
@@ -160,8 +161,208 @@ const MapModal = ({ placeName, query, onClose }) => {
   return ReactDOM.createPortal(modalContent, document.body);
 };
 
+// ⭐ Stars
+const Stars = ({ rating = 0 }) => (
+  <span style={{ color: '#f59e0b', fontSize: 13 }}>
+    {Array.from({ length: 5 }, (_, i) => (
+      <span key={i}>{i < Math.round(rating) ? '★' : '☆'}</span>
+    ))}
+  </span>
+);
+
+// 📸 ReviewsModal — hiển thị ảnh + comments qua Portal
+const ReviewsModal = ({ placeName, onClose }) => {
+  const [tab,      setTab]      = useState('reviews');
+  const [reviews,  setReviews]  = useState([]);
+  const [images,   setImages]   = useState([]);
+  const [total,    setTotal]    = useState(null);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState('');
+  const [lightbox, setLightbox] = useState(null);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') lightbox ? setLightbox(null) : onClose(); };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+  }, [onClose, lightbox]);
+
+  useEffect(() => {
+    setLoading(true); setError('');
+    Promise.all([fetchReviews(placeName), fetchImages(placeName)])
+      .then(([revData, imgData]) => {
+        setReviews(revData.reviews || []);
+        setTotal(revData.total || null);
+        setImages(imgData.images || []);
+      })
+      .catch(() => setError('Không thể tải dữ liệu. Vui lòng thử lại.'))
+      .finally(() => setLoading(false));
+  }, [placeName]);
+
+  return ReactDOM.createPortal(
+    <>
+      <style>{`
+        @keyframes rvFadeIn  { from{opacity:0} to{opacity:1} }
+        @keyframes rvSlideUp { from{transform:translateY(24px);opacity:0} to{transform:translateY(0);opacity:1} }
+        @keyframes rvSpin    { to{transform:rotate(360deg)} }
+        .rv-overlay { animation: rvFadeIn 0.2s ease forwards; }
+        .rv-box     { animation: rvSlideUp 0.25s cubic-bezier(.22,1,.36,1) forwards; }
+        .rv-img:hover { transform: scale(1.06); }
+      `}</style>
+
+      {/* Overlay — flex center */}
+      <div
+        className="rv-overlay"
+        onClick={() => lightbox ? setLightbox(null) : onClose()}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 9999999,
+          backgroundColor: lightbox ? 'rgba(0,0,0,0.92)' : 'rgba(0,0,0,0.6)',
+          backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        {/* Lightbox */}
+        {lightbox && (
+          <img src={lightbox} alt="" onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '90vw', maxHeight: '88vh', borderRadius: 14, objectFit: 'contain', boxShadow: '0 8px 50px rgba(0,0,0,0.7)' }}
+          />
+        )}
+
+        {/* Modal box — bên trong overlay flex, tự căn giữa */}
+        {!lightbox && (
+          <div
+            className="rv-box"
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: 'min(620px, 95vw)', maxHeight: '85vh',
+              backgroundColor: 'white', borderRadius: 24,
+              boxShadow: '0 30px 90px rgba(0,0,0,0.35)',
+              display: 'flex', flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+          {/* Header */}
+          <div style={{ padding: '20px 22px 0', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: '44px', lineHeight: '1.4' }}>
+                  {placeName}
+                </div>
+                {total && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{Number(total).toLocaleString()} đánh giá trên Google</div>}
+              </div>
+              <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: '#f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#374151', flexShrink: 0, marginLeft: 12 }}>
+                <FontAwesomeIcon icon={faXmark} />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', borderBottom: '2px solid #f1f5f9', gap: 4 }}>
+              {[
+                { key: 'reviews', label: 'Đánh giá', icon: faComments },
+                { key: 'images',  label: 'Hình ảnh',  icon: faImages  },
+              ].map(t => (
+                <button key={t.key} onClick={() => setTab(t.key)} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 18px', border: 'none', background: 'transparent', cursor: 'pointer',
+                  fontSize: 14, fontWeight: 700,
+                  color: tab === t.key ? '#8b5cf6' : '#9ca3af',
+                  borderBottom: tab === t.key ? '2px solid #8b5cf6' : '2px solid transparent',
+                  marginBottom: -2, transition: '0.15s',
+                }}>
+                  <FontAwesomeIcon icon={t.icon} />
+                  {t.label}
+                  {t.key === 'images' && images.length > 0 && (
+                    <span style={{ background: '#8b5cf620', color: '#8b5cf6', fontSize: 10, fontWeight: 900, padding: '1px 6px', borderRadius: 99 }}>
+                      {images.length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Body */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 22px' }}>
+
+            {loading && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, height: 180, color: '#9ca3af' }}>
+                <FontAwesomeIcon icon={faSpinner} style={{ fontSize: 28, color: '#8b5cf6', animation: 'rvSpin 1s linear infinite' }} />
+                <div style={{ fontSize: 13 }}>Đang tải dữ liệu...</div>
+              </div>
+            )}
+
+            {!loading && error && (
+              <div style={{ textAlign: 'center', color: '#ef4444', fontSize: 14, padding: '50px 0' }}>{error}</div>
+            )}
+
+            {/* Tab Reviews */}
+            {!loading && !error && tab === 'reviews' && (
+              reviews.length === 0
+                ? <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 14, padding: '50px 0' }}>Chưa có đánh giá nào.</div>
+                : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {reviews.map((r, i) => (
+                      <div key={i} style={{ background: '#f8fafc', borderRadius: 16, padding: '14px 16px', border: '1px solid #f1f5f9' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                            {r.avatar
+                              ? <img src={r.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : <span style={{ color: 'white', fontWeight: 900, fontSize: 15 }}>{(r.user || 'U')[0].toUpperCase()}</span>
+                            }
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 800, fontSize: 14, color: '#111827' }}>{r.user || 'Người dùng ẩn danh'}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Stars rating={r.rating} />
+                              <span style={{ fontSize: 11, color: '#9ca3af' }}>{r.date || ''}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65 }}>{r.content || 'Không có nội dung.'}</p>
+                      </div>
+                    ))}
+                  </div>
+            )}
+
+            {/* Tab Images */}
+            {!loading && !error && tab === 'images' && (
+              images.length === 0
+                ? <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 14, padding: '50px 0' }}>Chưa có hình ảnh nào.</div>
+                : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+                    {images.map((url, i) => (
+                      <div key={i} onClick={() => setLightbox(url)}
+                        style={{ aspectRatio: '1', borderRadius: 12, overflow: 'hidden', cursor: 'zoom-in', background: '#f1f5f9' }}
+                      >
+                        <img src={url} alt="" className="rv-img"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: '0.2s', display: 'block' }}
+                          onError={e => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{ padding: '12px 22px', borderTop: '1px solid #f1f5f9', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: '#d1d5db' }}>Dữ liệu từ Google Maps · SerpAPI</span>
+            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeName)}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', textDecoration: 'none' }}
+            >
+              Xem trên Google Maps ↗
+            </a>
+          </div>
+        </div>
+        )}
+      </div>
+    </>,
+    document.body
+  );
+};
+
 // 🎨 PlaceCard
 const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit }) => {
+  const [reviewsOpen, setReviewsOpen] = useState(false);
   const isHotel = type === 'Khách sạn';
   const isFlight = type === 'Chuyến bay';
   const icon = isHotel ? faHotel : (isFlight ? faPlane : (type === 'Địa điểm ăn uống' ? faUtensils : faMapLocationDot));
@@ -181,52 +382,87 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
 
   return (
     <div style={{
-      backgroundColor: 'white', borderRadius: '35px', padding: '35px', display: 'flex', gap: '30px',
-      border: '1px solid #f1f5f9', flex: 1, boxShadow: '0 4px 10px rgba(0,0,0,0.05)', alignItems: 'center'
+      backgroundColor: 'white', borderRadius: '20px', padding: '18px 20px',
+      display: 'flex', gap: '16px',
+      border: '1px solid #f1f5f9', flex: 1,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', alignItems: 'center'
     }}>
-      <div style={{ width: '140px', height: '140px', flexShrink: 0, borderRadius: '25px', overflow: 'hidden', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      {/* Ảnh */}
+      <div style={{ width: '110px', height: '110px', flexShrink: 0, borderRadius: '14px', overflow: 'hidden', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         {data.thumbnail ? (
           <img src={data.thumbnail} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-          <FontAwesomeIcon icon={sessionLabel ? sessionIcon : icon} style={{ fontSize: '40px', color: mainColor }} />
+          <FontAwesomeIcon icon={sessionLabel ? sessionIcon : icon} style={{ fontSize: '28px', color: mainColor }} />
         )}
       </div>
 
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '14px', fontWeight: '800', color: mainColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+      {/* Nội dung */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '11px', fontWeight: '800', color: mainColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           {sessionLabel ? `${sessionLabel} · ${type}` : type}
         </div>
-        <div style={{ fontSize: '22px', fontWeight: '900', color: '#111827', margin: '8px 0' }}>{data.name || data.airline}</div>
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-          <span style={{ color: '#eab308', fontWeight: '700' }}><FontAwesomeIcon icon={faStar} /> {data.rating || 'N/A'}</span>
-          <span style={{ color: '#10b981', fontWeight: '800' }}>{data.price}</span>
+        <div style={{ fontSize: '16px', fontWeight: '900', color: '#111827', margin: '4px 0 5px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: '44px', lineHeight: '1.4' }}>
+          {data.name || data.airline}
         </div>
-        <div style={{ fontSize: '14px', color: '#64748b', marginTop: '6px' }}>{data.desc}</div>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '4px' }}>
+          <span style={{ color: '#eab308', fontWeight: '700', fontSize: '13px' }}>
+            <FontAwesomeIcon icon={faStar} /> {data.rating || 'N/A'}
+          </span>
+          <span style={{ color: '#10b981', fontWeight: '800', fontSize: '13px' }}>{data.price}</span>
+        </div>
+        <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginBottom: '10px'}}>
+          {data.desc}
+        </div>
 
-        <div style={{ display: 'flex', gap: '15px', marginTop: '15px' }}>
+        {/* Nút */}
+        <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
           {!isFlight && (
             <button
               onClick={handleLocation}
               style={{
-                padding: '12px 25px', borderRadius: '15px', border: 'none',
+                padding: '7px 14px', borderRadius: '10px', border: 'none',
                 backgroundColor: '#3b82f6', color: 'white', fontWeight: '700',
                 cursor: 'pointer', fontSize: '12px',
-                display: 'flex', alignItems: 'center', gap: '7px'
+                display: 'flex', alignItems: 'center', gap: '5px',
               }}
             >
-              <FontAwesomeIcon icon={faLocationArrow} /> Vị trí
+              <FontAwesomeIcon icon={faLocationArrow} style={{ fontSize: '10px' }} /> Vị trí
+            </button>
+          )}
+          {!isFlight && (
+            <button
+              onClick={() => setReviewsOpen(true)}
+              style={{
+                padding: '7px 14px', borderRadius: '10px',
+                border: '1.5px solid #0d9488', backgroundColor: 'white',
+                color: '#0d9488', fontWeight: '700', cursor: 'pointer', fontSize: '12px',
+                display: 'flex', alignItems: 'center', gap: '5px', transition: '0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#0d9488'; e.currentTarget.style.color = 'white'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#0d9488'; }}
+            >
+              <FontAwesomeIcon icon={faStar} style={{ fontSize: '10px' }} /> Reviews
             </button>
           )}
           {onEdit && (
             <button
               onClick={onEdit}
-              style={{ padding: '8px 16px', borderRadius: '10px', border: `1px solid ${mainColor}`, color: mainColor, backgroundColor: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}
+              style={{
+                padding: '7px 12px', borderRadius: '10px',
+                border: `1.5px solid ${mainColor}`, color: mainColor,
+                backgroundColor: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '12px',
+                display: 'flex', alignItems: 'center', gap: '5px',
+              }}
             >
-              <FontAwesomeIcon icon={faPenToSquare} /> Đổi
+              <FontAwesomeIcon icon={faPenToSquare} style={{ fontSize: '10px' }} /> Đổi
             </button>
           )}
         </div>
       </div>
+
+      {reviewsOpen && (
+        <ReviewsModal placeName={data.name || data.airline} onClose={() => setReviewsOpen(false)} />
+      )}
     </div>
   );
 };
@@ -245,7 +481,9 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
     rating: h.rating,
     price: h.price_per_night?.toLocaleString() + "đ/đêm" || "Liên hệ",
     thumbnail: h.thumbnail,
-    desc: h.desc || "Lựa chọn tốt nhất dựa trên ngân sách."
+    desc: h.desc || "Lựa chọn tốt nhất dựa trên ngân sách.",
+    lat: h.lat,
+    lng: h.lng
   }));
 
   const realTours = (initialData.realTours || []).map(normalizeActivity);
@@ -280,7 +518,6 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
     }
     setDailyPlans(plans);
     if (onPlanChange) onPlanChange(plans);
-    const cleanHotelName = currentHotel.name.split('-')[0].trim();
     setMapQuery(`${currentHotel.name} ${initialData.location}`);
   }, [initialData.location, numDays]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -315,7 +552,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
       if (onPlanChange) onPlanChange(updated); // ← thông báo MapBubble tọa độ đã sẵn sàng
       return updated;
     });
-  }, [initialData.realTours, initialData.realFoods]); // ← chạy lại mỗi khi geocode xong
+  }, [initialData.realTours, initialData.realFoods]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 🆕 Hàm mở Map Modal
   const handleShowMap = (query, placeName) => {
@@ -326,7 +563,6 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
     if (modal.type === 'Khách sạn') {
       setCurrentHotel(newVal);
       window.dispatchEvent(new CustomEvent('sTripHotelChanged', { detail: newVal }));
-      const cleanName = newVal.name.split('-')[0].trim();
       setMapQuery(`${newVal.name} ${initialData.location}`); // ← cập nhật map tĩnh khi đổi khách sạn
     } else {
       setDailyPlans(prev => {
@@ -366,7 +602,15 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
                   padding: '20px', borderRadius: '20px', border: '2px solid #f1f5f9', marginBottom: '10px', 
                   cursor: 'pointer', display: 'flex', gap: '15px', alignItems: 'center' 
                 }}>
-                <img src={opt.thumbnail || "https://via.placeholder.com/60"} style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover' }} alt="thumb" />
+                <img 
+                  src={opt.thumbnail || "https://placehold.co/60x60?text=S-Trip"} 
+                  style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover' }} 
+                  alt="thumb" 
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "https://placehold.co/60x60?text=S-Trip"; 
+                  }}
+                />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: '800' }}>{opt.name} · <span style={{ color: '#eab308' }}>{opt.rating}⭐</span></div>
                   <div style={{ color: '#10b981', fontWeight: '700' }}>{opt.price}</div>
@@ -416,7 +660,14 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
           />
           {/* Map tĩnh giữ nguyên như ban đầu */}
           <div style={{ borderRadius: '25px', overflow: 'hidden', height: '450px', border: '1px solid #e2e8f0' }}>
-            <iframe title="map" width="100%" height="100%" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`}></iframe>
+            <iframe 
+              title="map" 
+              width="100%" 
+              height="100%" 
+              style={{ border: 0 }} 
+              /* ✅ Sửa lại URL chuẩn bên dưới */
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`}
+            ></iframe>
           </div>
         </div>
       </div>
@@ -432,7 +683,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '35px' }}>
             {/* Morning */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div style={{ fontWeight: '800', color: '#64748b', fontSize: '14px' }}><FontAwesomeIcon icon={faSun} /> BUỔI SÁNG</div>
+              <div style={{ fontWeight: '800', color: '#f59e0b', fontSize: '14px' }}><FontAwesomeIcon icon={faSun} /> BUỔI SÁNG</div>
               <div style={{ display: 'flex', gap: '25px' }}>
                 <PlaceCard type="Điểm tham quan" sessionLabel="Sáng" data={d.morning.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'morning', subType: 'tour' })} />
                 <PlaceCard type="Địa điểm ăn uống" sessionLabel="Sáng" data={d.morning.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'morning', subType: 'food' })} />
@@ -441,7 +692,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
 
             {/* Afternoon */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div style={{ fontWeight: '800', color: '#64748b', fontSize: '14px' }}><FontAwesomeIcon icon={faCloudSun} /> BUỔI CHIỀU</div>
+              <div style={{ fontWeight: '800', color: '#3b82f6', fontSize: '14px' }}><FontAwesomeIcon icon={faCloudSun} /> BUỔI CHIỀU</div>
               <div style={{ display: 'flex', gap: '25px' }}>
                 <PlaceCard type="Điểm tham quan" sessionLabel="Chiều" data={d.afternoon.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'afternoon', subType: 'tour' })} />
                 <PlaceCard type="Địa điểm ăn uống" sessionLabel="Chiều" data={d.afternoon.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'afternoon', subType: 'food' })} />
@@ -450,7 +701,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
 
             {/* Evening */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div style={{ fontWeight: '800', color: '#64748b', fontSize: '14px' }}><FontAwesomeIcon icon={faMoon} /> BUỔI TỐI</div>
+              <div style={{ fontWeight: '800', color: '#8b5cf6', fontSize: '14px' }}><FontAwesomeIcon icon={faMoon} /> BUỔI TỐI</div>
               <div style={{ display: 'flex', gap: '25px' }}>
                 <PlaceCard type="Điểm tham quan" sessionLabel="Tối" data={d.evening.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'evening', subType: 'tour' })} />
                 <PlaceCard type="Địa điểm ăn uống" sessionLabel="Tối" data={d.evening.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'evening', subType: 'food' })} />
