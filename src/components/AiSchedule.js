@@ -34,8 +34,9 @@ const normalizeActivity = (item) => ({
   price: item.price || "Giá tùy chọn",
   desc: item.desc || "",
   thumbnail: item.thumbnail || null,
-  lat: item.lat || item.latitude || null,   // ← THÊM
-  lng: item.lng || item.longitude || null,  // ← THÊM
+  lat: item.lat || item.latitude || null,
+  lng: item.lng || item.longitude || null,
+  place_id: item.place_id || "",
 });
 
 // 🗺️ MAP MODAL POPUP — dùng Portal để thoát khỏi mọi stacking context
@@ -171,7 +172,7 @@ const Stars = ({ rating = 0 }) => (
 );
 
 // 📸 ReviewsModal — hiển thị ảnh + comments qua Portal
-const ReviewsModal = ({ placeName, onClose }) => {
+const ReviewsModal = ({ placeName, placeId, onClose }) => {
   const [tab,      setTab]      = useState('reviews');
   const [reviews,  setReviews]  = useState([]);
   const [images,   setImages]   = useState([]);
@@ -189,7 +190,7 @@ const ReviewsModal = ({ placeName, onClose }) => {
 
   useEffect(() => {
     setLoading(true); setError('');
-    Promise.all([fetchReviews(placeName), fetchImages(placeName)])
+    Promise.all([fetchReviews(placeName, placeId), fetchImages(placeName, placeId)])
       .then(([revData, imgData]) => {
         setReviews(revData.reviews || []);
         setTotal(revData.total || null);
@@ -197,7 +198,7 @@ const ReviewsModal = ({ placeName, onClose }) => {
       })
       .catch(() => setError('Không thể tải dữ liệu. Vui lòng thử lại.'))
       .finally(() => setLoading(false));
-  }, [placeName]);
+  }, [placeName, placeId]);
 
   return ReactDOM.createPortal(
     <>
@@ -363,6 +364,7 @@ const ReviewsModal = ({ placeName, onClose }) => {
 // 🎨 PlaceCard
 const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit }) => {
   const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [isHovered,   setIsHovered]   = useState(false); // hiệu ứng zoom ảnh
   const isHotel = type === 'Khách sạn';
   const isFlight = type === 'Chuyến bay';
   const icon = isHotel ? faHotel : (isFlight ? faPlane : (type === 'Địa điểm ăn uống' ? faUtensils : faMapLocationDot));
@@ -372,25 +374,45 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
   const handleLocation = () => {
     const query = `${data.name} ${locationName}`;
     if (setMapQuery) {
-      // Khách sạn: cập nhật map tĩnh bên dưới
       setMapQuery(query);
     } else if (onShowMap) {
-      // Tham quan / ăn uống: mở popup
       onShowMap(query, data.name);
     }
   };
 
   return (
-    <div style={{
-      backgroundColor: 'white', borderRadius: '20px', padding: '18px 20px',
-      display: 'flex', gap: '16px',
-      border: '1px solid #f1f5f9', flex: 1,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', alignItems: 'center'
-    }}>
-      {/* Ảnh */}
-      <div style={{ width: '110px', height: '110px', flexShrink: 0, borderRadius: '14px', overflow: 'hidden', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        backgroundColor: 'white', borderRadius: '20px', padding: '18px 20px',
+        display: 'flex', gap: '16px',
+        border: '1px solid #f1f5f9', flex: 1,
+        boxShadow: isHovered
+          ? '0 6px 20px rgba(0,0,0,0.10)'
+          : '0 2px 8px rgba(0,0,0,0.06)',
+        alignItems: 'center',
+        transition: 'box-shadow 0.3s ease',
+      }}
+    >
+      {/* Ảnh — zoom nhẹ khi hover */}
+      <div style={{
+        width: '110px', height: '110px', flexShrink: 0,
+        borderRadius: '14px', overflow: 'hidden',
+        backgroundColor: '#f8fafc',
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
+      }}>
         {data.thumbnail ? (
-          <img src={data.thumbnail} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img
+            src={data.thumbnail}
+            alt="thumb"
+            style={{
+              width: '100%', height: '100%', objectFit: 'cover',
+              transform: isHovered ? 'scale(1.09)' : 'scale(1)',
+              transition: 'transform 0.4s ease',
+              display: 'block',
+            }}
+          />
         ) : (
           <FontAwesomeIcon icon={sessionLabel ? sessionIcon : icon} style={{ fontSize: '28px', color: mainColor }} />
         )}
@@ -401,7 +423,18 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
         <div style={{ fontSize: '11px', fontWeight: '800', color: mainColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           {sessionLabel ? `${sessionLabel} · ${type}` : type}
         </div>
-        <div style={{ fontSize: '16px', fontWeight: '900', color: '#111827', margin: '4px 0 5px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: '44px', lineHeight: '1.4' }}>
+        {/* Tên — khít với khung: tối đa 2 dòng, cắt ellipsis */}
+        <div style={{
+          fontSize: '16px', fontWeight: '900', color: '#111827',
+          margin: '4px 0 5px',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          lineHeight: '1.35',
+          wordBreak: 'break-word',
+        }}>
           {data.name || data.airline}
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '4px' }}>
@@ -461,7 +494,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
       </div>
 
       {reviewsOpen && (
-        <ReviewsModal placeName={data.name || data.airline} onClose={() => setReviewsOpen(false)} />
+        <ReviewsModal placeName={data.name || data.airline} placeId={data.place_id || ""} onClose={() => setReviewsOpen(false)} />
       )}
     </div>
   );
@@ -483,7 +516,8 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
     thumbnail: h.thumbnail,
     desc: h.desc || "Lựa chọn tốt nhất dựa trên ngân sách.",
     lat: h.lat,
-    lng: h.lng
+    lng: h.lng,
+    place_id: h.place_id || "",
   }));
 
   const realTours = (initialData.realTours || []).map(normalizeActivity);

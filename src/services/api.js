@@ -3,7 +3,7 @@ const BASE_URL = 'http://127.0.0.1:5000';
 
 export const fetchAutocomplete = async (query) => {
   try {
-    const res = await fetch(`${BASE_URL}autocomplete?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`${BASE_URL}/autocomplete?q=${encodeURIComponent(query)}`);
     const result = await res.json();
     return result.success ? result.data : [];
   } catch (error) { return []; }
@@ -55,22 +55,24 @@ export const sendChatMessage = async (messages, context = {}) => {
   }
 };
 
-export const fetchReviews = async (place, location, limit = 5) => {
+export const fetchReviews = async (place, placeId = '') => {
   try {
-    const url  = `${BASE_URL}/api/reviews?place=${encodeURIComponent(place)}&location=${encodeURIComponent(location)}&limit=${limit}`;
-    const res  = await fetch(url);
+    const params = new URLSearchParams({ place });
+    if (placeId) params.append('place_id', placeId);
+    const res  = await fetch(`${BASE_URL}/api/reviews?${params}`);
     const data = await res.json();
-    return data.success ? data : null;
+    return data.success ? data : { reviews: [] };
   } catch (e) {
     console.error("Lỗi fetchReviews:", e);
-    return null;
+    return { reviews: [] };
   }
 };
 
-export const fetchImages = async (place, location = 'Vietnam') => {
+export const fetchImages = async (place, placeId = '') => {
   try {
-    const url  = `${BASE_URL}/api/images?place=${encodeURIComponent(place)}&location=${encodeURIComponent(location)}`;
-    const res  = await fetch(url);
+    const params = new URLSearchParams({ place });
+    if (placeId) params.append('place_id', placeId);
+    const res  = await fetch(`${BASE_URL}/api/images?${params}`);
     const data = await res.json();
     return data.success ? data : { images: [] };
   } catch (e) {
