@@ -55,28 +55,62 @@ export const sendChatMessage = async (messages, context = {}) => {
   }
 };
 
+const reviewsCache = {};
+const imagesCache = {};
+const pendingReviews = {};
+const pendingImages = {};
+
 export const fetchReviews = async (place, placeId = '') => {
-  try {
-    const params = new URLSearchParams({ place });
-    if (placeId) params.append('place_id', placeId);
-    const res  = await fetch(`${BASE_URL}/api/reviews?${params}`);
-    const data = await res.json();
-    return data.success ? data : { reviews: [] };
-  } catch (e) {
-    console.error("Lỗi fetchReviews:", e);
-    return { reviews: [] };
-  }
+  const cacheKey = placeId || place;
+  
+  // Nếu đã có trong RAM (do nãy vừa mở modal xong đóng lại), lấy ra dùng luôn
+  if (reviewsCache[cacheKey]) return reviewsCache[cacheKey];
+  if (pendingReviews[cacheKey]) return pendingReviews[cacheKey];
+
+  const fetchPromise = (async () => {
+    try {
+      const params = new URLSearchParams({ place });
+      if (placeId) params.append('place_id', placeId);
+      const res = await fetch(`${BASE_URL}/api/reviews?${params}`);
+      const data = await res.json();
+      const result = data.success ? data : { reviews: [] };
+      
+      reviewsCache[cacheKey] = result; 
+      return result;
+    } catch (e) {
+      return { reviews: [] };
+    } finally {
+      delete pendingReviews[cacheKey];
+    }
+  })();
+
+  pendingReviews[cacheKey] = fetchPromise;
+  return fetchPromise;
 };
 
 export const fetchImages = async (place, placeId = '') => {
-  try {
-    const params = new URLSearchParams({ place });
-    if (placeId) params.append('place_id', placeId);
-    const res  = await fetch(`${BASE_URL}/api/images?${params}`);
-    const data = await res.json();
-    return data.success ? data : { images: [] };
-  } catch (e) {
-    console.error("Lỗi fetchImages:", e);
-    return { images: [] };
-  }
+  const cacheKey = placeId || place;
+  
+  if (imagesCache[cacheKey]) return imagesCache[cacheKey];
+  if (pendingImages[cacheKey]) return pendingImages[cacheKey];
+
+  const fetchPromise = (async () => {
+    try {
+      const params = new URLSearchParams({ place });
+      if (placeId) params.append('place_id', placeId);
+      const res = await fetch(`${BASE_URL}/api/images?${params}`);
+      const data = await res.json();
+      const result = data.success ? data : { images: [] };
+      
+      imagesCache[cacheKey] = result;
+      return result;
+    } catch (e) {
+      return { images: [] };
+    } finally {
+      delete pendingImages[cacheKey];
+    }
+  })();
+
+  pendingImages[cacheKey] = fetchPromise;
+  return fetchPromise;
 };

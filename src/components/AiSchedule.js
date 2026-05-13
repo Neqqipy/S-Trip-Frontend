@@ -319,6 +319,33 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
                           </div>
                         </div>
                         <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65 }}>{r.content || 'Không có nội dung.'}</p>
+                        {r.photos && r.photos.length > 0 && (
+                            <div style={{ 
+                              display: 'flex', 
+                              gap: '8px', 
+                              marginTop: '12px', 
+                              overflowX: 'auto', 
+                              paddingBottom: '8px',
+                              scrollbarWidth: 'thin' 
+                            }}>
+                              {r.photos.map((photoUrl, idx) => (
+                                <img 
+                                  key={idx} 
+                                  src={photoUrl} 
+                                  alt="review-pic" 
+                                  referrerPolicy="no-referrer"
+                                  style={{ 
+                                    width: '100px', 
+                                    height: '100px', 
+                                    borderRadius: '12px', 
+                                    objectFit: 'cover',
+                                    border: '1px solid #f1f5f9',
+                                    flexShrink: 0
+                                  }} 
+                                />
+                              ))}
+                            </div>
+                          )}
                       </div>
                     ))}
                   </div>
