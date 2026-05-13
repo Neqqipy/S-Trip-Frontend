@@ -88,6 +88,17 @@ export const fetchReviews = async (place, placeId = '') => {
   return fetchPromise;
 };
 
+export const fetchProvinceImages = async (place) => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/province-images?place=${encodeURIComponent(place)}`);
+    const data = await res.json();
+    return data.success ? data.images : [];
+  } catch (e) {
+    console.error("Lỗi fetchProvinceImages:", e);
+    return [];
+  }
+};
+
 export const fetchImages = async (place, placeId = '') => {
   const cacheKey = placeId || place;
   

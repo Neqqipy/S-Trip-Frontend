@@ -366,7 +366,8 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
   const [directions,  setDirections]  = useState(null);
   const [loadingDir,  setLoadingDir]  = useState(false);
   const iframeRef  = React.useRef(null);
-  const isDragging = React.useRef(false);
+  const isDragging  = React.useRef(false);
+  const modeScrollRef = React.useRef(null);
 
   // Gắn callback vào iframe sau khi load — nhận thông báo từ Leaflet
   const onIframeLoad = React.useCallback(() => {
@@ -468,7 +469,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
     .map(p => `${p.name}:${p.lat},${p.lng}`)
     .join('|');
     
-  // ✅ ĐÃ SỬA: Tạo dấu vân tay cho khách sạn để React biết khi nào vẽ lại bản đồ
+  // Tạo dấu vân tay cho khách sạn để React biết khi nào vẽ lại bản đồ
   const hotelFingerprint = hotelInfo ? `${hotelInfo.name}:${hotelInfo.lat},${hotelInfo.lng}` : 'no-hotel';
 
   useEffect(() => {
@@ -510,6 +511,8 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
         .mb-drag:hover .mb-drag-bar { background: linear-gradient(to bottom, transparent, #10b981, transparent) !important; }
         .mb-drag:hover .mb-grip     { border-color: #10b981 !important; }
         .mb-drag:hover .mb-dot      { background-color: #10b981 !important; }
+        .mb-scroll-x { scrollbar-width: none; }
+        .mb-scroll-x::-webkit-scrollbar { display: none; }
       `}</style>
 
       <div className="mb-overlay" onClick={onClose} style={{ position:'fixed', inset:0, backgroundColor:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', zIndex:999998 }} />
@@ -740,59 +743,85 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                       '🚶':  { from:'#a855f7', to:'#ec4899' },
                       '🚌':  { from:'#f43f5e', to:'#f97316' },
                     };
+                    const scroll = (dir) => {
+                      if (modeScrollRef.current) modeScrollRef.current.scrollBy({ left: dir * 100, behavior:'smooth' });
+                    };
                     return (
-                      <div style={{
-                        display:'flex', gap:8, overflowX:'auto', paddingBottom:2,
-                        scrollbarWidth:'none',
-                      }}>
-                        {directions.modes.map((m, i) => {
-                          const s = styleMap[m.icon] || { from:'#64748b', to:'#94a3b8' };
-                          return (
-                            <div key={i} style={{
-                              flexShrink:0, width:82,
-                              borderRadius:20,
-                              background:`linear-gradient(145deg, ${s.from}, ${s.to})`,
-                              padding:'12px 8px 10px',
-                              display:'flex', flexDirection:'column', alignItems:'center', gap:5,
-                              boxShadow:`0 8px 20px ${s.from}55, inset 0 1px 0 rgba(255,255,255,0.35)`,
-                              border:'1px solid rgba(255,255,255,0.3)',
-                              backdropFilter:'blur(10px)',
-                              position:'relative', overflow:'hidden',
-                            }}>
-                              {/* Glare highlight */}
-                              <div style={{
-                                position:'absolute', top:-18, left:-18,
-                                width:60, height:60, borderRadius:'50%',
-                                background:'rgba(255,255,255,0.18)',
-                                pointerEvents:'none',
-                              }}/>
+                      <div style={{ position:'relative', overflow:'hidden', padding:'0 2px' }}>
+                        {/* Nút trái */}
+                        <button onClick={() => scroll(-1)} style={{
+                          position:'absolute', left:-8, top:'50%', transform:'translateY(-50%)',
+                          zIndex:2, width:26, height:26, borderRadius:'50%',
+                          border:'1.5px solid #d1d5db', background:'white',
+                          boxShadow:'0 2px 6px rgba(0,0,0,0.15)',
+                          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                          fontSize:12, color:'#374151', padding:0,
+                        }}>‹</button>
 
-                              <span style={{ fontSize:24, lineHeight:1, filter:'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}>
-                                {m.icon}
-                              </span>
-
-                              <div style={{ fontSize:13, fontWeight:900, color:'white', letterSpacing:'-0.3px', textShadow:'0 1px 4px rgba(0,0,0,0.2)' }}>
-                                {m.duration}
-                              </div>
-
-                              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.85)' }}>
-                                {m.label}
-                              </div>
-
-                              {/* Speed pill */}
-                              <div style={{
-                                background:'rgba(255,255,255,0.22)',
-                                border:'1px solid rgba(255,255,255,0.4)',
-                                borderRadius:99, padding:'2px 8px',
-                                fontSize:10, fontWeight:800, color:'white',
-                                backdropFilter:'blur(4px)',
-                                letterSpacing:'0.2px',
+                        {/* Cards */}
+                        <div ref={modeScrollRef} className="mb-scroll-x" style={{
+                          display:'flex', gap:8,
+                          overflowX:'auto',
+                          paddingBottom:6,
+                          paddingLeft:22, paddingRight:22,
+                          scrollbarWidth:'none',
+                          msOverflowStyle:'none',
+                        }}>
+                          {directions.modes.map((m, i) => {
+                            const s = styleMap[m.icon] || { from:'#64748b', to:'#94a3b8' };
+                            return (
+                              <div key={i} style={{
+                                flexShrink:0, width:82,
+                                borderRadius:20,
+                                background:`linear-gradient(145deg, ${s.from}, ${s.to})`,
+                                padding:'12px 8px 10px',
+                                display:'flex', flexDirection:'column', alignItems:'center', gap:5,
+                                boxShadow:`0 8px 20px ${s.from}55, inset 0 1px 0 rgba(255,255,255,0.35)`,
+                                border:'1px solid rgba(255,255,255,0.3)',
+                                backdropFilter:'blur(10px)',
+                                position:'relative', overflow:'hidden',
                               }}>
-                                {m.speed}
+                                {/* Glare highlight */}
+                                <div style={{
+                                  position:'absolute', top:-18, left:-18,
+                                  width:60, height:60, borderRadius:'50%',
+                                  background:'rgba(255,255,255,0.18)',
+                                  pointerEvents:'none',
+                                }}/>
+                                <span style={{ fontSize:24, lineHeight:1, filter:'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}>
+                                  {m.icon}
+                                </span>
+                                <div style={{ fontSize:13, fontWeight:900, color:'white', letterSpacing:'-0.3px', textShadow:'0 1px 4px rgba(0,0,0,0.2)' }}>
+                                  {m.duration}
+                                </div>
+                                <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.85)' }}>
+                                  {m.label}
+                                </div>
+                                {/* Speed pill */}
+                                <div style={{
+                                  background:'rgba(255,255,255,0.22)',
+                                  border:'1px solid rgba(255,255,255,0.4)',
+                                  borderRadius:99, padding:'2px 8px',
+                                  fontSize:10, fontWeight:800, color:'white',
+                                  backdropFilter:'blur(4px)',
+                                  letterSpacing:'0.2px',
+                                }}>
+                                  {m.speed}
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
+
+                        {/* Nút phải */}
+                        <button onClick={() => scroll(1)} style={{
+                          position:'absolute', right:-8, top:'50%', transform:'translateY(-50%)',
+                          zIndex:2, width:26, height:26, borderRadius:'50%',
+                          border:'1.5px solid #d1d5db', background:'white',
+                          boxShadow:'0 2px 6px rgba(0,0,0,0.15)',
+                          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                          fontSize:12, color:'#374151', padding:0,
+                        }}>›</button>
                       </div>
                     );
                   })()}

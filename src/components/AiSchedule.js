@@ -181,6 +181,9 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
   const [error,    setError]    = useState('');
   const [lightbox, setLightbox] = useState(null);
 
+  const [filterStar, setFilterStar] = useState('all'); 
+  const [visibleCount, setVisibleCount] = useState(5);
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') lightbox ? setLightbox(null) : onClose(); };
     window.addEventListener('keydown', onKey);
@@ -199,6 +202,18 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
       .catch(() => setError('Không thể tải dữ liệu. Vui lòng thử lại.'))
       .finally(() => setLoading(false));
   }, [placeName, placeId]);
+
+  const stats = {
+    all: reviews.length,
+    5: reviews.filter(r => Math.round(r.rating || 0) === 5).length,
+    4: reviews.filter(r => Math.round(r.rating || 0) === 4).length,
+    3: reviews.filter(r => Math.round(r.rating || 0) === 3).length,
+    2: reviews.filter(r => Math.round(r.rating || 0) === 2).length,
+    1: reviews.filter(r => Math.round(r.rating || 0) === 1).length,
+  };
+
+  const filteredReviews = reviews.filter(r => filterStar === 'all' || Math.round(r.rating || 0) === filterStar);
+  const displayedReviews = filteredReviews.slice(0, visibleCount);
 
   return ReactDOM.createPortal(
     <>
@@ -300,54 +315,82 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
             {!loading && !error && tab === 'reviews' && (
               reviews.length === 0
                 ? <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 14, padding: '50px 0' }}>Chưa có đánh giá nào.</div>
-                : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {reviews.map((r, i) => (
-                      <div key={i} style={{ background: '#f8fafc', borderRadius: 16, padding: '14px 16px', border: '1px solid #f1f5f9' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-                            {r.avatar
-                              ? <img src={r.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              : <span style={{ color: 'white', fontWeight: 900, fontSize: 15 }}>{(r.user || 'U')[0].toUpperCase()}</span>
-                            }
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 800, fontSize: 14, color: '#111827' }}>{r.user || 'Người dùng ẩn danh'}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <Stars rating={r.rating} />
-                              <span style={{ fontSize: 11, color: '#9ca3af' }}>{r.date || ''}</span>
+                : <div style={{ display: 'flex', flexDirection: 'column' }}>
+
+                    {/* 🟢 1. BỘ LỌC KIỂU SHOPEE */}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                      {['all', 5, 4, 3, 2, 1].map(star => (
+                        <button
+                          key={star}
+                          onClick={() => { setFilterStar(star); setVisibleCount(10); }} // Click thì đổi filter và reset lại mốc 10
+                          style={{
+                            padding: '6px 14px', borderRadius: '20px',
+                            border: filterStar === star ? '1px solid #8b5cf6' : '1px solid #e2e8f0',
+                            backgroundColor: filterStar === star ? '#f5f3ff' : '#f8fafc',
+                            color: filterStar === star ? '#8b5cf6' : '#475569',
+                            fontSize: '13px', fontWeight: '700', cursor: 'pointer', transition: '0.2s',
+                            display: stats[star] === 0 && star !== 'all' ? 'none' : 'block' // Ẩn nút nếu không có sao đó
+                          }}
+                        >
+                          {star === 'all' ? 'Tất cả' : `${star} Sao`} ({stats[star]})
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* 🟢 2. DANH SÁCH ĐÁNH GIÁ (Đã qua bộ lọc) */}
+                    {displayedReviews.length === 0 ? (
+                      <div style={{ textAlign: 'center', color: '#9ca3af', padding: '30px 0', fontSize: 14 }}>Không có đánh giá {filterStar} sao nào.</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {displayedReviews.map((r, i) => (
+                          <div key={i} style={{ background: '#f8fafc', borderRadius: 16, padding: '14px 16px', border: '1px solid #f1f5f9' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                              <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                                {r.avatar
+                                  ? <img src={r.avatar} referrerPolicy="no-referrer" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  : <span style={{ color: 'white', fontWeight: 900, fontSize: 15 }}>{(r.user || 'U')[0].toUpperCase()}</span>
+                                }
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 800, fontSize: 14, color: '#111827' }}>{r.user || 'Người dùng ẩn danh'}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <Stars rating={r.rating} />
+                                  <span style={{ fontSize: 11, color: '#9ca3af' }}>{r.date || ''}</span>
+                                </div>
+                              </div>
                             </div>
+                            <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65 }}>{r.content || 'Không có nội dung.'}</p>
+                            
+                            {/* Hiển thị Ảnh đính kèm (nếu có) */}
+                            {r.photos && r.photos.length > 0 && (
+                              <div style={{ display: 'flex', gap: '8px', marginTop: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
+                                {r.photos.map((photoUrl, idx) => (
+                                  <img key={idx} src={photoUrl} referrerPolicy="no-referrer" alt="review-pic" style={{ width: '100px', height: '100px', borderRadius: '12px', objectFit: 'cover', border: '1px solid #f1f5f9', flexShrink: 0 }} />
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                        <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65 }}>{r.content || 'Không có nội dung.'}</p>
-                        {r.photos && r.photos.length > 0 && (
-                            <div style={{ 
-                              display: 'flex', 
-                              gap: '8px', 
-                              marginTop: '12px', 
-                              overflowX: 'auto', 
-                              paddingBottom: '8px',
-                              scrollbarWidth: 'thin' 
-                            }}>
-                              {r.photos.map((photoUrl, idx) => (
-                                <img 
-                                  key={idx} 
-                                  src={photoUrl} 
-                                  alt="review-pic" 
-                                  referrerPolicy="no-referrer"
-                                  style={{ 
-                                    width: '100px', 
-                                    height: '100px', 
-                                    borderRadius: '12px', 
-                                    objectFit: 'cover',
-                                    border: '1px solid #f1f5f9',
-                                    flexShrink: 0
-                                  }} 
-                                />
-                              ))}
-                            </div>
-                          )}
+                        ))}
                       </div>
-                    ))}
+                    )}
+
+                    {/* 🟢 3. NÚT XEM THÊM */}
+                    {visibleCount < filteredReviews.length && (
+                      <button
+                        onClick={() => setVisibleCount(prev => prev + 10)}
+                        style={{
+                          marginTop: '16px', padding: '12px', borderRadius: '12px',
+                          border: '1px dashed #cbd5e1', backgroundColor: 'transparent',
+                          color: '#64748b', fontWeight: '700', fontSize: '13px',
+                          cursor: 'pointer', transition: '0.2s', textAlign: 'center'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf6'; e.currentTarget.style.color = '#8b5cf6'; e.currentTarget.style.backgroundColor = '#f5f3ff'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
+                        Xem thêm đánh giá ({filteredReviews.length - visibleCount} cái nữa) ⬇️
+                      </button>
+                    )}
+
                   </div>
             )}
 
