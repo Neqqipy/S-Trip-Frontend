@@ -1,18 +1,17 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEarthAmericas, faEnvelope, faPhone } from '@fortawesome/free-solid-svg-icons';
-import { faFacebook, faInstagram, faGithub } from '@fortawesome/free-brands-svg-icons';
+import { faEnvelope, faPhone } from '@fortawesome/free-solid-svg-icons'; // Đã xóa faEarthAmericas vì dùng ảnh
+import { faFacebook, faInstagram, faGithub, faGoogle } from '@fortawesome/free-brands-svg-icons'; // Thêm faGoogle
 
 const Footer = ({ onNavigate }) => { // Nhận hàm điều hướng từ App
   const styles = {
     footer: { backgroundColor: '#111827', color: 'white', padding: '80px 0 40px 0', marginTop: '100px', width: '100%' },
     container: { width: '90%', maxWidth: '1600px', margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr', gap: '60px', marginBottom: '60px' },
     logo: { fontSize: '36px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' },
-    logoIcon: { backgroundColor: '#10b981', width: '50px', height: '50px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '24px' },
     heading: { fontSize: '22px', fontWeight: '700', marginBottom: '25px', color: '#10b981' },
     linkList: { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' },
     link: { color: '#9ca3af', textDecoration: 'none', fontSize: '18px', transition: '0.3s', cursor: 'pointer' },
-    socialIcon: { fontSize: '28px', color: 'white', cursor: 'pointer', transition: '0.3s', textDecoration: 'none' },
+    socialIcon: { fontSize: '28px', color: 'white', cursor: 'pointer', transition: '0.3s', textDecoration: 'none', display: 'flex', alignItems: 'center' },
     bottomBar: { borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '40px', textAlign: 'center', color: '#6b7280', fontSize: '16px' }
   };
 
@@ -22,15 +21,31 @@ const Footer = ({ onNavigate }) => { // Nhận hàm điều hướng từ App
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Nhấn Logo quay về đầu trang */}
           <div style={styles.logo} onClick={() => onNavigate('hero-section')}>
-            <div style={styles.logoIcon}><FontAwesomeIcon icon={faEarthAmericas} /></div>
+            <img 
+              src="S.jpg" 
+              alt="S-Trip Logo" 
+              style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} 
+            />
             S-Trip
           </div>
           <p style={{ color: '#9ca3af', fontSize: '18px', lineHeight: '1.6' }}>Hệ thống lên lịch trình du lịch thông minh bằng AI.</p>
-          <div style={{ display: 'flex', gap: '20px' }}>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
             {/* Các liên kết mạng xã hội thực tế */}
             <a href="https://facebook.com" target="_blank" rel="noreferrer" style={styles.socialIcon}><FontAwesomeIcon icon={faFacebook} /></a>
             <a href="https://instagram.com" target="_blank" rel="noreferrer" style={styles.socialIcon}><FontAwesomeIcon icon={faInstagram} /></a>
             <a href="https://github.com" target="_blank" rel="noreferrer" style={styles.socialIcon}><FontAwesomeIcon icon={faGithub} /></a>
+            
+            {/* Logo SerpApi (Sử dụng thẻ img) */}
+            <a href="https://serpapi.com" target="_blank" rel="noreferrer" style={styles.socialIcon}>
+              <img 
+                src="https://serpapi.com/favicon.ico" 
+                alt="SerpApi" 
+                style={{ width: '28px', height: '28px', borderRadius: '4px' }} 
+              />
+            </a>
+
+            {/* Logo Google (Sử dụng FontAwesome) */}
+            <a href="https://google.com" target="_blank" rel="noreferrer" style={styles.socialIcon}><FontAwesomeIcon icon={faGoogle} /></a>
           </div>
         </div>
 
@@ -63,9 +78,7 @@ const Footer = ({ onNavigate }) => { // Nhận hàm điều hướng từ App
       </div>
 
       <div style={styles.bottomBar}>
-            © 2026 S-Trip Project.Được thiết kế bởi Trịnh Nguyễn Huỳnh Nhi - 24120404
-                                                    Đào Ngọc Hưng - 24120319
-                                                    Đặng Thuyền Ngọc - 24120391
+            © 2026 S-Trip Project. Được thiết kế bởi Trịnh Nguyễn Huỳnh Nhi - 24120404, Đào Ngọc Hưng - 24120319, Đặng Thuyền Ngọc - 24120391
       </div>
     </footer>
   );

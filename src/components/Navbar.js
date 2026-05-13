@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faEarthAmericas,
   faArrowRightToBracket,
   faXmark,
   faLock,
@@ -28,11 +27,11 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary }) => {
   const styles = {
     header: {
       height: '110px', display: 'flex', justifyContent: 'center', alignItems: 'center',
-      position: 'fixed', top: 0, width: '100%', zIndex: 1000,
+      position: 'fixed', top: 0, width: '99.2%', zIndex: 1000,
       background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(10px)',
     },
     container: {
-      width: '98%', maxWidth: '1600px', display: 'flex',
+      width: '100%', maxWidth: '1600px', display: 'flex',
       justifyContent: 'space-between', alignItems: 'center', padding: '0 40px',
     },
     logo: {
@@ -44,6 +43,48 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary }) => {
       backgroundColor: '#10b981', width: '65px', height: '65px', borderRadius: '50%',
       display: 'flex', justifyContent: 'center', alignItems: 'center',
       fontSize: '35px', color: 'white',
+    },
+    logoContainer: {
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '18px', // Khoảng cách giữa ảnh và chữ
+      textDecoration: 'none', 
+      cursor: 'pointer',
+    },
+    logoImage: {
+      height: '88px', 
+      width: '88px',
+      borderRadius: '50%',
+      objectFit: 'cover',
+      // Tăng độ sáng (brightness) và tạo hiệu ứng tỏa hào quang (drop-shadow) màu xanh ngọc
+      filter: 'drop-shadow(0 0 12px rgba(16, 185, 129, 0.9)) brightness(1.15)', 
+    },
+    brandTextContainer: {
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+    },
+    brandTitle: {
+      fontSize: '38px', 
+      fontWeight: '900', 
+      color: 'white',
+      // Hiệu ứng chữ phát sáng màu trắng giống trong ảnh mẫu
+      textShadow: '0 0 4px rgba(255,255,255,0.6), 0 0 8px rgba(255,255,255,0.25)',
+      lineHeight: '1.1',
+    },
+    brandSubtitle: {
+      fontSize: '15px',
+      fontWeight: '700',
+      color: '#34d399', // Màu xanh ngọc
+      letterSpacing: '3px', // Giãn cách chữ rộng ra
+      marginTop: '10px',
+      textShadow: '0 0 6px rgba(16, 185, 129, 0.5)',
+    },
+    brandLine: {
+      height: '1px',
+      width: '100%', // Kẻ dài bằng chữ
+      backgroundColor: 'rgba(16, 185, 129, 0.4)', // Đường kẻ mờ
+      marginTop: '5px',
     },
     nav: { display: 'flex', gap: '45px', alignItems: 'center' },
 
@@ -122,9 +163,19 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary }) => {
       <header style={styles.header}>
         <div style={styles.container}>
           {/* LOGO */}
-          <div style={styles.logo} onClick={onRefresh}>
-            <div style={styles.logoIcon}><FontAwesomeIcon icon={faEarthAmericas} /></div>
-            S-Trip
+          <div style={styles.logoContainer} onClick={onRefresh}>
+            <img 
+              src="/S.jpg" // Đảm bảo tên file ảnh của bạn khớp nhé
+              alt="S-Trip Logo" 
+              style={styles.logoImage} 
+            />
+            
+            {/* Vùng chứa chữ S-Trip và Khám Phá Việt Nam */}
+            <div style={styles.brandTextContainer}>
+              <span style={styles.brandTitle}>S-Trip</span>
+              <span style={styles.brandSubtitle}>KHÁM PHÁ VIỆT NAM</span>
+              <div style={styles.brandLine}></div>
+            </div>
           </div>
 
           <nav style={styles.nav}>

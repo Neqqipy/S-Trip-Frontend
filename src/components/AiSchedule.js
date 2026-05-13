@@ -173,7 +173,7 @@ const Stars = ({ rating = 0 }) => (
 
 // 📸 ReviewsModal — hiển thị ảnh + comments qua Portal
 const ReviewsModal = ({ placeName, placeId, onClose }) => {
-  const [tab,      setTab]      = useState('reviews');
+  const [tab,      setTab]      = useState('images');
   const [reviews,  setReviews]  = useState([]);
   const [images,   setImages]   = useState([]);
   const [total,    setTotal]    = useState(null);
@@ -274,8 +274,8 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
             {/* Tabs */}
             <div style={{ display: 'flex', borderBottom: '2px solid #f1f5f9', gap: 4 }}>
               {[
-                { key: 'reviews', label: 'Đánh giá', icon: faComments },
                 { key: 'images',  label: 'Hình ảnh',  icon: faImages  },
+                { key: 'reviews', label: 'Đánh giá', icon: faComments },
               ].map(t => (
                 <button key={t.key} onClick={() => setTab(t.key)} style={{
                   display: 'flex', alignItems: 'center', gap: 6,
@@ -458,11 +458,14 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
         backgroundColor: 'white', borderRadius: '20px', padding: '18px 20px',
         display: 'flex', gap: '16px',
         border: '1px solid #f1f5f9', flex: 1,
-        boxShadow: isHovered
-          ? '0 6px 20px rgba(0,0,0,0.10)'
-          : '0 2px 8px rgba(0,0,0,0.06)',
+        boxShadow: isHovered 
+      ? '0 15px 35px rgba(0,0,0,0.12)' 
+      : '0 2px 8px rgba(0,0,0,0.06)',
         alignItems: 'center',
-        transition: 'box-shadow 0.3s ease',
+        transform: isHovered ? 'translateY(-10px)' : 'translateY(0)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        zIndex: isHovered ? 10 : 1,
+        position: 'relative'
       }}
     >
       {/* Ảnh — zoom nhẹ khi hover */}
