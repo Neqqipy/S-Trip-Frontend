@@ -1,11 +1,7 @@
 /* Dùng dấu sao để chọn TẤT CẢ mọi thứ trên đời */
 * {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-}
-
-/* Ép các ô nhập liệu và nút bấm phải nghe lời */
-input, button, select, textarea, span, div {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  box-sizing: border-box; /* Chuyển box-sizing lên đây để áp dụng cho mọi thẻ, rất tốt cho layout */
 }
 
 /* Hiệu ứng rung ngang màn hình khi có lỗi */
@@ -16,36 +12,26 @@ input, button, select, textarea, span, div {
   40%, 60% { transform: translate3d(8px, 0, 0); }
 }
 
-/* Class được React thêm vào khi có ô trống */
 .shake {
   animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
   transform: translate3d(0, 0, 0);
 }
 
-/* Loại bỏ margin/padding mặc định của trình duyệt trên thẻ body */
-body {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box; /* Đảm bảo padding không làm tăng kích thước phần tử */
-}
-
-/* Đảm bảo chiều cao tối đa cho các thẻ cha */
-html, body, #root {
-  height: 100%;
-}
-
-body {
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
+/* Reset chuẩn mực cho dự án React */
 html, body {
   margin: 0 !important;
   padding: 0 !important;
   overflow-x: hidden;
+  
+  /* THAY ĐỔI QUAN TRỌNG: Để nội dung tự do giãn dài xuống dưới */
+  min-height: 100vh; 
+  
+  /* Khóa cứng hành vi cuộn mặc định để nhường toàn quyền cho Javascript (App.js) */
+  scroll-behavior: auto !important; 
 }
 
 #root {
   margin: 0;
   padding: 0;
+  min-height: 100vh; 
 }

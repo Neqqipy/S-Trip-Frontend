@@ -14,14 +14,18 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [showLockTip, setShowLockTip] = useState(false); // tooltip khi click lúc bị khoá
 
+  // Tất cả scroll đều uỷ quyền cho App.js (onNavigate) để isScrollingRef hoạt động đúng
+  const handleHomeClick = () => {
+    if (onNavigate) onNavigate('hero-section');
+  };
+
   const handleItineraryClick = () => {
     if (!hasItinerary) {
-      // Hiện tooltip ngắn rồi tự tắt
       setShowLockTip(true);
       setTimeout(() => setShowLockTip(false), 2200);
       return;
     }
-    onNavigate('itinerary-section');
+    if (onNavigate) onNavigate('itinerary-section');
   };
 
   const styles = {
@@ -182,7 +186,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary }) => {
             {/* TRANG CHỦ */}
             <div
               style={styles.link(activeSection === 'home', false)}
-              onClick={() => onNavigate('hero-section')}
+              onClick={handleHomeClick}
             >
               Trang chủ
               {activeSection === 'home' && <div style={styles.underline} />}

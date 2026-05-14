@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 // 1. Import Router
 import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
@@ -22,11 +22,11 @@ const HomePage = ({
 }) => {
   return (
     <>
-      <div id="hero-section">
+      <div id="hero-section" style={{ scrollMarginTop: '110px' }}>
         <Hero onSearch={handleSearch} />
       </div>
       
-      <div id="itinerary-section">
+      <div id="itinerary-section" style={{ scrollMarginTop: '110px' }}>
         {isLoading && <SkeletonLoader />}
         {searchData && !isLoading && (
           <AiSchedule 
@@ -37,7 +37,7 @@ const HomePage = ({
         )}
       </div>
 
-      <div id="featured-section">
+      <div id="featured-section" style={{ scrollMarginTop: '110px' }}>
         <FeaturedDestinations onNavigate={scrollToSection} />
       </div>
     </>
@@ -51,77 +51,119 @@ function AppContent() {
   const [activeSection, setActiveSection] = useState('home'); 
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  
+
+  // Flag để tạm dừng scroll spy khi user vừa click nav
+  const isScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef(null);
+  // Dùng ref để scroll spy luôn đọc giá trị mới nhất mà không cần re-register listener
+  const activeSectionRef = useRef(activeSection);
+  const searchDataRef = useRef(searchData);
+  const isLoadingRef = useRef(isLoading);
+
+  useEffect(() => { activeSectionRef.current = activeSection; }, [activeSection]);
+  useEffect(() => { searchDataRef.current = searchData; }, [searchData]);
+  useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
+
   const location = useLocation(); // Để theo dõi URL hiện tại
 
-  // --- 1. TỰ ĐỘNG THEO DÕI VỊ TRÍ CUỘN (GIỮ NGUYÊN) ---
+  // --- 1. TỰ ĐỘNG THEO DÕI VỊ TRÍ CUỘN ---
   useEffect(() => {
+    let scrollStopTimer;
+
     const handleScroll = () => {
-      // Chỉ chạy Scroll Spy khi đang ở trang chủ (path là '/')
-      if (location.pathname !== '/' || activeSection === 'dashboard') return;
-
-      const heroSection = document.getElementById('hero-section');
-      const itinerarySection = document.getElementById('itinerary-section');
-      const featuredSection = document.getElementById('featured-section');
-      const threshold = 150;
-
-      if (itinerarySection && searchData) {
-        const rect = itinerarySection.getBoundingClientRect();
-        if (rect.top <= threshold && rect.bottom >= threshold) {
-          setActiveSection('schedule');
-          return;
-        }
+      // Đang cuộn tự động bằng click Nav -> Bỏ qua
+      if (isScrollingRef.current) {
+        clearTimeout(scrollStopTimer);
+        scrollStopTimer = setTimeout(() => { isScrollingRef.current = false; }, 150);
+        return;
       }
 
-      if (featuredSection) {
-        const rect = featuredSection.getBoundingClientRect();
-        if (rect.top <= threshold) {
-          setActiveSection('featured');
-          return;
-        }
-      }
+      if (location.pathname !== '/' || activeSectionRef.current === 'dashboard') return;
 
-      if (heroSection) {
-        const rect = heroSection.getBoundingClientRect();
-        if (rect.top <= threshold) setActiveSection('home');
+      const hero = document.getElementById('hero-section');
+      const itinerary = document.getElementById('itinerary-section');
+      const featured = document.getElementById('featured-section');
+
+      // Hàm kiểm tra xem section đã chạm/vượt qua mốc Navbar chưa
+      const isPastNavbar = (el) => el && el.getBoundingClientRect().top <= 150;
+
+      // Ưu tiên check từ dưới lên trên (Vì khi bạn cuộn xuống cuối, Featured sẽ nổi lên)
+      if (isPastNavbar(featured)) {
+        setActiveSection('featured');
+      } 
+      else if (isPastNavbar(itinerary) && (searchDataRef.current || isLoadingRef.current)) {
+        setActiveSection('schedule');
+      } 
+      else if (hero) {
+        setActiveSection('home'); // Mặc định là Trang chủ
       }
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [activeSection, searchData, location.pathname]);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollStopTimer);
+    };
+  }, [location.pathname]);
 
-  // --- 2. HÀM ĐIỀU HƯỚNG MƯỢT MÀ (GIỮ NGUYÊN) ---
+  // --- 2. HÀM ĐIỀU HƯỚNG MƯỢT MÀ ---
   const scrollToSection = (id) => {
+    // Xóa timeout cũ để không bị đụng độ
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    
+    // Khóa Scroll Spy ngay lập tức
+    isScrollingRef.current = true;
+
     if (id === 'dashboard') {
       setActiveSection('dashboard');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollTimeoutRef.current = setTimeout(() => { isScrollingRef.current = false; }, 800);
       return;
     }
-    setActiveSection('home');
+
+    // Đổi state active cho Navbar đổi màu ngay tức khắc
+    if (id === 'hero-section') setActiveSection('home');
+    else if (id === 'itinerary-section') setActiveSection('schedule');
+    else if (id === 'featured-section') setActiveSection('featured');
+
+    // Cuộn mượt mà
     setTimeout(() => {
-      const element = document.getElementById(id);
-      if (element) {
-        const offset = 90;
-        const elementPosition = element.getBoundingClientRect().top + window.scrollY;
-        window.scrollTo({ top: elementPosition - offset, behavior: 'smooth' });
-        if (id === 'itinerary-section') setActiveSection('schedule');
-        else if (id === 'featured-section') setActiveSection('featured');
-        else setActiveSection('home');
+      if (id === 'hero-section') {
+        // Cuộn thẳng lên đỉnh màn hình (áp dụng cho Trang chủ)
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        const element = document.getElementById(id);
+        // Dùng scrollIntoView, CSS scrollMarginTop ở trên sẽ tự động chừa chỗ cho Navbar
+        if (element) {
+           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
-    }, 10);
+
+      // Mở khóa Scroll Spy sau khi dự kiến cuộn xong
+      scrollTimeoutRef.current = setTimeout(() => { 
+        isScrollingRef.current = false; 
+      }, 800);
+    }, 50); // Delay 50ms để React kịp mount DOM nếu bạn vừa nhảy từ Dashboard về
   };
 
-  // --- 3. XỬ LÝ TÌM KIẾM (GIỮ NGUYÊN) ---
+  // --- 3. XỬ LÝ TÌM KIẾM ---
   const handleSearch = async (formData) => {
     setIsLoading(true);
     setSearchData(null);
     setEditedPlans(null);
-    setActiveSection('home');
+    // Set 'schedule' để nav active đúng ngay khi search
+    setActiveSection('schedule');
 
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    isScrollingRef.current = true;
+    
     setTimeout(() => {
       const el = document.getElementById('itinerary-section');
       if (el) el.scrollIntoView({ behavior: 'smooth' });
+      
+      // Clear và set lại fallback timeout
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => { isScrollingRef.current = false; }, 800);
     }, 100);
 
     const result = await fetchTripPlan(
@@ -149,7 +191,7 @@ function AppContent() {
     setIsLoading(false);
   };
 
-  const hasItinerary = !!searchData && !isLoading;
+  const hasItinerary = !!searchData || isLoading;
 
   return (
     <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', margin: 0, padding: 0 }}>
