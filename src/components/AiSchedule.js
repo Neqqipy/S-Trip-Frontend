@@ -4,10 +4,21 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faWandMagicSparkles, faHotel, faUtensils, faMapLocationDot,
   faPenToSquare, faStar, faXmark, faLocationArrow, faPlane,
-  faSun, faCloudSun, faMoon, faMap, faImages, faComments, faSpinner
+  faSun, faCloudSun, faMoon, faMap, faImages, faComments, faSpinner,
+  faUsers, faBed, faHome, faUserGroup
 } from '@fortawesome/free-solid-svg-icons';
 import { faCalendar as faRegularCalendar } from '@fortawesome/free-regular-svg-icons';
 import { fetchReviews, fetchImages } from '../services/api';
+
+// 🖼️ Proxy ảnh Google qua backend để tránh bị chặn hotlink
+const GOOGLE_IMG_DOMAINS = ['googleusercontent.com', 'ggpht.com', 'googleapis.com', 'googleapi'];
+const proxyImage = (url) => {
+  if (!url) return null;
+  if (GOOGLE_IMG_DOMAINS.some(d => url.includes(d))) {
+    return `http://localhost:5000/api/proxy-image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
 
 // 📦 Mock data dự phòng khi backend không trả về dữ liệu
 const mockRepo = {
@@ -239,7 +250,7 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
       >
         {/* Lightbox */}
         {lightbox && (
-          <img src={lightbox} alt="" onClick={e => e.stopPropagation()}
+          <img src={proxyImage(lightbox)} alt="" onClick={e => e.stopPropagation()}
             style={{ maxWidth: '90vw', maxHeight: '88vh', borderRadius: 14, objectFit: 'contain', boxShadow: '0 8px 50px rgba(0,0,0,0.7)' }}
           />
         )}
@@ -403,7 +414,8 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
                       <div key={i} onClick={() => setLightbox(url)}
                         style={{ aspectRatio: '1', borderRadius: 12, overflow: 'hidden', cursor: 'zoom-in', background: '#f1f5f9' }}
                       >
-                        <img src={url} alt="" className="rv-img"
+                        <img src={proxyImage(url)} alt="" className="rv-img"
+                          loading="lazy"
                           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: '0.2s', display: 'block' }}
                           onError={e => { e.currentTarget.style.display = 'none'; }}
                         />
@@ -432,7 +444,7 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
 };
 
 // 🎨 PlaceCard
-const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit }) => {
+const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit, guestCount }) => {
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [isHovered,   setIsHovered]   = useState(false); // hiệu ứng zoom ảnh
   const isHotel = type === 'Khách sạn';
@@ -440,6 +452,13 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
   const icon = isHotel ? faHotel : (isFlight ? faPlane : (type === 'Địa điểm ăn uống' ? faUtensils : faMapLocationDot));
   const mainColor = isHotel ? '#3b82f6' : (isFlight ? '#10b981' : (type === 'Điểm tham quan' ? '#8b5cf6' : '#f97316'));
   const sessionIcon = sessionLabel === 'Sáng' ? faSun : (sessionLabel === 'Chiều' ? faCloudSun : faMoon);
+
+  const getRoomIcon = (roomType) => {
+    if (roomType?.includes("Nguyên căn") || roomType?.includes("Bungalow")) return faHome;
+    if (roomType?.includes("Family") || roomType?.includes("Tập thể")) return faUsers;
+    if (roomType?.includes("Đôi")) return faUserGroup; // Icon 2 người
+    return faBed; // Mặc định cho Phòng đơn / Tiêu chuẩn
+  };
 
   const handleLocation = () => {
     const query = `${data.name} ${locationName}`;
@@ -470,14 +489,14 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
     >
       {/* Ảnh — zoom nhẹ khi hover */}
       <div style={{
-        width: '110px', height: '110px', flexShrink: 0,
+        width: '120px', height: '120px', flexShrink: 0,
         borderRadius: '14px', overflow: 'hidden',
         backgroundColor: '#f8fafc',
         display: 'flex', justifyContent: 'center', alignItems: 'center',
       }}>
         {data.thumbnail ? (
           <img
-            src={data.thumbnail}
+            src={proxyImage(data.thumbnail)}
             alt="thumb"
             style={{
               width: '100%', height: '100%', objectFit: 'cover',
@@ -519,6 +538,38 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
         <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginBottom: '10px'}}>
           {data.desc}
         </div>
+
+        {(isHotel || isFlight) && guestCount && (
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            
+            {/* Pill Số lượng khách (Màu xanh dương cho KS, xanh ngọc cho Máy bay) */}
+            <div style={{ 
+              display: 'flex', alignItems: 'center', gap: '5px', 
+              backgroundColor: isFlight ? '#ecfdf5' : '#eff6ff', 
+              padding: '4px 10px', 
+              borderRadius: '6px', border: `1px solid ${isFlight ? '#a7f3d0' : '#dbeafe'}` 
+            }}>
+              <FontAwesomeIcon icon={faUsers} style={{ fontSize: '10px', color: isFlight ? '#059669' : '#3b82f6' }} />
+              <span style={{ fontSize: '11px', fontWeight: '700', color: isFlight ? '#065f46' : '#1e40af' }}>
+                {isFlight ? `Vé cho ${guestCount} khách` : `${guestCount} khách`}
+              </span>
+            </div>
+
+            {/* Pill Loại phòng (Chỉ Khách sạn mới có) */}
+            {isHotel && (
+              <div style={{ 
+                display: 'flex', alignItems: 'center', gap: '5px', 
+                backgroundColor: '#f5f3ff', padding: '4px 10px', 
+                borderRadius: '6px', border: '1px solid #ede9fe' 
+              }}>
+                <FontAwesomeIcon icon={getRoomIcon(data.room_type)} style={{ fontSize: '10px', color: '#8b5cf6' }} />
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#5b21b6' }}>
+                  {data.room_type || "Phòng tiêu chuẩn"}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Nút */}
         <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
@@ -580,6 +631,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
   const [mapQuery, setMapQuery] = useState('');           // ← map tĩnh cho khách sạn
   const [modal, setModal] = useState({ show: false, type: '', day: null, session: '', subType: '' });
   const [mapModal, setMapModal] = useState({ show: false, query: '', placeName: '' }); // ← popup cho tham quan/ăn uống
+  const passengers = initialData.passengers || 1;
 
   // ✅ Chuẩn hóa dữ liệu thật từ Backend
   const realHotels = (initialData.realHotels || []).map(h => ({
@@ -591,6 +643,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
     lat: h.lat,
     lng: h.lng,
     place_id: h.place_id || "",
+    room_type: h.room_type,
   }));
 
   const realTours = (initialData.realTours || []).map(normalizeActivity);
@@ -710,7 +763,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
                   cursor: 'pointer', display: 'flex', gap: '15px', alignItems: 'center' 
                 }}>
                 <img 
-                  src={opt.thumbnail || "https://placehold.co/60x60?text=S-Trip"} 
+                  src={proxyImage(opt.thumbnail) || "https://placehold.co/60x60?text=S-Trip"} 
                   style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover' }} 
                   alt="thumb" 
                   onError={(e) => {
@@ -734,7 +787,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
           <FontAwesomeIcon icon={faWandMagicSparkles} style={{ color: '#10b981', marginRight: '18px' }} />
           Hành trình tại <span style={{ color: '#10b981' }}>{initialData.location}</span>
         </h1>
-        <p style={{ fontSize: '28px', color: '#64748b' }}>Hành trình {numDays} ngày của bạn sẵn sàng ✨</p>
+        <p style={{ fontSize: '28px', color: '#64748b' }}>Hành trình {numDays} ngày {numDays - 1} đêm của bạn sẵn sàng ✨</p>
       </div>
 
       {/* 1. CHUYẾN BAY */}
@@ -743,10 +796,19 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
           <div style={{ fontSize: '28px', fontWeight: '800', marginBottom: '20px' }}>✈️ Chuyến bay đề xuất</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
             {initialData.realFlights.slice(0, 2).map((f, i) => (
-              <PlaceCard key={i} type="Chuyến bay" data={{
-                airline: f.airline, price: f.price?.toLocaleString() + "đ",
-                thumbnail: f.thumbnail, desc: `Hãng bay: ${f.airline} · Thời gian bay: ${f.total_duration} phút`
-              }} locationName={initialData.location} onShowMap={handleShowMap} />
+              <PlaceCard 
+                key={i} 
+                type="Chuyến bay" 
+                data={{
+                  airline: f.airline, 
+                  price: f.price?.toLocaleString() + "đ",
+                  thumbnail: f.thumbnail, 
+                  desc: `Hãng bay: ${f.airline}`
+                }} 
+                locationName={initialData.location} 
+                onShowMap={handleShowMap} 
+                guestCount={passengers} 
+              />
             ))}
           </div>
         </div>
@@ -763,6 +825,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
             data={currentHotel}
             locationName={initialData.location}
             setMapQuery={setMapQuery}
+            guestCount={passengers}
             onEdit={() => setModal({ show: true, type: 'Khách sạn' })}
           />
           {/* Map tĩnh giữ nguyên như ban đầu */}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faXmark, faUtensils, faMapLocationDot, faRoute,
+  faXmark, faUtensils, faMapLocationDot,
   faSun, faCloudSun, faMoon, faSpinner
 } from '@fortawesome/free-solid-svg-icons';
 import { enrichPlacesWithCoords } from '../services/geocodeUtils';
@@ -64,7 +64,7 @@ async function resolveMarkers(hotel, places, location) {
       try {
         const { tours: [enrichedHotel] } = await enrichPlacesWithCoords(
           location,
-          [{ name: hotel.name, type: 'tour' }],
+          [{ name: hotel.name, type: 'hotel' }],
           []
         );
         if (enrichedHotel?.lat) hotelMarker = { ...hotel, type: 'hotel', lat: enrichedHotel.lat, lng: enrichedHotel.lng };

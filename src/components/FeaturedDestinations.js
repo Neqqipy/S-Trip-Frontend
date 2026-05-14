@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faStar, faStarHalfAlt, faSearch, faChevronLeft, faChevronRight,
   faTimes, faMapMarkerAlt, faSpinner, faQuoteLeft,
-  faWallet, faCalendarAlt, faImages, faChevronDown, faChevronUp,
+  faWallet, faImages,
 } from '@fortawesome/free-solid-svg-icons';
 import { fetchProvinceImages } from '../services/api';
 
