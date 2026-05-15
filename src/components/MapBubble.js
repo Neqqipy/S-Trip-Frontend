@@ -426,10 +426,13 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
     isDragging.current = true;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
+    if (iframeRef.current) {
+        iframeRef.current.style.pointerEvents = 'none';
+    }
     const onMove = (ev) => {
       if (!isDragging.current) return;
       const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
-      const pct = Math.round(((window.innerWidth - clientX) / window.innerWidth) * 100);
+      const pct = ((window.innerWidth - clientX) / window.innerWidth) * 100;
       setPanelWidth(Math.min(80, Math.max(20, pct)));
     };
     const onUp = () => {
@@ -440,13 +443,16 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
       window.removeEventListener('mouseup',   onUp);
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend',  onUp);
+      if (iframeRef.current) {
+        iframeRef.current.style.pointerEvents = 'auto';
+      }
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup',   onUp);
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend',  onUp);
   };
-
+  
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -527,11 +533,6 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
             <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor:"#9ca3af", transition:"background 0.15s" }} />
             <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor:"#9ca3af", transition:"background 0.15s" }} />
           </div>
-          {isDragging.current && (
-            <div style={{ position:"absolute", left:-52, top:"50%", transform:"translateY(-50%)", background:"#10b981", color:"white", fontSize:11, fontWeight:800, padding:"4px 8px", borderRadius:8, whiteSpace:"nowrap", boxShadow:"0 2px 6px rgba(0,0,0,0.2)", pointerEvents:"none" }}>
-              {panelWidth}%
-            </div>
-          )}
         </div>
 
         {/* Header */}
