@@ -5,6 +5,8 @@ import {
   faXmark,
   faLock,
   faCalendarDays,
+  faCompass,
+  faHouse,
 } from '@fortawesome/free-solid-svg-icons';
 import { faUser } from '@fortawesome/free-regular-svg-icons';
 
@@ -188,6 +190,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary }) => {
               style={styles.link(activeSection === 'home', false)}
               onClick={handleHomeClick}
             >
+              <FontAwesomeIcon icon={faHouse} style={{ fontSize: '18px', marginRight: '8px' }} />
               Trang chủ
               {activeSection === 'home' && <div style={styles.underline} />}
             </div>
@@ -213,6 +216,16 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary }) => {
                   Hãy tìm kiếm chuyến đi trước nhé!
                 </div>
               )}
+            </div>
+            
+            {/* KHÁM PHÁ */}
+            <div
+              style={styles.link(activeSection === 'featured', false)}
+              onClick={() => onNavigate('featured-section')}
+            >
+              <FontAwesomeIcon icon={faCompass} style={{ fontSize: '18px', marginRight: '4px' }} />
+              Khám phá
+              {activeSection === 'featured' && <div style={styles.underline} />}
             </div>
 
             {/* ĐĂNG NHẬP */}

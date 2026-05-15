@@ -70,11 +70,11 @@ const Hero = ({ onSearch }) => {
   searchContainer: {
     backgroundColor: '#ffffff', 
     borderRadius: '100px', 
-    padding: '15px 30px',  // Nới lỏng thanh search ra một xíu cho "dễ thở"
+    padding: '15px 30px', 
     display: 'flex', alignItems: 'center', 
-    width: '90%',          
-    maxWidth: '1150px',    // Độ rộng vừa phải, không bị tràn màn hình
-    marginTop: '45px',     // Khoảng cách lý tưởng giữa Tiêu đề và Thanh tìm kiếm
+    width: '95%',          
+    maxWidth: '1350px',
+    marginTop: '45px',
     position: 'relative', 
     transition: '0.4s all cubic-bezier(0.175, 0.885, 0.32, 1.275)',
     boxShadow: isAnyFieldEmpty ? '0 0 30px rgba(239, 68, 68, 0.4)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
@@ -203,7 +203,13 @@ const Hero = ({ onSearch }) => {
         {/* SỐ NGÀY */}
         <div style={styles.searchItem(false)}>
           <div style={styles.label(activeDropdown === 'days')}>Số ngày</div>
-          <input style={styles.input} placeholder="3 ngày 2 đêm" value={days} readOnly onFocus={() => setActiveDropdown('days')} />
+          <input 
+            style={styles.input} 
+            placeholder="3 ngày 2 đêm" 
+            value={days} 
+            onChange={(e) => setDays(e.target.value)}
+            onFocus={() => setActiveDropdown('days')} 
+          />
           {activeDropdown === 'days' && (
             <div style={styles.dropdown}>
               {dayOptions.map(d => (
@@ -234,7 +240,13 @@ const Hero = ({ onSearch }) => {
         {/* NGÂN SÁCH */}
         <div style={styles.searchItem(true)}>
           <div style={styles.label(activeDropdown === 'budget')}>Ngân sách</div>
-          <input style={styles.input} placeholder="Kinh phí?" value={budget} readOnly onFocus={() => setActiveDropdown('budget')} />
+          <input 
+            style={styles.input} 
+            placeholder="Kinh phí?" 
+            value={budget} 
+            onChange={(e) => setBudget(e.target.value)}
+            onFocus={() => setActiveDropdown('budget')} 
+          />
           {activeDropdown === 'budget' && (
             <div style={styles.dropdown}>
               {budgetOptions.map(b => (

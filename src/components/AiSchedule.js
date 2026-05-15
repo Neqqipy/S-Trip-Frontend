@@ -5,17 +5,26 @@ import {
   faWandMagicSparkles, faHotel, faUtensils, faMapLocationDot,
   faPenToSquare, faStar, faXmark, faLocationArrow, faPlane,
   faSun, faCloudSun, faMoon, faMap, faImages, faComments, faSpinner,
-  faUsers, faBed, faHome, faUserGroup
+  faUsers, faBed, faHome, faUserGroup,
+  faBookmark as faBookmarkSolid,
+  faHeart as faHeartSolid
 } from '@fortawesome/free-solid-svg-icons';
-import { faCalendar as faRegularCalendar } from '@fortawesome/free-regular-svg-icons';
+import { 
+  faCalendar as faRegularCalendar,
+  faBookmark as faBookmarkRegular,
+  faHeart as faHeartRegular
+ } from '@fortawesome/free-regular-svg-icons';
 import { fetchReviews, fetchImages } from '../services/api';
 
 // 🖼️ Proxy ảnh Google qua backend để tránh bị chặn hotlink
+const BASE_URL = 'http://127.0.0.1:5000'; // Đồng bộ với api.js
 const GOOGLE_IMG_DOMAINS = ['googleusercontent.com', 'ggpht.com', 'googleapis.com', 'googleapi'];
 const proxyImage = (url) => {
   if (!url) return null;
+  // Không wrap placeholder — tránh proxy vô nghĩa
+  if (url.includes('placehold.co') || url.includes('placeholder')) return url;
   if (GOOGLE_IMG_DOMAINS.some(d => url.includes(d))) {
-    return `http://localhost:5000/api/proxy-image?url=${encodeURIComponent(url)}`;
+    return `${BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
   }
   return url;
 };
@@ -195,6 +204,9 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
   const [filterStar, setFilterStar] = useState('all'); 
   const [visibleCount, setVisibleCount] = useState(5);
 
+  const [isSaved, setIsSaved] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') lightbox ? setLightbox(null) : onClose(); };
     window.addEventListener('keydown', onKey);
@@ -250,7 +262,7 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
       >
         {/* Lightbox */}
         {lightbox && (
-          <img src={proxyImage(lightbox)} alt="" onClick={e => e.stopPropagation()}
+          <img src={proxyImage(lightbox)} alt="" referrerPolicy="no-referrer" onClick={e => e.stopPropagation()}
             style={{ maxWidth: '90vw', maxHeight: '88vh', borderRadius: 14, objectFit: 'contain', boxShadow: '0 8px 50px rgba(0,0,0,0.7)' }}
           />
         )}
@@ -277,9 +289,31 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
                 </div>
                 {total && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{Number(total).toLocaleString()} đánh giá trên Google</div>}
               </div>
-              <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: '#f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#374151', flexShrink: 0, marginLeft: 12 }}>
-                <FontAwesomeIcon icon={faXmark} />
-              </button>
+              <div style={{ display: 'flex', gap: '8px', flexShrink: 0, marginLeft: 12 }}>
+                
+                {/* Nút Trái tim (Yêu thích) */}
+                <button 
+                  onClick={() => setIsFavorited(!isFavorited)} 
+                  style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: isFavorited ? '#fee2e2' : '#f1f5f9', color: isFavorited ? '#ef4444' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, transition: '0.2s' }}
+                  title="Yêu thích"
+                >
+                  <FontAwesomeIcon icon={isFavorited ? faHeartSolid : faHeartRegular} />
+                </button>
+
+                {/* Nút Bookmark (Lưu trữ) */}
+                <button 
+                  onClick={() => setIsSaved(!isSaved)} 
+                  style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: isSaved ? '#fef08a' : '#f1f5f9', color: isSaved ? '#eab308' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, transition: '0.2s' }}
+                  title="Lưu trữ"
+                >
+                  <FontAwesomeIcon icon={isSaved ? faBookmarkSolid : faBookmarkRegular} />
+                </button>
+
+                {/* Nút X (Đóng) */}
+                <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: '#f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#374151' }}>
+                  <FontAwesomeIcon icon={faXmark} />
+                </button>
+              </div>
             </div>
 
             {/* Tabs */}
@@ -446,7 +480,9 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
 // 🎨 PlaceCard
 const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit, guestCount }) => {
   const [reviewsOpen, setReviewsOpen] = useState(false);
-  const [isHovered,   setIsHovered]   = useState(false); // hiệu ứng zoom ảnh
+  const [isHovered,   setIsHovered]   = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
   const isHotel = type === 'Khách sạn';
   const isFlight = type === 'Chuyến bay';
   const icon = isHotel ? faHotel : (isFlight ? faPlane : (type === 'Địa điểm ăn uống' ? faUtensils : faMapLocationDot));
@@ -487,6 +523,27 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
         position: 'relative'
       }}
     >
+
+      {/* NÚT BOOKMARK */}
+      <button
+        onClick={(e) => { e.stopPropagation(); setIsSaved(!isSaved); }}
+        style={{
+          position: 'absolute', top: '12px', right: '12px',
+          backgroundColor: isSaved ? '#fef08a' : 'rgba(255,255,255,0.85)',
+          color: isSaved ? '#eab308' : '#9ca3af',
+          border: '1px solid #f1f5f9', borderRadius: '8px',
+          width: '32px', height: '32px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', zIndex: 20, backdropFilter: 'blur(4px)',
+          boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: '0.2s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+        title={isSaved ? "Bỏ lưu" : "Lưu địa điểm"}
+      >
+        <FontAwesomeIcon icon={isSaved ? faBookmarkSolid : faBookmarkRegular} style={{ fontSize: '15px' }} />
+      </button>
+
       {/* Ảnh — zoom nhẹ khi hover */}
       <div style={{
         width: '120px', height: '120px', flexShrink: 0,
@@ -504,6 +561,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
               transition: 'transform 0.4s ease',
               display: 'block',
             }}
+            onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/120x120?text=S-Trip'; }}
           />
         ) : (
           <FontAwesomeIcon icon={sessionLabel ? sessionIcon : icon} style={{ fontSize: '28px', color: mainColor }} />
@@ -803,7 +861,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
                   airline: f.airline, 
                   price: f.price?.toLocaleString() + "đ",
                   thumbnail: f.thumbnail, 
-                  desc: `Hãng bay: ${f.airline}`
+                  desc: `Hãng bay: ${f.airline} • Thời gian bay: ${f.duration || 'N/A'}`
                 }} 
                 locationName={initialData.location} 
                 onShowMap={handleShowMap} 
