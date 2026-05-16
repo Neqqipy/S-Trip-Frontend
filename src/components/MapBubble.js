@@ -93,8 +93,9 @@ async function resolveMarkers(hotel, places, location) {
 }
 
 // ── Tạo HTML Leaflet + OSRM routing ──────────────────────────
-function buildLeafletHtml(markers) {
+function buildLeafletHtml(markers, isDark) {
   const markersJson = JSON.stringify(markers);
+  const tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -103,6 +104,11 @@ function buildLeafletHtml(markers) {
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body, #map { width:100%; height:100%; }
+    /* ✅ CSS Dark Mode cho Popup */
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip { 
+      background: ${isDark ? '#1e293b' : 'white'} !important; 
+      color: ${isDark ? 'white' : '#111827'} !important; 
+    }
   </style>
 </head>
 <body>
@@ -117,7 +123,9 @@ function buildLeafletHtml(markers) {
     }
 
     const map = L.map('map', { zoomControl: true });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    
+    // ✅ BƯỚC 2: Bơm cái link đã xử lý xong vào đây
+    L.tileLayer('${tileUrl}', {
       attribution: '© CARTO © OpenStreetMap', subdomains: 'abcd', maxZoom: 19
     }).addTo(map);
 
@@ -275,7 +283,7 @@ function buildLeafletHtml(markers) {
       const marker = L.marker([m.lat, m.lng], { icon }).addTo(map);
       marker.bindPopup(\`<div style="font-family:sans-serif;min-width:160px;padding:4px 0">
         <div style="font-size:10px;font-weight:800;color:\${color};text-transform:uppercase;margin-bottom:4px">\${emoji} \${label}\${sessionLabel?' · Buổi '+sessionLabel:''}</div>
-        <div style="font-size:14px;font-weight:900;color:#111">\${m.name}</div>
+        <div style="font-size:14px;font-weight:900;color:${isDark ? '#f1f5f9' : '#111'}">\${m.name}</div>
         \${m.thumbnail?'<img src="'+m.thumbnail+'" style="width:100%;height:80px;object-fit:cover;border-radius:8px;margin-top:8px"/>':''}
       </div>\`, { maxWidth: 220 });
 
@@ -309,7 +317,7 @@ function calcDirectionsLocal(fromLat, fromLng, toLat, toLng) {
   const drive = dist / 9;   // ~32 km/h đô thị
   return [
     { icon:'🚗', label:'Ô tô',    speed:'32 km/h', duration:fmt(drive),        distance:fmtD(dist), estimated:true },
-    { icon:'🏍️', label:'Xe máy', speed:'30 km/h', duration:fmt(drive * 1.05), distance:fmtD(dist), estimated:true },
+    { icon:'🏍️', label:'Xe máy', speed:'35 km/h', duration:fmt(drive * 0.95), distance:fmtD(dist), estimated:true },
     { icon:'🚲', label:'Xe đạp', speed:'15 km/h', duration:fmt(dist / 4.2),   distance:fmtD(dist), estimated:true },
     { icon:'🚶', label:'Đi bộ',  speed:'5 km/h',  duration:fmt(dist / 1.35),  distance:fmtD(dist), estimated:true },
     { icon:'🚌', label:'Xe buýt',speed:'22 km/h', duration:fmt(drive * 1.45), distance:fmtD(dist), estimated:true },
@@ -332,7 +340,7 @@ async function getDirectionsOSRM(fromLat, fromLng, toLat, toLng) {
     const carSpd = distance / duration; // m/s thực tế từ OSRM
     return [
       { icon:'🚗', label:'Ô tô',    speed:fmtSpd(carSpd),         duration:fmt(duration),          distance:fmtD(distance) },
-      { icon:'🏍️', label:'Xe máy', speed:fmtSpd(carSpd * 0.95),  duration:fmt(duration * 1.05),   distance:fmtD(distance), estimated:true },
+      { icon:'🏍️', label:'Xe máy', speed:fmtSpd(carSpd * 1.05),  duration:fmt(duration * 0.95),   distance:fmtD(distance), estimated:true },
       { icon:'🚲', label:'Xe đạp', speed:'15 km/h',               duration:fmt(distance / 4.2),    distance:fmtD(distance) },
       { icon:'🚶', label:'Đi bộ',  speed:'5 km/h',                duration:fmt(distance / 1.35),   distance:fmtD(distance) },
       { icon:'🚌', label:'Xe buýt',speed:fmtSpd(carSpd * 0.65),  duration:fmt(duration * 1.45),   distance:fmtD(distance), estimated:true },
@@ -344,7 +352,7 @@ async function getDirectionsOSRM(fromLat, fromLng, toLat, toLng) {
 }
 
 // ── Map Panel ─────────────────────────────────────────────────
-const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
+const MapPanel = ({ data, editedPlans, currentHotel, onClose, isDark }) => {
   const numDays = parseInt(data.days?.toString().split(' ')[0]) || 3;
   const allDays = (editedPlans && editedPlans.length > 0)
     ? editedPlans.map(d => [
@@ -493,7 +501,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
       if (cancelled) return;
       if (results.length > 0) setLoadingMsg('Đang vẽ tuyến đường...');
       setResolvedMarkers(results); // lưu để directions dùng
-      setMapHtml(buildLeafletHtml(results));
+      setMapHtml(buildLeafletHtml(results, isDark));
       setLoading(false);
     });
 
@@ -512,34 +520,33 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
         @keyframes mbSpin    { to{transform:rotate(360deg)} }
         .mb-panel   { animation: mbSlideIn 0.3s cubic-bezier(.22,1,.36,1) forwards; }
         .mb-overlay { animation: mbFadeIn  0.2s ease forwards; }
-        .mb-daytab:hover   { background:#f0fdf4 !important; }
-        .mb-close:hover    { background:#fee2e2 !important; color:#ef4444 !important; }
-        .mb-placerow:hover { background:#f8fafc !important; }
+        .mb-daytab:hover   { background: ${isDark ? '#064e3b' : '#f0fdf4'} !important; }
+        .mb-close:hover    { background: ${isDark ? '#7f1d1d' : '#fee2e2'} !important; color: ${isDark ? '#fca5a5' : '#ef4444'} !important; }
+        .mb-placerow:hover { background: ${isDark ? '#1e293b' : '#f8fafc'} !important; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .mb-spin { animation: mbSpin 1s linear infinite; display:inline-block; }
         .mb-drag:hover .mb-drag-bar { background: linear-gradient(to bottom, transparent, #10b981, transparent) !important; }
         .mb-drag:hover .mb-grip     { border-color: #10b981 !important; }
-        .mb-drag:hover .mb-dot      { background-color: #10b981 !important; }
-        .mb-scroll-x { scrollbar-width: none; }
+        .mb-drag:hover .mb-dot      { background-color: #10b981 !important; }        .mb-scroll-x { scrollbar-width: none; }
         .mb-scroll-x::-webkit-scrollbar { display: none; }
       `}</style>
 
       <div className="mb-overlay" onClick={onClose} style={{ position:'fixed', inset:0, backgroundColor:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', zIndex:999998 }} />
 
-      <div className="mb-panel" style={{ position:'fixed', top:0, right:0, bottom:0, width:`${panelWidth}vw`, minWidth:280, backgroundColor:'white', zIndex:999999, display:'flex', flexDirection:'column', boxShadow:'-20px 0 60px rgba(0,0,0,0.25)' }}>
+      <div className="mb-panel" style={{ position:'fixed', top:0, right:0, bottom:0, width:`${panelWidth}vw`, minWidth:280, backgroundColor: isDark ? '#0f172a' : 'white', zIndex:999999, display:'flex', flexDirection:'column', boxShadow:'-20px 0 60px rgba(0,0,0,0.25)' }}>
         
         {/* ── Thanh kéo resize ── */}
         <div className="mb-drag" onMouseDown={onDragStart} onTouchStart={onDragStart} title={`Kéo để thay đổi độ rộng (${panelWidth}%)`} style={{ position:"absolute", left:-8, top:0, bottom:0, width:20, cursor:"col-resize", zIndex:10, display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <div className="mb-drag-bar" style={{ width:4, height:"100%", background:"linear-gradient(to bottom, transparent 0%, #e2e8f0 20%, #e2e8f0 80%, transparent 100%)", transition:"background 0.15s" }} />
-          <div className="mb-grip" style={{ position:"absolute", top:"50%", transform:"translateY(-50%)", width:22, height:52, borderRadius:11, backgroundColor:"white", border:"1.5px solid #d1d5db", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, boxShadow:"0 2px 8px rgba(0,0,0,0.12)", transition:"border-color 0.15s" }}>
-            <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor:"#9ca3af", transition:"background 0.15s" }} />
-            <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor:"#9ca3af", transition:"background 0.15s" }} />
-            <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor:"#9ca3af", transition:"background 0.15s" }} />
+          <div className="mb-drag-bar" style={{ width:4, height:"100%", background:`linear-gradient(to bottom, transparent 0%, ${isDark ? '#334155' : '#e2e8f0'} 20%, ${isDark ? '#334155' : '#e2e8f0'} 80%, transparent 100%)`, transition:"background 0.15s" }} />
+          <div className="mb-grip" style={{ position:"absolute", top:"50%", transform:"translateY(-50%)", width:22, height:52, borderRadius:11, backgroundColor: isDark ? '#1e293b' : 'white', border:`1.5px solid ${isDark ? '#334155' : '#d1d5db'}`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, boxShadow:"0 2px 8px rgba(0,0,0,0.12)", transition:"border-color 0.15s" }}>
+            <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor: isDark ? '#475569' : '#9ca3af', transition:"background 0.15s" }} />
+            <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor: isDark ? '#475569' : '#9ca3af', transition:"background 0.15s" }} />
+            <div className="mb-dot" style={{ width:3, height:3, borderRadius:"50%", backgroundColor: isDark ? '#475569' : '#9ca3af', transition:"background 0.15s" }} />
           </div>
         </div>
 
         {/* Header */}
-        <div style={{ padding:'20px 24px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+        <div style={{ padding:'20px 24px', borderBottom:`1px solid ${isDark ? '#1e293b' : '#f1f5f9'}`, display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
             <div style={{ width:42, height:42, borderRadius:14, background:'linear-gradient(135deg,#10b981,#059669)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 12px rgba(16,185,129,0.4)' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -550,19 +557,19 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
               </svg>
             </div>
             <div>
-              <div style={{ fontSize:17, fontWeight:900, color:'#111827' }}>Bản đồ hành trình · {data.location}</div>
-              <div style={{ fontSize:12, color:'#9ca3af' }}>{numDays} ngày · {dayPlaces.length} địa điểm hôm nay</div>
+              <div style={{ fontSize:17, fontWeight:900, color: isDark ? '#f1f5f9' : '#111827' }}>Bản đồ hành trình · {data.location}</div>
+              <div style={{ fontSize:12, color: isDark ? '#64748b' : '#9ca3af' }}>{numDays} ngày · {dayPlaces.length} địa điểm hôm nay</div>
             </div>
           </div>
-          <button className="mb-close" onClick={onClose} style={{ width:38, height:38, borderRadius:'50%', border:'none', backgroundColor:'#f1f5f9', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'0.15s', fontSize:16, color:'#374151' }}>
+          <button className="mb-close" onClick={onClose} style={{ width:38, height:38, borderRadius:'50%', border:'none', backgroundColor: isDark ? '#1e293b' : '#f1f5f9', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'0.15s', fontSize:16, color: isDark ? '#94a3b8' : '#374151' }}>
             <FontAwesomeIcon icon={faXmark} />
           </button>
         </div>
 
         {/* Tab ngày */}
-        <div style={{ display:'flex', gap:8, padding:'14px 24px', borderBottom:'1px solid #f1f5f9', flexShrink:0, overflowX:'auto' }}>
+        <div style={{ display:'flex', gap:8, padding:'14px 24px', borderBottom:`1px solid ${isDark ? '#1e293b' : '#f1f5f9'}`, flexShrink:0, overflowX:'auto' }}>
           {Array.from({ length: numDays }, (_, i) => (
-            <button key={i} className="mb-daytab" onClick={() => setSelectedDay(i)} style={{ padding:'8px 20px', borderRadius:99, border:'1.5px solid #10b981', background: selectedDay===i ? '#10b981':'white', color: selectedDay===i ? 'white':'#10b981', fontWeight:800, fontSize:14, cursor:'pointer', whiteSpace:'nowrap', transition:'0.15s' }}>
+            <button key={i} className="mb-daytab" onClick={() => setSelectedDay(i)} style={{ padding:'8px 20px', borderRadius:99, border:'1.5px solid #10b981', background: selectedDay===i ? '#10b981' : isDark ? '#0f172a' : 'white', color: selectedDay===i ? 'white':'#10b981', fontWeight:800, fontSize:14, cursor:'pointer', whiteSpace:'nowrap', transition:'0.15s' }}>
               Ngày {i + 1}
             </button>
           ))}
@@ -571,12 +578,12 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
         {/* Map + List */}
         <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
           {/* Bản đồ */}
-          <div style={{ flex:'0 0 55%', borderRight:'1px solid #f1f5f9', position:'relative', background:'#f8fafc' }}>
+          <div style={{ flex:'0 0 55%', borderRight:`1px solid ${isDark ? '#1e293b' : '#f1f5f9'}`, position:'relative', background: isDark ? '#0f172a' : '#f8fafc' }}>
             {loading && (
-              <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, color:'#9ca3af', zIndex:10 }}>
+              <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, color: isDark ? '#64748b' : '#9ca3af', zIndex:10 }}>
                 <FontAwesomeIcon icon={faSpinner} className="mb-spin" style={{ fontSize:28, color:'#10b981' }} />
-                <div style={{ fontSize:13, fontWeight:600 }}>{loadingMsg}</div>
-                <div style={{ fontSize:11, color:'#d1d5db' }}>Đang geocode {dayPlaces.length} địa điểm...</div>
+                <div style={{ fontSize:13, fontWeight:600, color: isDark ? '#94a3b8' : undefined }}>{loadingMsg}</div>
+                <div style={{ fontSize:11, color: isDark ? '#475569' : '#d1d5db' }}>Đang geocode {dayPlaces.length} địa điểm...</div>
               </div>
             )}
             {!loading && mapHtml && (
@@ -604,7 +611,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
               const isActive  = isMarkerActive(markerIdx);
               return (
                 <div style={{ marginBottom:4 }}>
-                  <div style={{ padding:'8px 20px', display:'flex', alignItems:'center', gap:8, fontSize:11, fontWeight:800, color:'#10b981', textTransform:'uppercase', letterSpacing:'0.5px', position:'sticky', top:0, background:'white', zIndex:1, borderBottom:'1px solid #f8fafc' }}>
+                  <div style={{ padding:'8px 20px', display:'flex', alignItems:'center', gap:8, fontSize:11, fontWeight:800, color:'#10b981', textTransform:'uppercase', letterSpacing:'0.5px', position:'sticky', top:0, background: isDark ? '#0f172a' : 'white', zIndex:1, borderBottom:`1px solid ${isDark ? '#1e293b' : '#f8fafc'}` }}>
                     🏨 Điểm xuất phát
                   </div>
                   <div style={{ padding:'8px 20px' }}>
@@ -619,7 +626,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                           : <span style={{ fontSize:14 }}>🏨</span>}
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:16, fontWeight:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{hotelInfo.name}</div>
+                        <div style={{ fontSize:16, fontWeight:800, color: isDark ? '#f1f5f9' : '#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{hotelInfo.name}</div>
                         <div style={{ fontSize:12, color:'#10b981', fontWeight:700 }}>
                           Khách sạn · Điểm O
                           {isActive && <span style={{ marginLeft:6, fontSize:10, opacity:0.8 }}>↗ highlight</span>}
@@ -635,11 +642,11 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
               const sp = dayPlaces.filter(p => p.session === session.label);
               return (
                 <div key={session.key} style={{ marginBottom:4 }}>
-                  <div style={{ padding:'8px 20px', display:'flex', alignItems:'center', gap:8, fontSize:11, fontWeight:800, color:session.color, textTransform:'uppercase', letterSpacing:'0.5px', position:'sticky', top:0, background:'white', zIndex:1, borderBottom:'1px solid #f8fafc' }}>
+                  <div style={{ padding:'8px 20px', display:'flex', alignItems:'center', gap:8, fontSize:11, fontWeight:800, color:session.color, textTransform:'uppercase', letterSpacing:'0.5px', position:'sticky', top:0, background: isDark ? '#0f172a' : 'white', zIndex:1, borderBottom:`1px solid ${isDark ? '#1e293b' : '#f8fafc'}` }}>
                     <FontAwesomeIcon icon={session.icon} /> Buổi {session.label}
                   </div>
                   <div style={{ padding:'4px 20px', position:'relative' }}>
-                    {sp.length > 1 && <div style={{ position:'absolute', left:36, top:24, bottom:24, width:2, backgroundColor:'#e2e8f0', zIndex:0 }} />}
+                    {sp.length > 1 && <div style={{ position:'absolute', left:36, top:24, bottom:24, width:2, backgroundColor: isDark ? '#1e293b' : '#e2e8f0', zIndex:0 }} />}
                     {sp.map((place, pi) => {
                       const globalIdx = dayPlaces.indexOf(place);
                       const markerIdx = globalIdx + 1; // +1 vì hotel ở index 0
@@ -664,11 +671,11 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                               ? <img src={place.thumbnail} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
                               : <FontAwesomeIcon icon={typeIcon(place.type)} style={{ color:'white', fontSize:13 }} />}
                           </div>
-                          <div style={{ position:'absolute', left:34, top:8, width:14, height:14, borderRadius:'50%', backgroundColor:'white', border:`1.5px solid ${isActive ? session.color : typeColor(place.type)}`, fontSize:8, fontWeight:900, color: isActive ? session.color : typeColor(place.type), display:'flex', alignItems:'center', justifyContent:'center', zIndex:2, transition:'0.15s' }}>
+                          <div style={{ position:'absolute', left:34, top:8, width:14, height:14, borderRadius:'50%', backgroundColor: isDark ? '#0f172a' : 'white', border:`1.5px solid ${isActive ? session.color : typeColor(place.type)}`, fontSize:8, fontWeight:900, color: isActive ? session.color : typeColor(place.type), display:'flex', alignItems:'center', justifyContent:'center', zIndex:2, transition:'0.15s' }}>
                             {globalIdx + 1}
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontSize:16, fontWeight:isActive?900:800, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{place.name}</div>
+                            <div style={{ fontSize:16, fontWeight:isActive?900:800, color: isDark ? '#f1f5f9' : '#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{place.name}</div>
                             <div style={{ fontSize:12, color: isActive ? session.color : typeColor(place.type), fontWeight:700 }}>
                               {place.type === 'tour' ? '📍 Tham quan' : '🍜 Ăn uống'}
                               {isActive && <span style={{ marginLeft:6, fontSize:10, opacity:0.8 }}>↗ highlight</span>}
@@ -686,8 +693,8 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
             {/* Panel khoảng cách & thời gian khi highlight */}
             <div style={{
               flexShrink:0,
-              borderTop: activeLeg >= 0 ? '1.5px solid #d1fae5' : '1px solid #f1f5f9',
-              background: activeLeg >= 0 ? '#f0fdf4' : '#fafafa',
+              borderTop: activeLeg >= 0 ? '1.5px solid #d1fae5' : `1px solid ${isDark ? '#1e293b' : '#f1f5f9'}`,
+              background: activeLeg >= 0 ? (isDark ? '#052e16' : '#f0fdf4') : (isDark ? '#0f172a' : '#fafafa'),
               transition:'background 0.25s',
               padding: activeLeg >= 0 ? '12px 14px 14px' : '9px 14px',
               display:'flex', flexDirection:'column', gap:10,
@@ -695,7 +702,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
 
               {/* Trạng thái rỗng */}
               {activeLeg < 0 && (
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, color:'#9ca3af', fontSize:12 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, color: isDark ? '#475569' : '#9ca3af', fontSize:12 }}>
                   <span>👆</span> Click vào đường hoặc địa điểm để xem khoảng cách
                 </div>
               )}
@@ -710,8 +717,8 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                       </svg>
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:10, color:'#6b7280', fontWeight:700, letterSpacing:'0.3px', textTransform:'uppercase' }}>Lộ trình</div>
-                      <div style={{ fontSize:12, fontWeight:800, color:'#065f46', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>
+                      <div style={{ fontSize:10, color: isDark ? '#64748b' : '#6b7280', fontWeight:700, letterSpacing:'0.3px', textTransform:'uppercase' }}>Lộ trình</div>
+                      <div style={{ fontSize:12, fontWeight:800, color: isDark ? '#34d399' : '#065f46', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>
                         {directions
                           ? <>{directions.from?.name}<span style={{ color:'#10b981', margin:'0 4px', fontWeight:900 }}>→</span>{directions.to?.name}</>
                           : 'Đang tải...'}
@@ -732,7 +739,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
 
                   {/* ── Loading ── */}
                   {loadingDir && (
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, color:'#6b7280', fontSize:12, padding:'8px 0' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, color: isDark ? '#64748b' : '#6b7280', fontSize:12, padding:'8px 0' }}>
                       <FontAwesomeIcon icon={faSpinner} style={{ animation:'mbSpin 1s linear infinite', color:'#10b981', fontSize:14 }} />
                       Đang tính thời gian di chuyển...
                     </div>
@@ -756,10 +763,10 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                         <button onClick={() => scroll(-1)} style={{
                           position:'absolute', left:-8, top:'50%', transform:'translateY(-50%)',
                           zIndex:2, width:26, height:26, borderRadius:'50%',
-                          border:'1.5px solid #d1d5db', background:'white',
+                          border:`1.5px solid ${isDark ? '#334155' : '#d1d5db'}`, background: isDark ? '#1e293b' : 'white',
                           boxShadow:'0 2px 6px rgba(0,0,0,0.15)',
                           cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-                          fontSize:12, color:'#374151', padding:0,
+                          fontSize:12, color: isDark ? '#94a3b8' : '#374151', padding:0,
                         }}>‹</button>
 
                         {/* Cards */}
@@ -821,17 +828,17 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
                         <button onClick={() => scroll(1)} style={{
                           position:'absolute', right:-8, top:'50%', transform:'translateY(-50%)',
                           zIndex:2, width:26, height:26, borderRadius:'50%',
-                          border:'1.5px solid #d1d5db', background:'white',
+                          border:`1.5px solid ${isDark ? '#334155' : '#d1d5db'}`, background: isDark ? '#1e293b' : 'white',
                           boxShadow:'0 2px 6px rgba(0,0,0,0.15)',
                           cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-                          fontSize:12, color:'#374151', padding:0,
+                          fontSize:12, color: isDark ? '#94a3b8' : '#374151', padding:0,
                         }}>›</button>
                       </div>
                     );
                   })()}
 
                   {!loadingDir && (!directions?.modes || directions.modes.length === 0) && (
-                    <div style={{ fontSize:12, color:'#9ca3af', textAlign:'center', padding:'6px 0' }}>Không lấy được dữ liệu di chuyển</div>
+                    <div style={{ fontSize:12, color: isDark ? '#475569' : '#9ca3af', textAlign:'center', padding:'6px 0' }}>Không lấy được dữ liệu di chuyển</div>
                   )}
                 </>
               )}
@@ -846,7 +853,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
 };
 
 // ── Nút tròn gốc ─────────────────────────────────────────────
-const MapBubble = ({ targetOffset = 450, data, editedPlans }) => {
+const MapBubble = ({ targetOffset = 450, data, editedPlans, isDark }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [open,      setOpen]      = useState(false);
   const [pulse,     setPulse]     = useState(false);
@@ -915,8 +922,7 @@ const MapBubble = ({ targetOffset = 450, data, editedPlans }) => {
         <div style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', backgroundColor: isHovered ? 'rgba(255,255,255,0.1)':'rgba(255,255,255,0)', transition:'0.3s' }} />
       </div>
       
-      {/* ✅ ĐÃ SỬA: Truyền currentHotel xuống cho MapPanel để vẽ lại */}
-      {open && data && <MapPanel data={data} editedPlans={editedPlans} currentHotel={currentHotel} onClose={() => setOpen(false)} />}
+      {open && data && <MapPanel data={data} editedPlans={editedPlans} currentHotel={currentHotel} onClose={() => setOpen(false)} isDark={isDark} />}
     </>
   );
 };

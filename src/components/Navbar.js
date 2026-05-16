@@ -11,7 +11,7 @@ import {
 import { faUser } from '@fortawesome/free-regular-svg-icons';
 
 // ✅ Props mới: hasItinerary — khoá nút "Lịch trình" khi chưa tìm kiếm
-const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary }) => {
+const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, onToggleTheme }) => {
   const [showAuth, setShowAuth] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [showLockTip, setShowLockTip] = useState(false); // tooltip khi click lúc bị khoá
@@ -33,12 +33,12 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary }) => {
   const styles = {
     header: {
       height: '110px', display: 'flex', justifyContent: 'center', alignItems: 'center',
-      position: 'fixed', top: 0, width: '99.2%', zIndex: 1000,
-      background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(10px)',
+      position: 'fixed', top: 0, width: '100%', zIndex: 1000,
+      background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(10px)', boxSizing: 'border-box',
     },
     container: {
-      width: '100%', maxWidth: '1600px', display: 'flex',
-      justifyContent: 'space-between', alignItems: 'center', padding: '0 40px',
+      width: '100%', display: 'flex',
+      justifyContent: 'space-between', alignItems: 'center', padding: '0 50px',
     },
     logo: {
       fontSize: '48px', fontWeight: '900', color: 'white',
@@ -164,6 +164,61 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary }) => {
           from { opacity: 0; transform: translate(-50%, -6px); }
           to   { opacity: 1; transform: translate(-50%, 0); }
         }
+
+        /* ── DARK MODE TOGGLE ── */
+        .theme-toggle-track {
+          width: 68px;
+          height: 36px;
+          background-color: rgba(255,255,255,0.25);
+          border-radius: 999px;
+          cursor: pointer;
+          position: relative;
+          flex-shrink: 0;
+          border: 2px solid rgba(255,255,255,0.35);
+          transition: background-color 0.45s ease, box-shadow 0.45s ease;
+          box-shadow: inset 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .theme-toggle-track.is-dark {
+          background-color: #10b981;
+          box-shadow: inset 0 1px 4px rgba(0,0,0,0.2), 0 0 12px rgba(16,185,129,0.4);
+        }
+
+        .theme-toggle-thumb {
+          position: absolute;
+          top: 3px;
+          left: 3px;
+          width: 26px;
+          height: 26px;
+          background-color: white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          transition: left 0.45s cubic-bezier(0.34, 1.4, 0.64, 1),
+                      box-shadow 0.3s ease;
+          will-change: left;
+        }
+        .theme-toggle-track.is-dark .theme-toggle-thumb {
+          left: 33px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+        }
+
+        .theme-toggle-icon {
+          font-size: 16px;
+          line-height: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.2s ease;
+          user-select: none;
+        }
+        .theme-toggle-track:active .theme-toggle-thumb {
+          width: 30px;
+        }
+        .theme-toggle-track.is-dark:active .theme-toggle-thumb {
+          left: 29px;
+        }
       `}</style>
 
       <header style={styles.header}>
@@ -226,6 +281,17 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary }) => {
               <FontAwesomeIcon icon={faCompass} style={{ fontSize: '18px', marginRight: '4px' }} />
               Khám phá
               {activeSection === 'featured' && <div style={styles.underline} />}
+            </div>
+
+            {/* DARK MODE TOGGLE */}
+            <div
+              onClick={onToggleTheme}
+              className={`theme-toggle-track ${isDark ? 'is-dark' : ''}`}
+              title={isDark ? 'Chuyển sang sáng' : 'Chuyển sang tối'}
+            >
+              <div className="theme-toggle-thumb">
+                <span className="theme-toggle-icon">{isDark ? '🌙' : '☀️'}</span>
+              </div>
             </div>
 
             {/* ĐĂNG NHẬP */}

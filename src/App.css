@@ -1,37 +1,183 @@
-/* Dùng dấu sao để chọn TẤT CẢ mọi thứ trên đời */
+/* ── FONT & BOX MODEL ── */
 * {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-  box-sizing: border-box; /* Chuyển box-sizing lên đây để áp dụng cho mọi thẻ, rất tốt cho layout */
+  box-sizing: border-box;
 }
 
-/* Hiệu ứng rung ngang màn hình khi có lỗi */
+/* ── TRANSITION mượt khi đổi theme ── */
+*, *::before, *::after {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* ═══════════════════════════════════════
+   DARK MODE
+   Nền đen #1a1a1a, card xám #2a2a2a
+   Chữ trắng ngà #e8e8e8
+   ═══════════════════════════════════════ */
+
+/* --- NỀN NGOÀI CÙNG --- */
+.theme-dark {
+  background-color: #1a1a1a !important;
+  color: #e8e8e8 !important;
+}
+
+/* --- NỀN TRẮNG → XÁM TỐI (card, panel, modal) --- */
+.theme-dark [style*="background-color: white"],
+.theme-dark [style*="background-color: #fff"],
+.theme-dark [style*="background-color: #ffffff"],
+.theme-dark [style*="backgroundColor: white"],
+.theme-dark [style*="backgroundColor: '#fff'"],
+.theme-dark [style*="backgroundColor: '#ffffff'"],
+.theme-dark [style*="backgroundColor:'white'"],
+.theme-dark [style*="backgroundColor: \"white\""] {
+  background-color: #2a2a2a !important;
+  color: #e8e8e8 !important;
+}
+
+/* --- NỀN XÁM NHẠT → XÁM ĐẬM HƠN (section wrapper) --- */
+.theme-dark [style*="background-color: #f9fafb"],
+.theme-dark [style*="background-color: #f8fafc"],
+.theme-dark [style*="background-color: #f3f4f6"],
+.theme-dark [style*="background-color: #f1f5f9"],
+.theme-dark [style*="background-color: #f0f4f8"],
+.theme-dark [style*="background-color: #f8f9fa"],
+.theme-dark [style*="backgroundColor: '#f9fafb'"],
+.theme-dark [style*="backgroundColor: '#f8fafc'"],
+.theme-dark [style*="backgroundColor: '#f1f5f9'"] {
+  background-color: #222222 !important;
+}
+
+/* --- NỀN XÁM TRUNG (#e...) --- */
+.theme-dark [style*="background-color: #e2e8f0"],
+.theme-dark [style*="background-color: #e5e7eb"],
+.theme-dark [style*="background-color: #ebebeb"],
+.theme-dark [style*="background-color: #eee"],
+.theme-dark [style*="background-color: #eeeeee"] {
+  background-color: #333333 !important;
+}
+
+/* --- CHỮ ĐEN → TRẮNG NGÀ --- */
+.theme-dark [style*="color: #111827"],
+.theme-dark [style*="color: '#111827'"],
+.theme-dark [style*="color: #1f2937"],
+.theme-dark [style*="color: '#1f2937'"],
+.theme-dark [style*="color: #0f172a"],
+.theme-dark [style*="color: #000000"],
+.theme-dark [style*="color: #000"],
+.theme-dark [style*="color: black"],
+.theme-dark [style*="color: rgb(0,0,0)"] {
+  color: #e8e8e8 !important;
+}
+
+/* --- CHỮ XÁM ĐẬM → XÁM SÁNG HƠN --- */
+.theme-dark [style*="color: #374151"],
+.theme-dark [style*="color: #4b5563"],
+.theme-dark [style*="color: #555"],
+.theme-dark [style*="color: #333"] {
+  color: #cccccc !important;
+}
+
+/* --- CHỮ XÁM NHẠT → XÁM VỪA --- */
+.theme-dark [style*="color: #6b7280"],
+.theme-dark [style*="color: '#6b7280'"],
+.theme-dark [style*="color: #9ca3af"],
+.theme-dark [style*="color: #888"],
+.theme-dark [style*="color: #999"],
+.theme-dark [style*="color: #aaa"] {
+  color: #999999 !important;
+}
+
+/* --- INPUTS / FORM --- */
+.theme-dark input,
+.theme-dark textarea,
+.theme-dark select {
+  background-color: #333333 !important;
+  color: #e8e8e8 !important;
+  border-color: #444444 !important;
+}
+.theme-dark input::placeholder,
+.theme-dark textarea::placeholder {
+  color: #777777 !important;
+}
+
+/* --- BORDER --- */
+.theme-dark [style*="border: 1px solid #e"],
+.theme-dark [style*="border: 2px solid #e"],
+.theme-dark [style*="border: 1px solid #d"],
+.theme-dark [style*="borderColor: '#e"],
+.theme-dark [style*="border-top: 1px solid"],
+.theme-dark [style*="border-bottom: 1px solid"] {
+  border-color: #3a3a3a !important;
+}
+
+/* --- BADGE màu sáng → tối xuống giữ sắc --- */
+.theme-dark [style*="background-color: #ecfdf5"],
+.theme-dark [style*="background-color: #d1fae5"] {
+  background-color: #0d3326 !important; color: #34d399 !important;
+}
+.theme-dark [style*="background-color: #eff6ff"],
+.theme-dark [style*="background-color: #dbeafe"] {
+  background-color: #0d1f3c !important; color: #60a5fa !important;
+}
+.theme-dark [style*="background-color: #fef3c7"],
+.theme-dark [style*="background-color: #fde68a"] {
+  background-color: #3b2a00 !important; color: #fbbf24 !important;
+}
+.theme-dark [style*="background-color: #fee2e2"],
+.theme-dark [style*="background-color: #fecaca"] {
+  background-color: #3b0d0d !important; color: #f87171 !important;
+}
+.theme-dark [style*="background-color: #fce7f3"] {
+  background-color: #3b0d25 !important; color: #f472b6 !important;
+}
+
+/* --- SECTION/FOOTER TỐI SẴN: giữ nguyên, nhích sáng chút --- */
+.theme-dark [style*="background-color: #111827"],
+.theme-dark [style*="background-color: #0f172a"],
+.theme-dark [style*="background-color: #1e293b"],
+.theme-dark [style*="background-color: #111"],
+.theme-dark [style*="backgroundColor: '#111827'"] {
+  background-color: #1f1f1f !important;
+}
+
+/* --- SHADOW nhẹ hơn --- */
+.theme-dark [style*="box-shadow: 0"] {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5) !important;
+}
+
+/* --- SCROLLBAR --- */
+.theme-dark ::-webkit-scrollbar        { width: 8px; }
+.theme-dark ::-webkit-scrollbar-track  { background: #1a1a1a; }
+.theme-dark ::-webkit-scrollbar-thumb  { background: #444; border-radius: 4px; }
+.theme-dark ::-webkit-scrollbar-thumb:hover { background: #666; }
+
+
+/* ═══════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════ */
 @keyframes shake {
   10%, 90% { transform: translate3d(-2px, 0, 0); }
-  20%, 80% { transform: translate3d(4px, 0, 0); }
+  20%, 80%  { transform: translate3d(4px, 0, 0); }
   30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
-  40%, 60% { transform: translate3d(8px, 0, 0); }
+  40%, 60%  { transform: translate3d(8px, 0, 0); }
 }
-
 .shake {
   animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
   transform: translate3d(0, 0, 0);
 }
 
-/* Reset chuẩn mực cho dự án React */
+/* ═══════════════════════════════════════
+   RESET
+   ═══════════════════════════════════════ */
 html, body {
   margin: 0 !important;
   padding: 0 !important;
   overflow-x: hidden;
-  
-  /* THAY ĐỔI QUAN TRỌNG: Để nội dung tự do giãn dài xuống dưới */
-  min-height: 100vh; 
-  
-  /* Khóa cứng hành vi cuộn mặc định để nhường toàn quyền cho Javascript (App.js) */
-  scroll-behavior: auto !important; 
+  min-height: 100vh;
+  scroll-behavior: auto !important;
 }
-
 #root {
   margin: 0;
   padding: 0;
-  min-height: 100vh; 
+  min-height: 100vh;
 }

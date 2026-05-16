@@ -18,12 +18,12 @@ import './App.css';
 // Component bọc logic trang chủ để giữ nguyên tính năng Scroll Spy
 const HomePage = ({ 
   handleSearch, isLoading, searchData, editedPlans, setEditedPlans, 
-  setActiveSection, setToast, scrollToSection 
+  setActiveSection, setToast, scrollToSection, isDark
 }) => {
   return (
     <>
       <div id="hero-section" style={{ scrollMarginTop: '110px' }}>
-        <Hero onSearch={handleSearch} />
+        <Hero onSearch={handleSearch} isDark={isDark} />
       </div>
       
       <div id="itinerary-section" style={{ scrollMarginTop: '110px' }}>
@@ -33,12 +33,13 @@ const HomePage = ({
             data={searchData} 
             onSave={() => setToast({ show: true, message: 'Đã lưu vào Dashboard!', type: 'success' })}
             onPlanChange={setEditedPlans}
+            isDark={isDark}
           />
         )}
       </div>
 
       <div id="featured-section" style={{ scrollMarginTop: '110px' }}>
-        <FeaturedDestinations onNavigate={scrollToSection} />
+        <FeaturedDestinations onNavigate={scrollToSection} isDark={isDark} />
       </div>
     </>
   );
@@ -51,6 +52,7 @@ function AppContent() {
   const [activeSection, setActiveSection] = useState('home'); 
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [isDark, setIsDark] = useState(false);
 
   // Flag để tạm dừng scroll spy khi user vừa click nav
   const isScrollingRef = useRef(false);
@@ -195,15 +197,17 @@ function AppContent() {
   const hasItinerary = !!searchData || isLoading;
 
   return (
-    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', margin: 0, padding: 0 }}>
+    <div className={isDark ? 'theme-dark' : 'theme-light'} style={{ backgroundColor: isDark ? '#1a1a1a' : '#f9fafb', color: isDark ? '#e8e8e8' : '#111827', minHeight: '100vh', margin: 0, padding: 0, transition: 'background-color 0.3s ease, color 0.3s ease' }}>
       <Navbar 
         activeSection={activeSection} 
         onNavigate={scrollToSection} 
         onRefresh={() => {
-          window.location.hash = '/'; // 1. Đưa đường dẫn về trang chủ
-          window.location.reload();   // 2. Tải lại toàn bộ trang để xóa Cache/State cũ
+          window.location.hash = '/';
+          window.location.reload();
         }} 
         hasItinerary={hasItinerary}
+        isDark={isDark}
+        onToggleTheme={() => setIsDark(prev => !prev)}
       />
       
       <div> 
@@ -216,6 +220,7 @@ function AppContent() {
                 searchData={searchData} editedPlans={editedPlans} 
                 setEditedPlans={setEditedPlans} setActiveSection={setActiveSection}
                 setToast={setToast} scrollToSection={scrollToSection}
+                isDark={isDark}
               />
             ) : (
               <div style={{ paddingTop: '110px' }}>
@@ -227,13 +232,13 @@ function AppContent() {
           {/* TRANG XEM TẤT CẢ 63 TỈNH THÀNH */}
           <Route path="/destinations" element={
             <div style={{ paddingTop: '100px' }}>
-              <FeaturedDestinations onNavigate={scrollToSection} />
+              <FeaturedDestinations onNavigate={scrollToSection} isDark={isDark} />
             </div>
           } />
         </Routes>
 
-        <MapBubble targetOffset={800} data={searchData} editedPlans={editedPlans} />
-        <ChatAI tripData={searchData} />
+        <MapBubble targetOffset={800} data={searchData} editedPlans={editedPlans} isDark={isDark} />
+        <ChatAI tripData={searchData} isDark={isDark}/>
       </div>
 
       {toast.show && (

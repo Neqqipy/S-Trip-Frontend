@@ -107,7 +107,7 @@ const usePanelResize = (minPct = 20, maxPct = 50, defaultPct = 30) => {
   return { widthPct, onMouseDown };
 };
 
-const DrinksPanel = ({ location, isOpen, onClose }) => {
+const DrinksPanel = ({ location, isOpen, onClose, isDark }) => {
   const cacheKey = `drinks:${location}`;
   const [drinks,  setDrinks]  = useState(panelCache[cacheKey] || []);
   const [loading, setLoading] = useState(false);
@@ -179,7 +179,7 @@ const DrinksPanel = ({ location, isOpen, onClose }) => {
           position: 'fixed', top: 0, left: 0, bottom: 0,
           width: `${dpWidth}vw`,
           minWidth: '260px',
-          backgroundColor: 'white',
+          backgroundColor: isDark ? '#111827' : 'white', // ✅ Đổi màu
           zIndex: 100000,
           display: 'flex', flexDirection: 'column',
           boxShadow: '8px 0 40px rgba(0,0,0,0.18)',
@@ -205,8 +205,8 @@ const DrinksPanel = ({ location, isOpen, onClose }) => {
         <div style={{
           padding: '24px 22px 16px',
           paddingRight: '32px',
-          background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
-          borderBottom: '1px solid #d1fae5',
+          background: isDark ? 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)' : 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)', // ✅ Đổi màu
+          borderBottom: isDark ? '1px solid #065f46' : '1px solid #d1fae5', // ✅ Đổi màu
           flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -220,7 +220,7 @@ const DrinksPanel = ({ location, isOpen, onClose }) => {
                 <FontAwesomeIcon icon={faMugHot} style={{ color: 'white', fontSize: 20 }} />
               </div>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: '#065f46' }}>Đồ uống & Cà phê</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: isDark ? '#ffffff' : '#065f46' }}>Đồ uống & Cà phê</div> {/* ✅ Đổi màu */}
                 <div style={{ fontSize: 12, color: '#6ee7b7' }}>Quán ngon tại {location}</div>
               </div>
             </div>
@@ -228,13 +228,13 @@ const DrinksPanel = ({ location, isOpen, onClose }) => {
               onClick={onClose}
               style={{
                 width: 36, height: 36, borderRadius: '50%',
-                border: 'none', background: 'rgba(16,185,129,0.12)',
-                color: '#059669', cursor: 'pointer',
+                border: 'none', background: isDark ? 'rgba(16,185,129,0.2)' : 'rgba(16,185,129,0.12)', // ✅ Đổi màu
+                color: isDark ? '#34d399' : '#059669', cursor: 'pointer', // ✅ Đổi màu
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 16, transition: '0.15s',
               }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(16,185,129,0.22)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(16,185,129,0.12)'}
+              onMouseLeave={e => e.currentTarget.style.background = isDark ? 'rgba(16,185,129,0.2)' : 'rgba(16,185,129,0.12)'}
             >
               <FontAwesomeIcon icon={faXmark} />
             </button>
@@ -289,18 +289,18 @@ const DrinksPanel = ({ location, isOpen, onClose }) => {
 
           {/* Danh sách */}
           {!loading && !error && drinks.map((d, i) => (
-            <DrinkCard key={i} item={d} location={location} />
+            <DrinkCard key={i} item={d} location={location} isDark={isDark} /> // ✅ Truyền isDark
           ))}
         </div>
 
         {/* Footer */}
         <div style={{
-          padding: '12px 18px', borderTop: '1px solid #f0fdf4',
+          padding: '12px 18px', borderTop: isDark ? '1px solid #1e293b' : '1px solid #f0fdf4', // ✅ Đổi màu
           flexShrink: 0,
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          background: '#f9fafb',
+          background: isDark ? '#0f172a' : '#f9fafb', // ✅ Đổi màu
         }}>
-          <span style={{ fontSize: 11, color: '#d1d5db' }}>Dữ liệu từ Google Maps · SerpAPI</span>
+          <span style={{ fontSize: 11, color: '#64748b' }}>Dữ liệu từ Google Maps · SerpAPI</span>
           <button
             onClick={onClose}
             style={{
@@ -322,7 +322,7 @@ const DrinksPanel = ({ location, isOpen, onClose }) => {
 // ─────────────────────────────────────────────────────────────
 // 🧃 DRINK CARD — card cho từng quán đồ uống
 // ─────────────────────────────────────────────────────────────
-const DrinkCard = ({ item, location }) => {
+const DrinkCard = ({ item, location, isDark }) => { // ✅ Thêm isDark
   const [saved, setSaved] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
@@ -349,9 +349,9 @@ const DrinkCard = ({ item, location }) => {
       <div
         className="dp-card"
         style={{
-          backgroundColor: 'white',
+          backgroundColor: isDark ? '#1e293b' : 'white', // ✅ Đổi màu
           borderRadius: 18,
-          border: '1px solid #f1f5f9',
+          border: isDark ? '1px solid #334155' : '1px solid #f1f5f9', // ✅ Đổi màu
           padding: '14px',
           marginBottom: 12,
           display: 'flex', gap: 14,
@@ -365,8 +365,8 @@ const DrinkCard = ({ item, location }) => {
           style={{
             position: 'absolute', top: 10, right: 10,
             width: 30, height: 30, borderRadius: 8,
-            border: 'none', background: saved ? '#fef08a' : '#f8fafc',
-            color: saved ? '#eab308' : '#9ca3af',
+            border: 'none', background: saved ? (isDark ? '#854d0e' : '#fef08a') : (isDark ? '#334155' : '#f8fafc'), // ✅ Đổi màu
+            color: saved ? (isDark ? '#fde047' : '#eab308') : '#9ca3af', // ✅ Đổi màu
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 13, transition: '0.2s', zIndex: 2,
           }}
@@ -406,7 +406,7 @@ const DrinkCard = ({ item, location }) => {
 
           {/* Tên */}
           <div style={{
-            fontSize: 15, fontWeight: 900, color: '#111827',
+            fontSize: 15, fontWeight: 900, color: isDark ? '#f8fafc' : '#111827', // ✅ Đổi màu
             overflow: 'hidden', textOverflow: 'ellipsis',
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
             lineHeight: 1.35, marginBottom: 4,
@@ -427,7 +427,7 @@ const DrinkCard = ({ item, location }) => {
           {/* Mô tả */}
           {item.desc && (
             <div style={{
-              fontSize: 12, color: '#64748b', lineHeight: 1.4,
+              fontSize: 12, color: isDark ? '#94a3b8' : '#64748b', lineHeight: 1.4, // ✅ Đổi màu
               overflow: 'hidden', display: '-webkit-box',
               WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
               marginBottom: 8,
@@ -454,13 +454,13 @@ const DrinkCard = ({ item, location }) => {
               style={{
                 padding: '5px 12px', borderRadius: 8,
                 border: '1.5px solid #0d9488',
-                background: 'white', color: '#0d9488',
+                background: isDark ? '#111827' : 'white', color: '#0d9488', // ✅ Đổi màu
                 fontWeight: 700, fontSize: 11, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 4,
                 transition: '0.15s',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = '#0d9488'; e.currentTarget.style.color = 'white'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#0d9488'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = isDark ? '#111827' : 'white'; e.currentTarget.style.color = '#0d9488'; }} // ✅ Đổi màu hover
             >
               <FontAwesomeIcon icon={faStar} style={{ fontSize: 9 }} /> Reviews
             </button>
@@ -522,7 +522,7 @@ const getLocalSpecialties = (location) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-const SpecialtiesPanel = ({ location, isOpen, onClose }) => {
+const SpecialtiesPanel = ({ location, isOpen, onClose, isDark }) => {
   const cacheKey = `specialties:${location}`;
   const [specialties, setSpecialties] = useState(panelCache[cacheKey] || []);
   const [loading, setLoading] = useState(false);
@@ -576,24 +576,24 @@ const SpecialtiesPanel = ({ location, isOpen, onClose }) => {
 
       <div className="sp-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }} />
 
-      <div className="sp-panel" onClick={e => e.stopPropagation()} style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: `${spWidth}vw`, minWidth: '260px', backgroundColor: 'white', zIndex: 100000, display: 'flex', flexDirection: 'column', boxShadow: '8px 0 40px rgba(0,0,0,0.18)', overflow: 'hidden' }}>
+      <div className="sp-panel" onClick={e => e.stopPropagation()} style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: `${spWidth}vw`, minWidth: '260px', backgroundColor: isDark ? '#111827' : 'white', zIndex: 100000, display: 'flex', flexDirection: 'column', boxShadow: '8px 0 40px rgba(0,0,0,0.18)', overflow: 'hidden' }}> {/* ✅ Đổi màu */}
         {/* Drag handle */}
         <div onMouseDown={spDragStart} title="Kéo để thay đổi kích thước" style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 14, cursor: 'ew-resize', zIndex: 10, background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(249,115,22,0.18)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
           <div style={{ width: 3, height: 40, borderRadius: 99, background: 'rgba(249,115,22,0.5)' }} />
         </div>
         {/* Header */}
-        <div style={{ padding: '28px 24px 20px', paddingRight: '32px', background: 'white', borderBottom: '1px solid #e2e8f0', flexShrink: 0, zIndex: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+        <div style={{ padding: '28px 24px 20px', paddingRight: '32px', background: isDark ? '#1e293b' : 'white', borderBottom: isDark ? '1px solid #334155' : '1px solid #e2e8f0', flexShrink: 0, zIndex: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}> {/* ✅ Đổi màu */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ width: 48, height: 48, borderRadius: 16, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(16,185,129,0.3)' }}>
                 <FontAwesomeIcon icon={faMugHot} style={{ color: 'white', fontSize: 22 }} />
               </div>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: '#064e3b', letterSpacing: '-0.3px' }}>Đồ uống & Cà phê</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: isDark ? '#ffffff' : '#064e3b', letterSpacing: '-0.3px' }}>Đồ uống & Cà phê</div> {/* ✅ Đổi màu */}
                 <div style={{ fontSize: 13, color: '#10b981', fontWeight: 600 }}>Khám phá quán ngon tại {location}</div>
               </div>
             </div>
-            <button onClick={onClose} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: '#f1f5f9', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, transition: '0.2s' }} onMouseEnter={e => {e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#ef4444';}} onMouseLeave={e => {e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b';}}>
+            <button onClick={onClose} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: isDark ? '#334155' : '#f1f5f9', color: isDark ? '#cbd5e1' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, transition: '0.2s' }} onMouseEnter={e => {e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#ef4444';}} onMouseLeave={e => {e.currentTarget.style.background = isDark ? '#334155' : '#f1f5f9'; e.currentTarget.style.color = isDark ? '#cbd5e1' : '#64748b';}}> {/* ✅ Đổi màu */}
               <FontAwesomeIcon icon={faXmark} />
             </button>
           </div>
@@ -609,21 +609,21 @@ const SpecialtiesPanel = ({ location, isOpen, onClose }) => {
 
           {/* 🍜 GỢI Ý ĐẶC SẢN TĨNH */}
           {localTips && (
-            <div style={{ marginBottom: 16, borderRadius: 18, overflow: 'hidden', border: '1.5px solid #fed7aa', boxShadow: '0 4px 16px rgba(249,115,22,0.10)' }}>
-              <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, #f97316, #ea580c)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ marginBottom: 16, borderRadius: 18, overflow: 'hidden', border: isDark ? '1.5px solid #9a3412' : '1.5px solid #fed7aa', boxShadow: isDark ? 'none' : '0 4px 16px rgba(249,115,22,0.10)' }}> {/* ✅ Đổi màu */}
+              <div style={{ padding: '12px 16px', background: isDark ? 'linear-gradient(135deg, #c2410c, #7c2d12)' : 'linear-gradient(135deg, #f97316, #ea580c)', display: 'flex', alignItems: 'center', gap: 8 }}> {/* ✅ Đổi màu */}
                 <span style={{ fontSize: 18 }}>🛍️</span>
                 <span style={{ fontSize: 16, fontWeight: 900, color: 'white' }}>Nên mua gì tại {location}?</span>
               </div>
-              <div style={{ padding: '12px 14px', background: '#fff7ed' }}>
+              <div style={{ padding: '12px 14px', background: isDark ? '#2a1508' : '#fff7ed' }}> {/* ✅ Đổi màu */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: localTips.tip ? 10 : 0 }}>
                   {(localTips.items || []).map((item, i) => (
-                    <span key={i} style={{ padding: '5px 12px', borderRadius: 99, background: 'white', border: '1.5px solid #fed7aa', fontSize: 12, fontWeight: 700, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span key={i} style={{ padding: '5px 12px', borderRadius: 99, background: isDark ? '#111827' : 'white', border: isDark ? '1px solid #7c2d12' : '1.5px solid #fed7aa', fontSize: 12, fontWeight: 700, color: isDark ? '#fdba74' : '#9a3412', display: 'flex', alignItems: 'center', gap: 5 }}> {/* ✅ Đổi màu */}
                       <span style={{ color: '#f97316' }}>•</span> {item}
                     </span>
                   ))}
                 </div>
                 {localTips.tip && (
-                  <div style={{ fontSize: 14, color: '#78350f', lineHeight: 1.5, padding: '8px 10px', background: 'rgba(249,115,22,0.08)', borderRadius: 10, marginTop: 4 }}>
+                  <div style={{ fontSize: 14, color: isDark ? '#fdba74' : '#78350f', lineHeight: 1.5, padding: '8px 10px', background: isDark ? 'rgba(249,115,22,0.15)' : 'rgba(249,115,22,0.08)', borderRadius: 10, marginTop: 4 }}> {/* ✅ Đổi màu */}
                     💡 <em>{localTips.tip}</em>
                   </div>
                 )}
@@ -658,13 +658,13 @@ const SpecialtiesPanel = ({ location, isOpen, onClose }) => {
             </div>
           )}
           {!loading && !error && specialties.map((s, i) => (
-            <SpecialtyCard key={i} item={s} location={location} />
+            <SpecialtyCard key={i} item={s} location={location} isDark={isDark} /> // ✅ Truyền isDark
           ))}
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '12px 18px', borderTop: '1px solid #fff7ed', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb' }}>
-          <span style={{ fontSize: 11, color: '#d1d5db' }}>Dữ liệu từ Google Maps · SerpAPI</span>
+        <div style={{ padding: '12px 18px', borderTop: isDark ? '1px solid #1e293b' : '1px solid #fff7ed', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isDark ? '#0f172a' : '#f9fafb' }}> {/* ✅ Đổi màu */}
+          <span style={{ fontSize: 11, color: '#64748b' }}>Dữ liệu từ Google Maps · SerpAPI</span>
           <button onClick={onClose} style={{ padding: '7px 16px', borderRadius: 10, border: 'none', background: '#f97316', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
             <FontAwesomeIcon icon={faChevronLeft} style={{ fontSize: 10 }} /> Đóng
           </button>
@@ -676,7 +676,7 @@ const SpecialtiesPanel = ({ location, isOpen, onClose }) => {
 };
 
 // 🍜 SPECIALTY CARD
-const SpecialtyCard = ({ item, location }) => {
+const SpecialtyCard = ({ item, location, isDark }) => { // ✅ Thêm isDark
   const [saved, setSaved] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
@@ -700,8 +700,8 @@ const SpecialtyCard = ({ item, location }) => {
 
   return (
     <>
-      <div className="sp-card" style={{ backgroundColor: 'white', borderRadius: 18, border: '1px solid #f1f5f9', padding: '14px', marginBottom: 12, display: 'flex', gap: 14, position: 'relative', cursor: 'default' }}>
-        <button onClick={() => setSaved(!saved)} style={{ position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 8, border: 'none', background: saved ? '#fef08a' : '#f8fafc', color: saved ? '#eab308' : '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, transition: '0.2s', zIndex: 2 }}>
+      <div className="sp-card" style={{ backgroundColor: isDark ? '#1e293b' : 'white', borderRadius: 18, border: isDark ? '1px solid #334155' : '1px solid #f1f5f9', padding: '14px', marginBottom: 12, display: 'flex', gap: 14, position: 'relative', cursor: 'default' }}> {/* ✅ Đổi màu */}
+        <button onClick={() => setSaved(!saved)} style={{ position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 8, border: 'none', background: saved ? (isDark ? '#854d0e' : '#fef08a') : (isDark ? '#334155' : '#f8fafc'), color: saved ? (isDark ? '#fde047' : '#eab308') : '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, transition: '0.2s', zIndex: 2 }}> {/* ✅ Đổi màu */}
           <FontAwesomeIcon icon={saved ? faBookmarkSolid : faBookmarkRegular} />
         </button>
 
@@ -715,7 +715,7 @@ const SpecialtyCard = ({ item, location }) => {
 
         <div style={{ flex: 1, minWidth: 0, paddingRight: 28 }}>
           <div style={{ fontSize: 10, fontWeight: 800, color: '#ea580c', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>🍜 Đặc sản địa phương</div>
-          <div style={{ fontSize: 15, fontWeight: 900, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.35, marginBottom: 4 }}>{item.name}</div>
+          <div style={{ fontSize: 15, fontWeight: 900, color: isDark ? '#ffffff' : '#111827', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.35, marginBottom: 4 }}>{item.name}</div> {/* ✅ Đổi màu */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 4 }}>
             <span style={{ color: '#f59e0b', fontSize: 12, fontWeight: 700 }}>⭐ {item.rating || 'N/A'}</span>
             {item.price && item.price !== 'Giá tùy chọn' && (
@@ -723,7 +723,7 @@ const SpecialtyCard = ({ item, location }) => {
             )}
           </div>
           {item.desc && (
-            <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginBottom: 8 }}>{item.desc}</div>
+            <div style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginBottom: 8 }}>{item.desc}</div>
           )}
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={() => setMapOpen(true)} style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -731,9 +731,9 @@ const SpecialtyCard = ({ item, location }) => {
             </button>
             <button
               onClick={() => setReviewsOpen(true)}
-              style={{ padding: '5px 12px', borderRadius: 8, border: '1.5px solid #0d9488', background: 'white', color: '#0d9488', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, transition: '0.15s' }}
+              style={{ padding: '5px 12px', borderRadius: 8, border: '1.5px solid #0d9488', background: isDark ? '#111827' : 'white', color: '#0d9488', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, transition: '0.15s' }}
               onMouseEnter={e => { e.currentTarget.style.background = '#0d9488'; e.currentTarget.style.color = 'white'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#0d9488'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = isDark ? '#111827' : 'white'; e.currentTarget.style.color = '#0d9488'; }}
             >
               <FontAwesomeIcon icon={faStar} style={{ fontSize: 9 }} /> Reviews
             </button>
@@ -1000,7 +1000,7 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
 };
 
 // 🎨 PlaceCard
-const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit, guestCount }) => {
+const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit, guestCount, isDark }) => {
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [isHovered,   setIsHovered]   = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -1030,14 +1030,9 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
   const handleImgError = async () => {
     setImgError(true);
     try {
-      // 1. Thử tìm ảnh trong bài đánh giá (Reviews)
       const revData = await fetchReviews(data.name, data.place_id || '');
       const photos = (revData?.reviews || []).flatMap(r => r.photos || []);
-      if (photos.length > 0) { 
-        setFallbackImg(photos[0]); 
-        return; 
-      }
-      // 2. Nếu review không có ảnh, thử tìm hình ảnh chung (Images)
+      if (photos.length > 0) { setFallbackImg(photos[0]); return; }
       const imgData = await fetchImages(data.name, data.place_id || '');
       const imgs = imgData?.images || [];
       if (imgs.length > 0) setFallbackImg(imgs[0]);
@@ -1051,17 +1046,19 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{
-        backgroundColor: 'white', borderRadius: '20px', padding: '18px 20px',
+        backgroundColor: isDark ? '#22252a' : 'white',
+        borderRadius: '20px', padding: '18px 20px',
         display: 'flex', gap: '16px',
-        border: '1px solid #f1f5f9', flex: 1,
-        boxShadow: isHovered ? '0 15px 35px rgba(0,0,0,0.12)' : '0 2px 8px rgba(0,0,0,0.06)',
+        border: isDark ? '1px solid #3e4451' : '1px solid #f1f5f9',
+        flex: 1,
+        boxShadow: isHovered ? (isDark ? '0 15px 35px rgba(0,0,0,0.4)' : '0 15px 35px rgba(0,0,0,0.12)') : '0 2px 8px rgba(0,0,0,0.06)',
         alignItems: 'center',
         transform: isHovered ? 'translateY(-10px)' : 'translateY(0)',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         zIndex: isHovered ? 10 : 1, position: 'relative',
       }}
     >
-      <button onClick={(e) => { e.stopPropagation(); setIsSaved(!isSaved); }} style={{ position: 'absolute', top: '12px', right: '12px', backgroundColor: isSaved ? '#fef08a' : 'rgba(255,255,255,0.85)', color: isSaved ? '#eab308' : '#9ca3af', border: '1px solid #f1f5f9', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 20, backdropFilter: 'blur(4px)', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: '0.2s' }}
+      <button onClick={(e) => { e.stopPropagation(); setIsSaved(!isSaved); }} style={{ position: 'absolute', top: '12px', right: '12px', backgroundColor: isSaved ? (isDark ? '#854d0e' : '#fef08a') : (isDark ? '#374151' : 'rgba(255,255,255,0.85)'), color: isSaved ? (isDark ? '#fde047' : '#eab308') : (isDark ? '#9ca3af' : '#9ca3af'), border: isDark ? '1px solid #4b5563' : '1px solid #f1f5f9', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 20, backdropFilter: 'blur(4px)', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: '0.2s' }}
         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
         onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
         title={isSaved ? "Bỏ lưu" : "Lưu địa điểm"}
@@ -1069,14 +1066,10 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
         <FontAwesomeIcon icon={isSaved ? faBookmarkSolid : faBookmarkRegular} style={{ fontSize: '15px' }} />
       </button>
 
-      <div style={{ width: '120px', height: '120px', flexShrink: 0, borderRadius: '14px', overflow: 'hidden', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      {/* Thêm điều kiện isFlight ? 'white' : ... để ép nền trắng cho logo hãng bay */}
+      <div style={{ width: '120px', height: '120px', flexShrink: 0, borderRadius: '14px', overflow: 'hidden', backgroundColor: isFlight ? 'white' : (isDark ? '#111827' : '#f8fafc'), display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         {(data.thumbnail || fallbackImg) && displayImg ? (
-          <img 
-            src={displayImg} 
-            alt="thumb" 
-            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: isHovered ? 'scale(1.09)' : 'scale(1)', transition: 'transform 0.4s ease', display: 'block' }} 
-            onError={imgError ? (e => { e.target.onerror = null; e.target.src = 'https://placehold.co/120x120?text=S-Trip'; }) : handleImgError} 
-          />
+          <img src={displayImg} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover', transform: isHovered ? 'scale(1.09)' : 'scale(1)', transition: 'transform 0.4s ease', display: 'block' }} onError={imgError ? (e => { e.target.onerror = null; e.target.src = 'https://placehold.co/120x120?text=S-Trip'; }) : handleImgError} />
         ) : (
           <FontAwesomeIcon icon={sessionLabel ? sessionIcon : icon} style={{ fontSize: '28px', color: mainColor }} />
         )}
@@ -1084,50 +1077,59 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '11px', fontWeight: '800', color: mainColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{sessionLabel ? `${sessionLabel} · ${type}` : type}</div>
-        <div style={{ fontSize: '16px', fontWeight: '900', color: '#111827', margin: '4px 0 5px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: '1.35', wordBreak: 'break-word' }}>{data.name || data.airline}</div>
+        
+        {/* Ép chữ tên địa điểm hoặc tên hãng máy bay (Vietjet/Vietnam Airlines) sang màu trắng */}
+        <div style={{ fontSize: '16px', fontWeight: '900', color: isDark ? '#ffffff' : '#111827', margin: '4px 0 5px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: '1.35', wordBreak: 'break-word' }}>
+          {data.name || data.airline}
+        </div>
+        
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '4px' }}>
           <span style={{ color: '#eab308', fontWeight: '700', fontSize: '13px' }}><FontAwesomeIcon icon={faStar} /> {data.rating || 'N/A'}</span>
           <span style={{ color: '#10b981', fontWeight: '800', fontSize: '13px' }}>{data.price}</span>
         </div>
-        <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginBottom: '10px' }}>{data.desc}</div>
+        
+        {/* Ép chữ mô tả (Hãng bay... Thời gian bay...) sang màu xám trắng sáng */}
+        <div style={{ fontSize: '12px', color: isDark ? '#cbd5e1' : '#64748b', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginBottom: '10px' }}>
+          {data.desc}
+        </div>
 
         {(isHotel || isFlight) && guestCount && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: isFlight ? '#ecfdf5' : '#eff6ff', padding: '4px 10px', borderRadius: '6px', border: `1px solid ${isFlight ? '#a7f3d0' : '#dbeafe'}` }}>
-              <FontAwesomeIcon icon={faUsers} style={{ fontSize: '10px', color: isFlight ? '#059669' : '#3b82f6' }} />
-              <span style={{ fontSize: '11px', fontWeight: '700', color: isFlight ? '#065f46' : '#1e40af' }}>{isFlight ? `Vé cho ${guestCount} khách` : `${guestCount} khách`}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: isFlight ? (isDark ? '#064e3b' : '#ecfdf5') : (isDark ? '#1e3a8a' : '#eff6ff'), padding: '4px 10px', borderRadius: '6px', border: `1px solid ${isFlight ? (isDark ? '#059669' : '#a7f3d0') : (isDark ? '#2563eb' : '#dbeafe')}` }}>
+              <FontAwesomeIcon icon={faUsers} style={{ fontSize: '10px', color: isFlight ? (isDark ? '#34d399' : '#059669') : (isDark ? '#93c5fd' : '#3b82f6') }} />
+              <span style={{ fontSize: '11px', fontWeight: '700', color: isFlight ? (isDark ? '#a7f3d0' : '#065f46') : (isDark ? '#bfdbfe' : '#1e40af') }}>{isFlight ? `Vé cho ${guestCount} khách` : `${guestCount} khách`}</span>
             </div>
             {isHotel && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: '#f5f3ff', padding: '4px 10px', borderRadius: '6px', border: '1px solid #ede9fe' }}>
-                <FontAwesomeIcon icon={getRoomIcon(data.room_type)} style={{ fontSize: '10px', color: '#8b5cf6' }} />
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#5b21b6' }}>{data.room_type || "Phòng tiêu chuẩn"}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: isDark ? '#4c1d95' : '#f5f3ff', padding: '4px 10px', borderRadius: '6px', border: isDark ? '1px solid #7c3aed' : '1px solid #ede9fe' }}>
+                <FontAwesomeIcon icon={getRoomIcon(data.room_type)} style={{ fontSize: '10px', color: isDark ? '#c4b5fd' : '#8b5cf6' }} />
+                <span style={{ fontSize: '11px', fontWeight: '700', color: isDark ? '#ddd6fe' : '#5b21b6' }}>{data.room_type || "Phòng tiêu chuẩn"}</span>
               </div>
             )}
             {isFlight && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: '#fff7ed', padding: '4px 10px', borderRadius: '6px', border: '1px solid #ffedd5' }}>
-                <FontAwesomeIcon icon={faPlane} style={{ fontSize: '10px', color: '#f97316' }} />
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#c2410c' }}>Hạng {data.ticket_class || "Phổ thông"}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: isDark ? '#7c2d12' : '#fff7ed', padding: '4px 10px', borderRadius: '6px', border: `1px solid ${isDark ? '#9a3412' : '#ffedd5'}` }}>
+                <FontAwesomeIcon icon={faPlane} style={{ fontSize: '10px', color: isDark ? '#fdba74' : '#f97316' }} />
+                <span style={{ fontSize: '11px', fontWeight: '700', color: isDark ? '#ffedd5' : '#c2410c' }}>Hạng {data.ticket_class || "Phổ thông"}</span>
               </div>
             )}
           </div>
         )}
 
         <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
-          {!isFlight && (
+          {!isFlight && !isHotel && (
             <button onClick={handleLocation} style={{ padding: '7px 14px', borderRadius: '10px', border: 'none', backgroundColor: '#3b82f6', color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <FontAwesomeIcon icon={faLocationArrow} style={{ fontSize: '10px' }} /> Vị trí
             </button>
           )}
           {!isFlight && (
-            <button onClick={() => setReviewsOpen(true)} style={{ padding: '7px 14px', borderRadius: '10px', border: '1.5px solid #0d9488', backgroundColor: 'white', color: '#0d9488', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px', transition: '0.15s' }}
+            <button onClick={() => setReviewsOpen(true)} style={{ padding: '7px 14px', borderRadius: '10px', border: '1.5px solid #0d9488', backgroundColor: isDark ? '#111827' : 'white', color: '#0d9488', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px', transition: '0.15s' }}
               onMouseEnter={e => { e.currentTarget.style.background = '#0d9488'; e.currentTarget.style.color = 'white'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#0d9488'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = isDark ? '#111827' : 'white'; e.currentTarget.style.color = '#0d9488'; }}
             >
               <FontAwesomeIcon icon={faStar} style={{ fontSize: '10px' }} /> Reviews
             </button>
           )}
           {onEdit && (
-            <button onClick={onEdit} style={{ padding: '7px 12px', borderRadius: '10px', border: `1.5px solid ${mainColor}`, color: mainColor, backgroundColor: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <button onClick={onEdit} style={{ padding: '7px 12px', borderRadius: '10px', border: `1.5px solid ${mainColor}`, color: mainColor, backgroundColor: isDark ? '#111827' : 'white', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <FontAwesomeIcon icon={faPenToSquare} style={{ fontSize: '10px' }} /> Đổi
             </button>
           )}
@@ -1140,7 +1142,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
 };
 
 // ── TRANSPORT CARD — có hiệu ứng hover nổi lên ───────────────
-const TransportCard = ({ opt, isCombined }) => {
+const TransportCard = ({ opt, isCombined, isDark }) => {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -1148,16 +1150,16 @@ const TransportCard = ({ opt, isCombined }) => {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        backgroundColor: 'white', borderRadius: '24px', padding: '24px',
+        backgroundColor: isDark ? '#22252a' : 'white', borderRadius: '24px', padding: '24px',
         border: opt.recommended
           ? '2.5px solid #10b981'
           : hovered ? '2px solid #cbd5e1' : '2px solid #f1f5f9',
         boxShadow: hovered
-          ? '0 20px 50px rgba(0,0,0,0.13)'
+          ? '0 32px 64px rgba(0,0,0,0.18)'
           : opt.recommended
             ? '0 12px 30px rgba(16,185,129,0.15)'
             : '0 4px 12px rgba(0,0,0,0.03)',
-        transform: hovered ? 'translateY(-8px)' : 'translateY(0)',
+        transform: hovered ? 'translateY(-16px)' : 'translateY(0)',
         transition: 'all 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative', display: 'flex', flexDirection: 'column',
         cursor: 'default',
@@ -1171,11 +1173,23 @@ const TransportCard = ({ opt, isCombined }) => {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px', marginTop: opt.recommended ? '8px' : '0' }}>
         {opt.thumbnail && (
-          <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px', flexShrink: 0 }}>
-            <img src={proxyImage(opt.thumbnail)} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <div style={{ 
+            width: '50px', height: '50px', borderRadius: '12px', flexShrink: 0, overflow: 'hidden',
+            backgroundColor: isDark ? '#2e333d' : '#f8fafc', 
+            border: `1px solid ${isDark ? '#4b5563' : '#e2e8f0'}`, 
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: opt.label.includes("Vietnam Airlines") ? '0' : '5px'
+          }}>
+            <img
+              src={opt.label.includes("Vietnam Airlines") 
+                ? "https://thuvienvector.vn/wp-content/uploads/2025/04/hoa-sen-vang-logo-vietnam-airlines.jpg" 
+                : proxyImage(opt.thumbnail)} 
+              alt="logo" 
+              style={{ width: '100%', height: '100%', objectFit: opt.label.includes("Vietnam Airlines") ? 'cover' : 'contain' }} 
+            />
           </div>
         )}
-        <div style={{ fontSize: '20px', fontWeight: '900', color: hovered ? '#10b981' : '#111827', transition: 'color 0.2s' }}>
+        <div style={{ fontSize: '20px', fontWeight: '900', color: hovered ? '#10b981' : (isDark ? '#ffffff' : '#111827'), transition: 'color 0.2s' }}>
           {opt.label}
         </div>
       </div>
@@ -1199,7 +1213,7 @@ const TransportCard = ({ opt, isCombined }) => {
         )}
       </div>
 
-      <div style={{ fontSize: '13px', color: '#475569', lineHeight: '1.5', flex: 1 }}>
+      <div style={{ fontSize: '13px', color: isDark ? '#cbd5e1' : '#475569', lineHeight: '1.5', flex: 1 }}>
         {opt.tips}
       </div>
 
@@ -1211,9 +1225,9 @@ const TransportCard = ({ opt, isCombined }) => {
               <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'white', border: '2px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', flexShrink: 0 }}>
                 {leg.icon}
               </div>
-              <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '14px', flex: 1, border: '1px solid #f1f5f9' }}>
-                <div style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>Chặng {leg.step}</div>
-                <div style={{ fontSize: '14px', fontWeight: '800', color: '#1e293b', marginBottom: '4px' }}>{leg.label}</div>
+              <div style={{ background: isDark ? '#334155' : '#f8fafc', padding: '12px 14px', borderRadius: '14px', flex: 1, border: `1px solid ${isDark ? '#475569' : '#f1f5f9'}` }}>
+                <div style={{ fontSize: '11px', fontWeight: '800', color: isDark ? '#9ca3af' : '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>Chặng {leg.step}</div>
+                <div style={{ fontSize: '14px', fontWeight: '800', color: isDark ? '#ffffff' : '#1e293b', marginBottom: '4px' }}>{leg.label}</div>
                 <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '700' }}>{leg.duration} • {leg.price_range}</div>
               </div>
             </div>
@@ -1225,7 +1239,7 @@ const TransportCard = ({ opt, isCombined }) => {
 };
 
 // ── COMPONENT CHÍNH ──────────────────────────────────────────
-const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
+const AiSchedule = ({ data: initialData, onSave, onPlanChange, isDark = false }) => {
   const numDays  = parseInt(initialData?.days?.toString().split(' ')[0]) || 3;
   const [dailyPlans,  setDailyPlans]  = useState([]);
   const [mapQuery,    setMapQuery]    = useState('');
@@ -1347,6 +1361,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
           location={initialData.location}
           isOpen={drinksOpen}
           onClose={() => setDrinksOpen(false)}
+          isDark={isDark}
         />
       )}
 
@@ -1356,6 +1371,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
           location={initialData.location}
           isOpen={specialtiesOpen}
           onClose={() => setSpecialtiesOpen(false)}
+          isDark={isDark}
         />
       )}
 
@@ -1408,34 +1424,48 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
           {/* --- PHẦN A: DANH SÁCH PHƯƠNG TIỆN --- */}
           {initialData.transport && initialData.transport.options && initialData.transport.options.length > 0 && (
             <>
-              {/* ✅ TIÊU ĐỀ LỘ TRÌNH RÕ RÀNG */}
-              <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>
+              <div style={{ fontSize: '36px', fontWeight: '900', color: isDark ? '#ffffff' : '#111827', marginBottom: '20px' }}>
                 🛣️ Phương tiện từ <span style={{color: '#10b981'}}>{initialData.origin || 'Điểm đi'}</span> đến <span style={{color: '#10b981'}}>{initialData.location}</span>
               </div>
               
               {initialData.transport.note && (
-                <div style={{ fontSize: '15px', color: '#0f766e', marginBottom: '25px', padding: '14px 20px', background: '#ccfbf1', border: '1px solid #99f6e4', borderRadius: '14px', display: 'inline-block', fontWeight: '600' }}>
+                <div style={{ fontSize: '15px', color: isDark ? '#ccfbf1' : '#0f766e', marginBottom: '25px', padding: '14px 20px', background: isDark ? 'rgba(20, 184, 166, 0.15)' : '#ccfbf1', border: isDark ? '1px solid #0d9488' : '1px solid #99f6e4', borderRadius: '14px', display: 'inline-block', fontWeight: '600' }}>
                   💡 {initialData.transport.note}
                 </div>
               )}
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '25px', marginBottom: '30px' }}>
                 {initialData.transport.options.map((opt, idx) => (
-                  <TransportCard key={idx} opt={opt} isCombined={opt.type === 'combined'} />
+                  <TransportCard key={idx} opt={opt} isCombined={opt.type === 'combined'} isDark={isDark} />
                 ))}
               </div>
             </>
           )}
           
-          {/* --- PHẦN B: CHI TIẾT VÉ MÁY BAY (Nếu có) --- */}
+          {/* --- PHẦN B: CHI TIẾT VÉ MÁY BAY --- */}
           {realFlights.length > 0 && (
             <div style={{ marginTop: '10px' }}>
-              <div style={{ fontSize: '24px', fontWeight: '800', color: '#1f2937', marginBottom: '16px' }}>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: isDark ? '#f8fafc' : '#1f2937', marginBottom: '16px' }}>
                 ✈️ Chi tiết chuyến bay tham khảo
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
                 {realFlights.slice(0, 2).map((f, i) => (
-                  <PlaceCard key={i} type="Chuyến bay" data={{ airline: f.airline, price: f.price?.toLocaleString() + "đ", thumbnail: f.thumbnail, desc: `Hãng bay: ${f.airline} • Thời gian bay: ${f.duration || 'N/A'}` }} locationName={initialData.location} onShowMap={handleShowMap} guestCount={passengers} />
+                  <PlaceCard 
+                    key={i} 
+                    type="Chuyến bay" 
+                    data={{ 
+                      airline: f.airline, 
+                      price: f.price?.toLocaleString() + "đ", 
+                      thumbnail: f.airline === "Vietnam Airlines" 
+                        ? "https://thuvienvector.vn/wp-content/uploads/2025/04/hoa-sen-vang-logo-vietnam-airlines.jpg" 
+                        : f.thumbnail, 
+                      desc: `Hãng bay: ${f.airline} • Thời gian bay: ${f.duration || 'N/A'}` 
+                    }} 
+                    locationName={initialData.location} 
+                    onShowMap={handleShowMap} 
+                    guestCount={passengers} 
+                    isDark={isDark} 
+                  />
                 ))}
               </div>
             </div>
@@ -1444,15 +1474,16 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
       )}
 
       {/* 2. KHÁCH SẠN */}
-      <div style={{ marginBottom: '60px' }}>
-        <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>🛌 Chỗ ở {initialData.realHotels?.length > 0 ? '(Dữ liệu thực)' : '(Gợi ý)'}</div>
-        <div style={{ backgroundColor: '#f8fafc', padding: '30px', borderRadius: '40px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
-          <PlaceCard type="Khách sạn" data={currentHotel} locationName={initialData.location} setMapQuery={setMapQuery} guestCount={passengers} onEdit={() => setModal({ show: true, type: 'Khách sạn' })} />
-          <div style={{ borderRadius: '25px', overflow: 'hidden', height: '450px', border: '1px solid #e2e8f0' }}>
-            <iframe title="map" width="100%" height="100%" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`} />
-          </div>
-        </div>
-      </div>
+<div style={{ marginBottom: '60px' }}>
+  <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>🛌 Chỗ ở {initialData.realHotels?.length > 0 ? '(Dữ liệu thực)' : '(Gợi ý)'}</div>
+  <div style={{ backgroundColor: isDark ? '#1e293b' : '#f8fafc', padding: '30px', borderRadius: '40px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
+    <PlaceCard type="Khách sạn" data={currentHotel} locationName={initialData.location} setMapQuery={setMapQuery} guestCount={passengers} onEdit={() => setModal({ show: true, type: 'Khách sạn' })} isDark={isDark} />
+    
+    <div style={{ borderRadius: '25px', overflow: 'hidden', height: '450px', border: isDark ? 'none' : '1px solid #e2e8f0' }}>
+      <iframe title="map" width="100%" height="100%" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`} />
+    </div>
+  </div>
+</div>
 
       {/* 3. LỊCH TRÌNH */}
       <div style={{ marginBottom: '16px' }}>
@@ -1527,32 +1558,39 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
       </div>
 
       {dailyPlans.map(d => (
-        <div key={d.day} style={{ marginBottom: '45px', padding: '35px', backgroundColor: '#f8fafc', borderRadius: '40px', marginTop: '40px' }}>
+        <div key={d.day} style={{ marginBottom: '45px', padding: '35px', backgroundColor: isDark ? '#1e293b' : '#f8fafc', borderRadius: '40px', marginTop: '40px' }}>
           <div style={{ fontWeight: '900', color: '#10b981', fontSize: '26px', marginBottom: '30px' }}>
             <FontAwesomeIcon icon={faRegularCalendar} /> Ngày {d.day}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '35px' }}>
+            
+            {/* SÁNG */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ fontWeight: '800', color: '#f59e0b', fontSize: '14px' }}><FontAwesomeIcon icon={faSun} /> BUỔI SÁNG</div>
               <div style={{ display: 'flex', gap: '25px' }}>
-                <PlaceCard type="Điểm tham quan" sessionLabel="Sáng" data={d.morning.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'morning', subType: 'tour' })} />
-                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Sáng" data={d.morning.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'morning', subType: 'food' })} />
+                <PlaceCard type="Điểm tham quan" sessionLabel="Sáng" data={d.morning.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'morning', subType: 'tour' })} isDark={isDark} />
+                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Sáng" data={d.morning.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'morning', subType: 'food' })} isDark={isDark} />
               </div>
             </div>
+            
+            {/* CHIỀU */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ fontWeight: '800', color: '#3b82f6', fontSize: '14px' }}><FontAwesomeIcon icon={faCloudSun} /> BUỔI CHIỀU</div>
               <div style={{ display: 'flex', gap: '25px' }}>
-                <PlaceCard type="Điểm tham quan" sessionLabel="Chiều" data={d.afternoon.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'afternoon', subType: 'tour' })} />
-                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Chiều" data={d.afternoon.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'afternoon', subType: 'food' })} />
+                <PlaceCard type="Điểm tham quan" sessionLabel="Chiều" data={d.afternoon.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'afternoon', subType: 'tour' })} isDark={isDark} />
+                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Chiều" data={d.afternoon.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'afternoon', subType: 'food' })} isDark={isDark} />
               </div>
             </div>
+            
+            {/* TỐI */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ fontWeight: '800', color: '#8b5cf6', fontSize: '14px' }}><FontAwesomeIcon icon={faMoon} /> BUỔI TỐI</div>
               <div style={{ display: 'flex', gap: '25px' }}>
-                <PlaceCard type="Điểm tham quan" sessionLabel="Tối" data={d.evening.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'evening', subType: 'tour' })} />
-                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Tối" data={d.evening.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'evening', subType: 'food' })} />
+                <PlaceCard type="Điểm tham quan" sessionLabel="Tối" data={d.evening.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'evening', subType: 'tour' })} isDark={isDark} />
+                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Tối" data={d.evening.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'evening', subType: 'food' })} isDark={isDark} />
               </div>
             </div>
+
           </div>
         </div>
       ))}

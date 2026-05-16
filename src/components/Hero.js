@@ -10,7 +10,7 @@ import {
   faUserGroup
 } from '@fortawesome/free-solid-svg-icons';
 
-const Hero = ({ onSearch }) => {
+const Hero = ({ onSearch, isDark = false }) => {
   const [origin, setOrigin] = useState('');
   const [location, setLocation] = useState('');
   const [departureDate, setDepartureDate] = useState(''); 
@@ -57,7 +57,6 @@ const Hero = ({ onSearch }) => {
   const styles = {
   hero: {
     width: '100vw', 
-    // TĂNG CHIỀU CAO: Nới rộng không gian để ảnh núi non lộ ra nhiều hơn
     height: '70vh', 
     minHeight: '600px',
     position: 'relative',
@@ -65,10 +64,10 @@ const Hero = ({ onSearch }) => {
     display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
     backgroundImage: `linear-gradient(rgba(17, 24, 39, 0.4), rgba(17, 24, 39, 0.5)), url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=2000')`,
     backgroundSize: 'cover', backgroundPosition: 'center', color: 'white', textAlign: 'center',
-    paddingTop: '40px' // Đẩy toàn bộ nội dung xuống một chút cho cân đối với Navbar
+    paddingTop: '40px'
   },
   searchContainer: {
-    backgroundColor: '#ffffff', 
+    backgroundColor: isDark ? '#2a2a2a' : '#ffffff', 
     borderRadius: '100px', 
     padding: '15px 30px', 
     display: 'flex', alignItems: 'center', 
@@ -78,32 +77,33 @@ const Hero = ({ onSearch }) => {
     position: 'relative', 
     transition: '0.4s all cubic-bezier(0.175, 0.885, 0.32, 1.275)',
     boxShadow: isAnyFieldEmpty ? '0 0 30px rgba(239, 68, 68, 0.4)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    border: isAnyFieldEmpty ? '3px solid #ef4444' : '1px solid #e2e8f0',
+    border: isAnyFieldEmpty ? '3px solid #ef4444' : `1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`,
   },
   searchItem: (isLast) => ({
     flex: 1, 
     padding: '10px 20px',
     textAlign: 'left', 
-    borderRight: isLast ? 'none' : '1px solid #f1f5f9',
+    borderRight: isLast ? 'none' : `1px solid ${isDark ? '#3a3a3a' : '#f1f5f9'}`,
     position: 'relative'
   }),
   label: (active) => ({
     fontSize: '12px',      
     fontWeight: '700', 
-    color: active ? '#10b981' : '#64748b',
+    color: '#10b981',
     textTransform: 'uppercase', 
     letterSpacing: '0.5px',
     marginBottom: '6px'
   }),
   input: { 
-    fontSize: '17px', // Chữ trong ô tìm kiếm to lên một xíu cho rõ ràng
+    fontSize: '17px',
     fontWeight: '600', 
-    color: '#1e293b', 
+    color: isDark ? '#e8e8e8' : '#1e293b', 
     border: 'none', outline: 'none', width: '100%', backgroundColor: 'transparent',
-    padding: '0'
+    padding: '0',
+    colorScheme: isDark ? 'dark' : 'light',
   },
   dropdown: {
-    position: 'absolute', top: '120%', left: '0', right: '0', backgroundColor: 'white', 
+    position: 'absolute', top: '120%', left: '0', right: '0', backgroundColor: isDark ? '#2a2a2a' : 'white', 
     borderRadius: '20px',
     boxShadow: '0 15px 30px rgba(0,0,0,0.2)', overflowY: 'auto', 
     maxHeight: '260px',
@@ -112,7 +112,7 @@ const Hero = ({ onSearch }) => {
   },
   dropdownItem: { 
     padding: '12px 24px',
-    color: '#333', cursor: 'pointer', 
+    color: isDark ? '#e8e8e8' : '#333', cursor: 'pointer', 
     fontSize: '16px',
     display: 'flex', alignItems: 'center', gap: '12px', transition: '0.2s'
   },
@@ -135,6 +135,26 @@ const Hero = ({ onSearch }) => {
 
   return (
     <div style={styles.hero} onClick={() => setActiveDropdown(null)}>
+      <style>{`
+        .hero-search-bar input {
+          background: transparent !important;
+          background-color: transparent !important;
+          border: none !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
+        .hero-search-bar input:-webkit-autofill,
+        .hero-search-bar input:-webkit-autofill:hover, 
+        .hero-search-bar input:-webkit-autofill:focus, 
+        .hero-search-bar input:-webkit-autofill:active {
+          transition: background-color 5000s ease-in-out 0s !important; /* Trì hoãn việc đổi màu nền vô thời hạn */
+          -webkit-text-fill-color: inherit !important; /* Giữ nguyên màu chữ gốc của bạn */
+          -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
+        }
+        .hero-search-bar input::placeholder { 
+          color: #6b7280 !important; 
+        }
+      `}</style>
       <h1 style={{ fontSize: '90px', fontWeight: '900', margin: 0 }}>
         Khám phá thế giới cùng <span style={{ color: '#10b981' }}>S-Trip</span>
       </h1>
@@ -142,7 +162,7 @@ const Hero = ({ onSearch }) => {
       <div 
         key={shake ? 'shaking' : 'normal'} 
         style={styles.searchContainer} 
-        className={shake ? 'shake' : ''} 
+        className={`hero-search-bar${shake ? ' shake' : ''}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ĐIỂM ĐI */}
@@ -192,7 +212,7 @@ const Hero = ({ onSearch }) => {
           <div style={styles.label(activeDropdown === 'date')}>Ngày đi</div>
           <input 
             type="date"
-            style={{...styles.input, color: departureDate ? '#111827' : '#9ca3af'}} 
+            style={{...styles.input, color: departureDate ? (isDark ? '#e8e8e8' : '#111827') : '#9ca3af'}} 
             value={departureDate} 
             min={new Date().toISOString().split('T')[0]}
             onChange={(e) => setDepartureDate(e.target.value)} 

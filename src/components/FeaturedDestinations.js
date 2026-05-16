@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext, createContext } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faStar, faStarHalfAlt, faSearch, faChevronLeft, faChevronRight,
@@ -19,6 +19,11 @@ const normalizeForSearch = (text) => {
 // CACHE ảnh (RAM – tự xóa khi F5)
 // ─────────────────────────────────────────────
 const imageCache = {};
+
+// ─────────────────────────────────────────────
+// THEME CONTEXT (tránh prop drilling qua nhiều tầng)
+// ─────────────────────────────────────────────
+const ThemeContext = createContext(false);
 
 // ─────────────────────────────────────────────
 // Fallback ảnh phong cảnh Việt Nam đẹp (Unsplash)
@@ -70,6 +75,7 @@ const StarRow = ({ rating, size = 13 }) => {
 // DESTINATION CARD
 // ─────────────────────────────────────────────
 const DestinationCard = ({ item, compact = false, onClick }) => {
+  const isDark = useContext(ThemeContext);
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -80,14 +86,14 @@ const DestinationCard = ({ item, compact = false, onClick }) => {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{
-          backgroundColor: '#fff',
+          backgroundColor: isDark ? '#2a2a2a' : '#fff',
           borderRadius: compact ? '16px' : '24px',
           overflow: 'hidden',
-          boxShadow: isHovered ? '0 30px 60px rgba(0,0,0,0.13)' : '0 10px 20px rgba(0,0,0,0.03)',
+          boxShadow: isHovered ? '0 30px 60px rgba(0,0,0,0.2)' : `0 10px 20px rgba(0,0,0,${isDark ? '0.15' : '0.03'})`,
           transition: '0.4s all cubic-bezier(0.175, 0.885, 0.32, 1.275)',
           transform: isHovered ? 'translateY(-8px)' : 'translateY(0)',
           cursor: 'pointer',
-          border: '1px solid #f1f5f9',
+          border: `1px solid ${isDark ? '#3a3a3a' : '#f1f5f9'}`,
           display: 'flex', flexDirection: 'column', width: '100%',
         }}
       >
@@ -109,19 +115,19 @@ const DestinationCard = ({ item, compact = false, onClick }) => {
           </div>
           <div style={{
             position: 'absolute', top: '14px', right: '14px',
-            backgroundColor: 'white', padding: '5px 10px', borderRadius: '10px',
+            backgroundColor: isDark ? '#1a1a1a' : 'white', padding: '5px 10px', borderRadius: '10px',
             fontWeight: '800', fontSize: compact ? '13px' : '15px',
-            display: 'flex', alignItems: 'center', gap: '5px', color: '#111827',
+            display: 'flex', alignItems: 'center', gap: '5px', color: isDark ? '#e8e8e8' : '#111827',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
           }}>
             <FontAwesomeIcon icon={faStar} style={{ color: '#eab308' }} /> {item.rating}
           </div>
         </div>
         <div style={{ padding: compact ? '16px' : '24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ fontSize: compact ? '17px' : '24px', fontWeight: '900', color: isHovered ? '#10b981' : '#111827', margin: '0 0 8px 0', transition: '0.2s' }}>{item.name}</h3>
-          <p style={{ fontSize: compact ? '13px' : '15px', color: '#64748b', lineHeight: '1.6', margin: '0 0 16px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1 }}>{item.desc}</p>
+          <h3 style={{ fontSize: compact ? '17px' : '24px', fontWeight: '900', color: isHovered ? '#10b981' : (isDark ? '#e8e8e8' : '#111827'), margin: '0 0 8px 0', transition: '0.2s' }}>{item.name}</h3>
+          <p style={{ fontSize: compact ? '13px' : '15px', color: isDark ? '#9ca3af' : '#64748b', lineHeight: '1.6', margin: '0 0 16px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1 }}>{item.desc}</p>
           <div>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: '#9ca3af', textTransform: 'uppercase', marginBottom: '3px' }}>Ngân sách ước tính</div>
+            <div style={{ fontSize: '11px', fontWeight: '800', color: isDark ? '#6b7280' : '#9ca3af', textTransform: 'uppercase', marginBottom: '3px' }}>Ngân sách ước tính</div>
             <div style={{ color: '#10b981', fontWeight: '900', fontSize: compact ? '15px' : '18px' }}>{item.budget}</div>
           </div>
         </div>
@@ -363,6 +369,7 @@ const DEFAULT_REVIEWS = {
 // REVIEW MODAL (đã refactor: bỏ AI + Google, thêm Gallery + Default Review)
 // ─────────────────────────────────────────────
 const ReviewModal = ({ item, onClose }) => {
+  const isDark = useContext(ThemeContext);
   const backdropRef = useRef();
   const handleBackdrop = (e) => { if (e.target === backdropRef.current) onClose(); };
 
@@ -383,7 +390,7 @@ const ReviewModal = ({ item, onClose }) => {
       }}
     >
       <div style={{
-        background: '#fff', borderRadius: '28px',
+        background: isDark ? '#2a2a2a' : '#fff', borderRadius: '28px',
         width: '100%', maxWidth: '860px', maxHeight: '90vh',
         overflow: 'hidden', display: 'flex', flexDirection: 'column',
         boxShadow: '0 50px 100px rgba(0,0,0,0.35)',
@@ -424,12 +431,12 @@ const ReviewModal = ({ item, onClose }) => {
         </div>
 
         {/* ── BODY ── */}
-        <div style={{ overflowY: 'auto', flex: 1, padding: '28px 28px 32px' }}>
+        <div style={{ overflowY: 'auto', flex: 1, padding: '28px 28px 32px', backgroundColor: isDark ? '#2a2a2a' : '#fff' }}>
 
           {/* ── NHẬN XÉT MẶC ĐỊNH (thay thế AI) ── */}
           <div style={{
-            background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)',
-            border: '1.5px solid #a7f3d0', borderRadius: '20px',
+            background: isDark ? 'linear-gradient(135deg, #0d3326, #0a2a1f)' : 'linear-gradient(135deg, #f0fdf4, #ecfdf5)',
+            border: `1.5px solid ${isDark ? '#1a5c3a' : '#a7f3d0'}`, borderRadius: '20px',
             padding: '22px 24px', marginBottom: '28px',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -441,12 +448,12 @@ const ReviewModal = ({ item, onClose }) => {
                 <FontAwesomeIcon icon={faQuoteLeft} style={{ color: '#fff', fontSize: '15px' }} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: '800', fontSize: '14px', color: '#065f46' }}>Nhận xét về {item.name}</div>
+                <div style={{ fontWeight: '800', fontSize: '14px', color: isDark ? '#34d399' : '#065f46' }}>Nhận xét về {item.name}</div>
                 <div style={{ fontSize: '12px', color: '#34d399' }}>Được biên soạn tỉ mỉ bởi đội ngũ biên tập</div>
               </div>
               <StarRow rating={item.rating} size={14} />
             </div>
-            <p style={{ fontSize: '15px', lineHeight: '1.82', color: '#064e3b', margin: 0 }}>
+            <p style={{ fontSize: '15px', lineHeight: '1.82', color: isDark ? '#a7f3d0' : '#064e3b', margin: 0 }}>
               {defaultReview}
             </p>
           </div>
@@ -462,7 +469,7 @@ const ReviewModal = ({ item, onClose }) => {
 // ─────────────────────────────────────────────
 // COMPONENT CHÍNH
 // ─────────────────────────────────────────────
-const FeaturedDestinations = () => {
+const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [startIndex, setStartIndex] = useState(0);
   const [showAll, setShowAll] = useState(false);
@@ -832,8 +839,8 @@ const FeaturedDestinations = () => {
     const [hov, setHov] = useState(false);
     return (
       <button onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{
-        width: '52px', height: '52px', borderRadius: '50%', border: '2px solid #e2e8f0',
-        backgroundColor: hov ? '#10b981' : '#fff', color: hov ? '#fff' : '#374151',
+        width: '52px', height: '52px', borderRadius: '50%', border: `2px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`,
+        backgroundColor: hov ? '#10b981' : (isDark ? '#2a2a2a' : '#fff'), color: hov ? '#fff' : (isDark ? '#e8e8e8' : '#374151'),
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
         boxShadow: hov ? '0 8px 24px rgba(16,185,129,0.3)' : '0 4px 12px rgba(0,0,0,0.06)',
         transition: '0.25s all ease', opacity: visible ? 1 : 0, pointerEvents: visible ? 'auto' : 'none',
@@ -845,6 +852,7 @@ const FeaturedDestinations = () => {
   };
 
   return (
+    <ThemeContext.Provider value={isDark}>
     <section style={{ padding: '80px 40px', maxWidth: '1600px', margin: '0 auto' }}>
       <style>{`
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
@@ -852,9 +860,9 @@ const FeaturedDestinations = () => {
         @keyframes shimmer { 0%,100% { opacity: 0.45 } 50% { opacity: 1 } }
         @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(6px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px 20px; box-sizing: border-box; }
-        .modal-box { background: #fff; border-radius: 28px; width: 100%; max-width: 1200px; max-height: calc(100vh - 48px); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 40px 80px rgba(0,0,0,0.2); animation: fadeSlideIn 0.3s ease; }
-        .modal-header { padding: 32px 40px 20px; flex-shrink: 0; border-bottom: 1px solid #f1f5f9; }
-        .modal-body { flex: 1; overflow-y: auto; padding: 24px 40px 32px; }
+        .modal-box { background: ${isDark ? '#2a2a2a' : '#fff'}; border-radius: 28px; width: 100%; max-width: 1200px; max-height: calc(100vh - 48px); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 40px 80px rgba(0,0,0,0.2); animation: fadeSlideIn 0.3s ease; }
+        .modal-header { padding: 32px 40px 20px; flex-shrink: 0; border-bottom: 1px solid ${isDark ? '#3a3a3a' : '#f1f5f9'}; }
+        .modal-body { flex: 1; overflow-y: auto; padding: 24px 40px 32px; background: ${isDark ? '#2a2a2a' : '#fff'}; }
         .modal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
         @media (max-width: 900px) { .modal-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 500px) { .modal-grid { grid-template-columns: 1fr; } }
@@ -866,13 +874,13 @@ const FeaturedDestinations = () => {
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '50px', flexWrap: 'wrap', gap: '30px' }}>
         <div>
-          <h2 style={{ fontSize: '48px', fontWeight: '900', color: '#111827', margin: 0 }}>Khám phá Việt Nam</h2>
-          <p style={{ color: '#6b7280', marginTop: '12px', fontSize: '18px' }}>Từ miền núi cao hùng vĩ đến những bãi biển xanh ngọc bích.</p>
+          <h2 style={{ fontSize: '48px', fontWeight: '900', color: isDark ? '#e8e8e8' : '#111827', margin: 0 }}>Khám phá Việt Nam</h2>
+          <p style={{ color: isDark ? '#9ca3af' : '#6b7280', marginTop: '12px', fontSize: '18px' }}>Từ miền núi cao hùng vĩ đến những bãi biển xanh ngọc bích.</p>
         </div>
         <div style={{ position: 'relative', width: '380px' }}>
           <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
           <input type="text" placeholder="Tìm kiếm tỉnh thành..." value={searchTerm} onChange={(e) => handleSearch(e.target.value)}
-            style={{ width: '100%', padding: '16px 20px 16px 50px', borderRadius: '50px', border: '1px solid #e2e8f0', fontSize: '16px', outline: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', boxSizing: 'border-box' }} />
+            style={{ width: '100%', padding: '16px 20px 16px 50px', borderRadius: '50px', border: `1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`, fontSize: '16px', outline: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', boxSizing: 'border-box', backgroundColor: isDark ? '#333' : '#fff', color: isDark ? '#e8e8e8' : '#111827' }} />
         </div>
       </div>
 
@@ -941,16 +949,16 @@ const FeaturedDestinations = () => {
             <div className="modal-header">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
-                  <h3 style={{ fontSize: '32px', fontWeight: '900', color: '#111827', margin: 0 }}>Tất cả tỉnh thành</h3>
-                  <p style={{ color: '#6b7280', marginTop: '6px', fontSize: '15px' }}>{modalFiltered.length} / {allProvinces.length} địa điểm</p>
+                  <h3 style={{ fontSize: '32px', fontWeight: '900', color: isDark ? '#e8e8e8' : '#111827', margin: 0 }}>Tất cả tỉnh thành</h3>
+                  <p style={{ color: isDark ? '#9ca3af' : '#6b7280', marginTop: '6px', fontSize: '15px' }}>{modalFiltered.length} / {allProvinces.length} địa điểm</p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                   <div style={{ position: 'relative' }}>
                     <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '14px' }} />
                     <input type="text" placeholder="Tìm kiếm..." value={modalSearch} onChange={(e) => setModalSearch(e.target.value)}
-                      style={{ padding: '12px 16px 12px 42px', borderRadius: '40px', border: '1px solid #e2e8f0', fontSize: '15px', outline: 'none', width: '240px' }} />
+                      style={{ padding: '12px 16px 12px 42px', borderRadius: '40px', border: `1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`, fontSize: '15px', outline: 'none', width: '240px', backgroundColor: isDark ? '#333' : '#fff', color: isDark ? '#e8e8e8' : '#111827' }} />
                   </div>
-                  <button onClick={() => setShowAll(false)} style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '16px' }}>
+                  <button onClick={() => setShowAll(false)} style={{ width: '44px', height: '44px', borderRadius: '50%', border: `1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`, background: isDark ? '#333' : '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#9ca3af' : '#64748b', fontSize: '16px' }}>
                     <FontAwesomeIcon icon={faTimes} />
                   </button>
                 </div>
@@ -977,6 +985,7 @@ const FeaturedDestinations = () => {
       {/* REVIEW MODAL */}
       {selectedItem && <ReviewModal item={selectedItem} onClose={() => setSelectedItem(null)} />}
     </section>
+    </ThemeContext.Provider>
   );
 };
 
