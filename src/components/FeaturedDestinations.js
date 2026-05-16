@@ -7,6 +7,14 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { fetchProvinceImages } from '../services/api';
 
+const normalizeForSearch = (text) => {
+  if (!text) return '';
+  return text.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Xóa dấu thanh
+    .replace(/đ/g, 'd') // Chuyển đ thành d
+    .replace(/[^a-z0-9]/g, ''); // Xóa toàn bộ khoảng trắng và ký tự đặc biệt
+};
+
 // ─────────────────────────────────────────────
 // CACHE ảnh (RAM – tự xóa khi F5)
 // ─────────────────────────────────────────────
@@ -796,8 +804,13 @@ const FeaturedDestinations = () => {
   }));
 
   const sortedProvinces = [...allProvinces].sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
+  
+  // ─────────────────────────────────────────────
+  // LỌC DỮ LIỆU ĐÃ CHUẨN HÓA KHÔNG DẤU (Màn hình chính)
+  // ─────────────────────────────────────────────
+  const normalizedSearchTerm = normalizeForSearch(searchTerm);
   const filteredData = searchTerm
-    ? sortedProvinces.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    ? sortedProvinces.filter(p => normalizeForSearch(p.name).includes(normalizedSearchTerm))
     : sortedProvinces;
 
   const handleSearch = (val) => { setSearchTerm(val); setStartIndex(0); };
@@ -807,7 +820,12 @@ const FeaturedDestinations = () => {
   const canPrev = safeStart > 0;
   const canNext = safeStart < maxStartIndex;
 
-  const modalFiltered = sortedProvinces.filter(p => p.name.toLowerCase().includes(modalSearch.toLowerCase()));
+  // ─────────────────────────────────────────────
+  // LỌC DỮ LIỆU ĐÃ CHUẨN HÓA KHÔNG DẤU (Trong Modal)
+  // ─────────────────────────────────────────────
+  const normalizedModalSearch = normalizeForSearch(modalSearch);
+  const modalFiltered = sortedProvinces.filter(p => normalizeForSearch(p.name).includes(normalizedModalSearch));
+  
   const handleBackdropClick = (e) => { if (e.target === e.currentTarget) setShowAll(false); };
 
   const ArrowBtn = ({ dir, onClick, visible }) => {
@@ -833,9 +851,11 @@ const FeaturedDestinations = () => {
         @keyframes slideUp { from { opacity: 0; transform: translateY(40px) scale(0.97) } to { opacity: 1; transform: translateY(0) scale(1) } }
         @keyframes shimmer { 0%,100% { opacity: 0.45 } 50% { opacity: 1 } }
         @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(6px); z-index: 1000; display: flex; align-items: flex-start; justify-content: center; padding: 40px 20px; overflow-y: auto; }
-        .modal-box { background: #fff; border-radius: 28px; width: 100%; max-width: 1200px; padding: 40px; box-shadow: 0 40px 80px rgba(0,0,0,0.2); animation: fadeSlideIn 0.3s ease; }
-        .modal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 28px; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(6px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px 20px; box-sizing: border-box; }
+        .modal-box { background: #fff; border-radius: 28px; width: 100%; max-width: 1200px; max-height: calc(100vh - 48px); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 40px 80px rgba(0,0,0,0.2); animation: fadeSlideIn 0.3s ease; }
+        .modal-header { padding: 32px 40px 20px; flex-shrink: 0; border-bottom: 1px solid #f1f5f9; }
+        .modal-body { flex: 1; overflow-y: auto; padding: 24px 40px 32px; }
+        .modal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
         @media (max-width: 900px) { .modal-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 500px) { .modal-grid { grid-template-columns: 1fr; } }
         .see-all-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 50px; background: #f0fdf4; border: 2px solid #10b981; color: #10b981; font-weight: 800; font-size: 15px; cursor: pointer; transition: 0.25s all ease; }
@@ -916,34 +936,40 @@ const FeaturedDestinations = () => {
       {/* MODAL XEM TẤT CẢ */}
       {showAll && (
         <div className="modal-overlay" onClick={handleBackdropClick}>
-          <div className="modal-box">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-              <div>
-                <h3 style={{ fontSize: '32px', fontWeight: '900', color: '#111827', margin: 0 }}>Tất cả tỉnh thành</h3>
-                <p style={{ color: '#6b7280', marginTop: '6px', fontSize: '15px' }}>{modalFiltered.length} / {allProvinces.length} địa điểm</p>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <div style={{ position: 'relative' }}>
-                  <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '14px' }} />
-                  <input type="text" placeholder="Tìm kiếm..." value={modalSearch} onChange={(e) => setModalSearch(e.target.value)}
-                    style={{ padding: '12px 16px 12px 42px', borderRadius: '40px', border: '1px solid #e2e8f0', fontSize: '15px', outline: 'none', width: '240px' }} />
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            {/* Header cố định — không scroll */}
+            <div className="modal-header">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h3 style={{ fontSize: '32px', fontWeight: '900', color: '#111827', margin: 0 }}>Tất cả tỉnh thành</h3>
+                  <p style={{ color: '#6b7280', marginTop: '6px', fontSize: '15px' }}>{modalFiltered.length} / {allProvinces.length} địa điểm</p>
                 </div>
-                <button onClick={() => setShowAll(false)} style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '16px' }}>
-                  <FontAwesomeIcon icon={faTimes} />
-                </button>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ position: 'relative' }}>
+                    <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '14px' }} />
+                    <input type="text" placeholder="Tìm kiếm..." value={modalSearch} onChange={(e) => setModalSearch(e.target.value)}
+                      style={{ padding: '12px 16px 12px 42px', borderRadius: '40px', border: '1px solid #e2e8f0', fontSize: '15px', outline: 'none', width: '240px' }} />
+                  </div>
+                  <button onClick={() => setShowAll(false)} style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '16px' }}>
+                    <FontAwesomeIcon icon={faTimes} />
+                  </button>
+                </div>
               </div>
             </div>
-            {modalFiltered.length > 0 ? (
-              <div className="modal-grid">
-                {modalFiltered.map((item, i) => (
-                  <div key={item.name} style={{ animation: `fadeSlideIn 0.3s ease ${Math.min(i, 11) * 0.03}s both` }}>
-                    <DestinationCard item={item} compact onClick={(it) => { setShowAll(false); setSelectedItem(it); }} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af', fontSize: '17px' }}>Không tìm thấy &ldquo;{modalSearch}&rdquo;</div>
-            )}
+            {/* Body scroll — thanh cuộn nằm trong modal */}
+            <div className="modal-body">
+              {modalFiltered.length > 0 ? (
+                <div className="modal-grid">
+                  {modalFiltered.map((item, i) => (
+                    <div key={item.name} style={{ animation: `fadeSlideIn 0.3s ease ${Math.min(i, 11) * 0.03}s both` }}>
+                      <DestinationCard item={item} compact onClick={(it) => { setShowAll(false); setSelectedItem(it); }} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af', fontSize: '17px' }}>Không tìm thấy &ldquo;{modalSearch}&rdquo;</div>
+              )}
+            </div>
           </div>
         </div>
       )}

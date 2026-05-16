@@ -112,7 +112,7 @@ const DrinksPanel = ({ location, isOpen, onClose }) => {
   const [drinks,  setDrinks]  = useState(panelCache[cacheKey] || []);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
-  const [fetched, setFetched] = useState(!!panelCache[cacheKey]);
+  const [fetched, setFetched] = useState(!!(panelCache[cacheKey]?.length > 0));
   const { widthPct: dpWidth, onMouseDown: dpDragStart } = usePanelResize(30, 40, 35);
 
   // Fetch khi mở lần đầu
@@ -123,7 +123,7 @@ const DrinksPanel = ({ location, isOpen, onClose }) => {
       .then(r => r.json())
       .then(d => {
         const results = d.results || [];
-        panelCache[cacheKey] = results;
+        if (results.length > 0) panelCache[cacheKey] = results;
         setDrinks(results);
         setFetched(true);
       })
@@ -527,7 +527,7 @@ const SpecialtiesPanel = ({ location, isOpen, onClose }) => {
   const [specialties, setSpecialties] = useState(panelCache[cacheKey] || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [fetched, setFetched] = useState(!!panelCache[cacheKey]);
+  const [fetched, setFetched] = useState(!!(panelCache[cacheKey]?.length > 0));
   const { widthPct: spWidth, onMouseDown: spDragStart } = usePanelResize(30, 40, 35);
 
   const localTips = getLocalSpecialties(location);
@@ -540,7 +540,7 @@ const SpecialtiesPanel = ({ location, isOpen, onClose }) => {
       .then(r => r.json())
       .then(d => {
         const results = d.results || [];
-        panelCache[cacheKey] = results;
+        if (results.length > 0) panelCache[cacheKey] = results;
         setSpecialties(results);
         setFetched(true);
       })
@@ -1005,6 +1005,9 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
   const [isHovered,   setIsHovered]   = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
+  const [imgError, setImgError] = useState(false);
+  const [fallbackImg, setFallbackImg] = useState(null);
+
   const isHotel  = type === 'Khách sạn';
   const isFlight = type === 'Chuyến bay';
   const icon      = isHotel ? faHotel : (isFlight ? faPlane : (type === 'Địa điểm ăn uống' ? faUtensils : faMapLocationDot));
@@ -1023,6 +1026,25 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
     if (setMapQuery) setMapQuery(query);
     else if (onShowMap) onShowMap(query, data.name);
   };
+
+  const handleImgError = async () => {
+    setImgError(true);
+    try {
+      // 1. Thử tìm ảnh trong bài đánh giá (Reviews)
+      const revData = await fetchReviews(data.name, data.place_id || '');
+      const photos = (revData?.reviews || []).flatMap(r => r.photos || []);
+      if (photos.length > 0) { 
+        setFallbackImg(photos[0]); 
+        return; 
+      }
+      // 2. Nếu review không có ảnh, thử tìm hình ảnh chung (Images)
+      const imgData = await fetchImages(data.name, data.place_id || '');
+      const imgs = imgData?.images || [];
+      if (imgs.length > 0) setFallbackImg(imgs[0]);
+    } catch (_) {}
+  };
+
+  const displayImg = !imgError ? proxyImage(data.thumbnail) : (fallbackImg ? proxyImage(fallbackImg) : null);
 
   return (
     <div
@@ -1048,8 +1070,13 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
       </button>
 
       <div style={{ width: '120px', height: '120px', flexShrink: 0, borderRadius: '14px', overflow: 'hidden', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        {data.thumbnail ? (
-          <img src={proxyImage(data.thumbnail)} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover', transform: isHovered ? 'scale(1.09)' : 'scale(1)', transition: 'transform 0.4s ease', display: 'block' }} onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/120x120?text=S-Trip'; }} />
+        {(data.thumbnail || fallbackImg) && displayImg ? (
+          <img 
+            src={displayImg} 
+            alt="thumb" 
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: isHovered ? 'scale(1.09)' : 'scale(1)', transition: 'transform 0.4s ease', display: 'block' }} 
+            onError={imgError ? (e => { e.target.onerror = null; e.target.src = 'https://placehold.co/120x120?text=S-Trip'; }) : handleImgError} 
+          />
         ) : (
           <FontAwesomeIcon icon={sessionLabel ? sessionIcon : icon} style={{ fontSize: '28px', color: mainColor }} />
         )}
@@ -1112,6 +1139,91 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
   );
 };
 
+// ── TRANSPORT CARD — có hiệu ứng hover nổi lên ───────────────
+const TransportCard = ({ opt, isCombined }) => {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        backgroundColor: 'white', borderRadius: '24px', padding: '24px',
+        border: opt.recommended
+          ? '2.5px solid #10b981'
+          : hovered ? '2px solid #cbd5e1' : '2px solid #f1f5f9',
+        boxShadow: hovered
+          ? '0 20px 50px rgba(0,0,0,0.13)'
+          : opt.recommended
+            ? '0 12px 30px rgba(16,185,129,0.15)'
+            : '0 4px 12px rgba(0,0,0,0.03)',
+        transform: hovered ? 'translateY(-8px)' : 'translateY(0)',
+        transition: 'all 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+        position: 'relative', display: 'flex', flexDirection: 'column',
+        cursor: 'default',
+      }}
+    >
+      {opt.recommended && (
+        <div style={{ position: 'absolute', top: '-12px', left: '24px', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', padding: '4px 14px', borderRadius: '99px', fontSize: '12px', fontWeight: '800', boxShadow: '0 4px 10px rgba(16,185,129,0.3)' }}>
+          ✨ Khuyên dùng
+        </div>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px', marginTop: opt.recommended ? '8px' : '0' }}>
+        {opt.thumbnail && (
+          <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px', flexShrink: 0 }}>
+            <img src={proxyImage(opt.thumbnail)} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
+        )}
+        <div style={{ fontSize: '20px', fontWeight: '900', color: hovered ? '#10b981' : '#111827', transition: 'color 0.2s' }}>
+          {opt.label}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '13px', fontWeight: '700', color: '#3b82f6', background: '#eff6ff', padding: '6px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          ⏱ {opt.duration}
+        </span>
+        <span style={{ fontSize: '13px', fontWeight: '700', color: '#ea580c', background: '#fff7ed', padding: '6px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          💰 {opt.price_range}
+        </span>
+        {opt.distance && (
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#10b981', background: '#ecfdf4', padding: '6px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            📍 {opt.distance}
+          </span>
+        )}
+        {opt.ticket_type && (
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#8b5cf6', background: '#f5f3ff', padding: '6px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            🎟️ {opt.ticket_type}
+          </span>
+        )}
+      </div>
+
+      <div style={{ fontSize: '13px', color: '#475569', lineHeight: '1.5', flex: 1 }}>
+        {opt.tips}
+      </div>
+
+      {isCombined && opt.legs && (
+        <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', paddingTop: '10px', borderTop: '1px dashed #cbd5e1' }}>
+          <div style={{ position: 'absolute', left: '16px', top: '24px', bottom: '24px', width: '2px', background: '#e2e8f0', zIndex: 1 }} />
+          {opt.legs.map((leg, lIdx) => (
+            <div key={lIdx} style={{ display: 'flex', gap: '14px', zIndex: 2 }}>
+              <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'white', border: '2px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', flexShrink: 0 }}>
+                {leg.icon}
+              </div>
+              <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '14px', flex: 1, border: '1px solid #f1f5f9' }}>
+                <div style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>Chặng {leg.step}</div>
+                <div style={{ fontSize: '14px', fontWeight: '800', color: '#1e293b', marginBottom: '4px' }}>{leg.label}</div>
+                <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '700' }}>{leg.duration} • {leg.price_range}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── COMPONENT CHÍNH ──────────────────────────────────────────
 const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
   const numDays  = parseInt(initialData?.days?.toString().split(' ')[0]) || 3;
@@ -1134,7 +1246,7 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
       if (panelCache[cacheKey]) return; // đã có cache rồi, bỏ qua
       fetch(`${BASE_URL}/api/activities?location=${encodeURIComponent(loc)}&type=${encodeURIComponent(type)}`)
         .then(r => r.json())
-        .then(d => { panelCache[cacheKey] = d.results || []; })
+        .then(d => { const r = d.results || []; if (r.length > 0) panelCache[cacheKey] = r; })
         .catch(() => {}); // im lặng nếu lỗi, panel sẽ tự retry khi mở
     };
 
@@ -1159,6 +1271,8 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
 
   const realTours = (initialData.realTours || []).map(normalizeActivity);
   const realFoods = (initialData.realFoods || []).map(normalizeActivity);
+
+  const realFlights = initialData.realFlights || initialData.flights || [];
 
   const hotelsPool = realHotels.length > 0 ? realHotels : mockRepo['Khách sạn'];
   const toursPool  = realTours.length  > 0 ? realTours  : mockRepo['Điểm tham quan'];
@@ -1248,20 +1362,32 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
       {/* MODAL ĐỔI LỰA CHỌN */}
       {modal.show && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={() => setModal({ show: false })}>
-          <div style={{ backgroundColor: 'white', borderRadius: '35px', width: '550px', padding: '35px', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '25px' }}>
-              <h2 style={{ fontSize: '26px', fontWeight: '900' }}>Chọn {modal.type} tại {initialData.location}</h2>
-              <FontAwesomeIcon icon={faXmark} style={{ cursor: 'pointer', fontSize: '28px', color: '#9ca3af' }} onClick={() => setModal({ show: false })} />
-            </div>
-            {(modal.type === 'Khách sạn' ? hotelsPool : (modal.subType === 'tour' ? toursPool : foodsPool)).map((opt, i) => (
-              <div key={i} onClick={() => handleUpdate(opt)} style={{ padding: '20px', borderRadius: '20px', border: '2px solid #f1f5f9', marginBottom: '10px', cursor: 'pointer', display: 'flex', gap: '15px', alignItems: 'center' }}>
-                <img src={proxyImage(opt.thumbnail) || "https://placehold.co/60x60?text=S-Trip"} style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover' }} alt="thumb" onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/60x60?text=S-Trip"; }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: '800' }}>{opt.name} · <span style={{ color: '#eab308' }}>{opt.rating}⭐</span></div>
-                  <div style={{ color: '#10b981', fontWeight: '700' }}>{opt.price}</div>
-                </div>
+          <div
+            style={{ backgroundColor: 'white', borderRadius: '35px', width: '550px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header cố định — không scroll */}
+            <div style={{ padding: '28px 35px 20px', flexShrink: 0, borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ fontSize: '22px', fontWeight: '900', margin: 0 }}>Chọn {modal.type} tại {initialData.location}</h2>
+                <FontAwesomeIcon icon={faXmark} style={{ cursor: 'pointer', fontSize: '24px', color: '#9ca3af' }} onClick={() => setModal({ show: false })} />
               </div>
-            ))}
+            </div>
+            {/* Body scroll — thanh cuộn nằm trong modal */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 35px 28px' }}>
+              {(modal.type === 'Khách sạn' ? hotelsPool : (modal.subType === 'tour' ? toursPool : foodsPool)).map((opt, i) => (
+                <div key={i} onClick={() => handleUpdate(opt)} style={{ padding: '16px 18px', borderRadius: '20px', border: '2px solid #f1f5f9', marginBottom: '10px', cursor: 'pointer', display: 'flex', gap: '15px', alignItems: 'center', transition: 'border-color 0.15s, box-shadow 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(16,185,129,0.12)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#f1f5f9'; e.currentTarget.style.boxShadow = 'none'; }}
+                >
+                  <img src={proxyImage(opt.thumbnail) || "https://placehold.co/60x60?text=S-Trip"} style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0 }} alt="thumb" onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/60x60?text=S-Trip"; }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: '800', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{opt.name} · <span style={{ color: '#eab308' }}>{opt.rating}⭐</span></div>
+                    <div style={{ color: '#10b981', fontWeight: '700', fontSize: '13px', marginTop: 3 }}>{opt.price}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -1275,15 +1401,45 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
         <p style={{ fontSize: '28px', color: '#64748b' }}>Hành trình {numDays} ngày {numDays - 1} đêm của bạn sẵn sàng ✨</p>
       </div>
 
-      {/* 1. CHUYẾN BAY */}
-      {initialData.realFlights?.length > 0 && (
+      {/* 1. PHƯƠNG TIỆN & CHUYẾN BAY ĐỀ XUẤT */}
+      {((initialData.transport && initialData.transport.options && initialData.transport.options.length > 0) || realFlights.length > 0) && (
         <div style={{ marginBottom: '55px' }}>
-        <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>✈️ Chuyến bay đề xuất</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
-            {initialData.realFlights.slice(0, 2).map((f, i) => (
-              <PlaceCard key={i} type="Chuyến bay" data={{ airline: f.airline, price: f.price?.toLocaleString() + "đ", thumbnail: f.thumbnail, desc: `Hãng bay: ${f.airline} • Thời gian bay: ${f.duration || 'N/A'}` }} locationName={initialData.location} onShowMap={handleShowMap} guestCount={passengers} />
-            ))}
-          </div>
+          
+          {/* --- PHẦN A: DANH SÁCH PHƯƠNG TIỆN --- */}
+          {initialData.transport && initialData.transport.options && initialData.transport.options.length > 0 && (
+            <>
+              {/* ✅ TIÊU ĐỀ LỘ TRÌNH RÕ RÀNG */}
+              <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>
+                🛣️ Phương tiện từ <span style={{color: '#10b981'}}>{initialData.origin || 'Điểm đi'}</span> đến <span style={{color: '#10b981'}}>{initialData.location}</span>
+              </div>
+              
+              {initialData.transport.note && (
+                <div style={{ fontSize: '15px', color: '#0f766e', marginBottom: '25px', padding: '14px 20px', background: '#ccfbf1', border: '1px solid #99f6e4', borderRadius: '14px', display: 'inline-block', fontWeight: '600' }}>
+                  💡 {initialData.transport.note}
+                </div>
+              )}
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '25px', marginBottom: '30px' }}>
+                {initialData.transport.options.map((opt, idx) => (
+                  <TransportCard key={idx} opt={opt} isCombined={opt.type === 'combined'} />
+                ))}
+              </div>
+            </>
+          )}
+          
+          {/* --- PHẦN B: CHI TIẾT VÉ MÁY BAY (Nếu có) --- */}
+          {realFlights.length > 0 && (
+            <div style={{ marginTop: '10px' }}>
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#1f2937', marginBottom: '16px' }}>
+                ✈️ Chi tiết chuyến bay tham khảo
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
+                {realFlights.slice(0, 2).map((f, i) => (
+                  <PlaceCard key={i} type="Chuyến bay" data={{ airline: f.airline, price: f.price?.toLocaleString() + "đ", thumbnail: f.thumbnail, desc: `Hãng bay: ${f.airline} • Thời gian bay: ${f.duration || 'N/A'}` }} locationName={initialData.location} onShowMap={handleShowMap} guestCount={passengers} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1300,32 +1456,34 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
 
       {/* 3. LỊCH TRÌNH */}
       <div style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', gap: 40, justifyContent: 'center', alignItems: 'center', marginTop: '40px', marginBottom: '40px' }}>
+        <div style={{ display: 'flex', gap: 40, justifyContent: 'center', alignItems: 'center', marginTop: '0px', marginBottom: '50px' }}>
           {/* 🧋 NÚT THAM KHẢO ĐỒ UỐNG */}
           <button
             onClick={() => setDrinksOpen(true)}
             style={{
               flex: 1, maxWidth: 360,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
-              padding: '24px', borderRadius: '24px', 
+              padding: '20px 40px', borderRadius: 99,
               background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
-              border: '2px solid #a7f3d0',
+              border: '2.5px solid #a7f3d0',
               color: '#059669',
-              boxShadow: '0 6px 16px rgba(16,185,129,0.1)',
               fontWeight: 800, fontSize: 20,
               cursor: 'pointer',
               boxShadow: '0 4px 14px rgba(16,185,129,0.15)',
-              transition: 'all 0.2s ease',
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-6px)';
+              e.currentTarget.style.transform = 'translateY(-10px)';
               e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
               e.currentTarget.style.color = 'white';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(16,185,129,0.35)';
+              e.currentTarget.style.borderColor = '#059669';
+              e.currentTarget.style.boxShadow = '0 18px 40px rgba(16,185,129,0.4)';
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background = 'white';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)';
               e.currentTarget.style.color = '#059669';
+              e.currentTarget.style.borderColor = '#a7f3d0';
               e.currentTarget.style.boxShadow = '0 4px 14px rgba(16,185,129,0.15)';
             }}
           >
@@ -1345,14 +1503,16 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange }) => {
               fontWeight: 800, fontSize: 20,
               cursor: 'pointer',
               boxShadow: '0 4px 14px rgba(249,115,22,0.15)',
-              transition: 'all 0.2s ease',
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
             onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-10px)';
               e.currentTarget.style.background = '#f97316';
               e.currentTarget.style.color = 'white';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(249,115,22,0.35)';
+              e.currentTarget.style.boxShadow = '0 18px 40px rgba(249,115,22,0.4)';
             }}
             onMouseLeave={e => {
+              e.currentTarget.style.transform = 'translateY(0)';
               e.currentTarget.style.background = 'white';
               e.currentTarget.style.color = '#ea580c';
               e.currentTarget.style.boxShadow = '0 4px 14px rgba(249,115,22,0.15)';

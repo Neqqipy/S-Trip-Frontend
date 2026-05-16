@@ -178,6 +178,7 @@ function AppContent() {
         realFlights: result.flights || [],
         realTours: result.tours || [],
         realFoods: result.foods || [],
+        transport: result.transport || null,
       });
       setToast({ show: true, message: 'Đã AI hóa lịch trình thực tế cho bạn!', type: 'success' });
 

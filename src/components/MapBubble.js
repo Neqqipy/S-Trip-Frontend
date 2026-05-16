@@ -64,7 +64,7 @@ async function resolveMarkers(hotel, places, location) {
       try {
         const { tours: [enrichedHotel] } = await enrichPlacesWithCoords(
           location,
-          [{ name: hotel.name, type: 'hotel' }],
+          [{ name: hotel.name, type: 'hotel', place_id: hotel.place_id || '' }],
           []
         );
         if (enrichedHotel?.lat) hotelMarker = { ...hotel, type: 'hotel', lat: enrichedHotel.lat, lng: enrichedHotel.lng };
@@ -463,10 +463,11 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
   // ✅ ĐÃ SỬA: Ưu tiên lấy khách sạn mới (currentHotel) thay vì mặc định
   const hotelRaw = currentHotel || data.realHotels?.[0] || null;
   const hotelInfo = hotelRaw ? {
-    name: hotelRaw.name,
-    lat:  hotelRaw.lat || hotelRaw.latitude || null,
-    lng:  hotelRaw.lng || hotelRaw.longitude || null,
+    name:      hotelRaw.name,
+    lat:       hotelRaw.lat || hotelRaw.latitude || null,
+    lng:       hotelRaw.lng || hotelRaw.longitude || null,
     thumbnail: hotelRaw.thumbnail || null,
+    place_id:  hotelRaw.place_id || null,
   } : null;
 
   const dayPlacesForEffect = allDays[selectedDay] || [];
@@ -475,8 +476,10 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose }) => {
     .map(p => `${p.name}:${p.lat},${p.lng}`)
     .join('|');
     
-  // Tạo dấu vân tay cho khách sạn để React biết khi nào vẽ lại bản đồ
-  const hotelFingerprint = hotelInfo ? `${hotelInfo.name}:${hotelInfo.lat},${hotelInfo.lng}` : 'no-hotel';
+  // Dùng place_id (nếu có) làm định danh chính → tránh nhầm khi 2 ksạn trùng tên
+  const hotelFingerprint = hotelInfo
+    ? `${hotelInfo.place_id || hotelInfo.name}:${hotelInfo.lat},${hotelInfo.lng}`
+    : 'no-hotel';
 
   useEffect(() => {
     let cancelled = false;
@@ -855,12 +858,25 @@ const MapBubble = ({ targetOffset = 450, data, editedPlans }) => {
     if (data?.realHotels?.[0]) setCurrentHotel(data.realHotels[0]);
   }, [data]);
 
-  // ✅ ĐÃ SỬA: Lắng nghe sự kiện khi đổi khách sạn ở màn Lịch trình
+  // Lắng nghe sự kiện khi đổi khách sạn ở màn Lịch trình
   useEffect(() => {
-    const handleHotelChange = (e) => setCurrentHotel(e.detail);
+    const handleHotelChange = (e) => {
+      const incoming = e.detail;
+      if (!incoming) return;
+      // Nếu hotel mới chưa có tọa độ, thử tìm trong realHotels theo place_id hoặc tên
+      const hasCoord = incoming.lat || incoming.latitude || incoming.lng || incoming.longitude;
+      if (!hasCoord && data?.realHotels?.length) {
+        const match = data.realHotels.find(h =>
+          (incoming.place_id && h.place_id && h.place_id === incoming.place_id) ||
+          h.name === incoming.name
+        );
+        if (match) { setCurrentHotel({ ...incoming, lat: match.lat, lng: match.lng, place_id: match.place_id }); return; }
+      }
+      setCurrentHotel(incoming);
+    };
     window.addEventListener('sTripHotelChanged', handleHotelChange);
     return () => window.removeEventListener('sTripHotelChanged', handleHotelChange);
-  }, []);
+  }, [data]);
 
   useEffect(() => {
     if (data) {
