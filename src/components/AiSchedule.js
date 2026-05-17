@@ -15,7 +15,7 @@ import {
   faBookmark as faBookmarkRegular,
   faHeart as faHeartRegular
  } from '@fortawesome/free-regular-svg-icons';
-import { fetchReviews, fetchImages } from '../services/api';
+import { fetchReviews, fetchImages, fetchWeather } from '../services/api';
 
 // 🖼️ Proxy ảnh Google qua backend để tránh bị chặn hotlink
 const BASE_URL = 'http://127.0.0.1:5000';
@@ -1238,6 +1238,113 @@ const TransportCard = ({ opt, isCombined, isDark }) => {
   );
 };
 
+// ─────────────────────────────────────────────────────────────
+// 🌤️ WEATHER WIDGET — hiển thị thời tiết điểm đến
+// ─────────────────────────────────────────────────────────────
+const WeatherWidget = ({ location, isDark, externalData }) => {
+  const [weather, setWeather] = useState(externalData || null);
+  const [loading, setLoading] = useState(!externalData);
+
+  useEffect(() => {
+    if (externalData) { setWeather(externalData); setLoading(false); return; }
+    if (!location) return;
+    setLoading(true);
+    fetchWeather(location)
+      .then(data => setWeather(data))
+      .finally(() => setLoading(false));
+  }, [location, externalData]);
+
+  const cardBg   = isDark ? '#1e293b' : 'white';
+  const border   = isDark ? '1px solid #334155' : '1px solid #e2e8f0';
+  const textMain = isDark ? '#f8fafc' : '#111827';
+  const textSub  = isDark ? '#94a3b8' : '#64748b';
+
+  if (loading) return (
+    <div style={{ marginBottom: 48, padding: '28px 32px', borderRadius: 28, background: cardBg, border, display: 'flex', alignItems: 'center', gap: 14 }}>
+      <FontAwesomeIcon icon={faSpinner} style={{ fontSize: 22, color: '#3b82f6', animation: 'rvSpin 1s linear infinite' }} />
+      <span style={{ fontSize: 15, color: textSub, fontWeight: 600 }}>Đang tải thông tin thời tiết...</span>
+    </div>
+  );
+
+  if (!weather) return null;
+
+  const { current, forecast, travel_advice } = weather;
+
+  return (
+    <div style={{ marginBottom: 55, borderRadius: 32, overflow: 'hidden', border, boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(59,130,246,0.10)' }}>
+
+      {/* Header gradient */}
+      <div style={{ background: isDark ? 'linear-gradient(135deg, #1e3a5f 0%, #0f2540 100%)' : 'linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%)', padding: '20px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'nowrap' }}>
+
+        {/* Thời tiết hiện tại */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+          <div style={{ fontSize: 52, lineHeight: 1 }}>{current.icon}</div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: isDark ? '#93c5fd' : '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>
+              🌍 Thời tiết tại {location}
+            </div>
+            <div style={{ fontSize: 38, fontWeight: 900, color: isDark ? '#ffffff' : '#1e40af', lineHeight: 1, marginBottom: 2 }}>
+              {current.temp_c !== null ? `${current.temp_c}°C` : '--'}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#bfdbfe' : '#3b82f6' }}>
+              {current.condition || 'Không xác định'}
+            </div>
+            {current.feels_like_c !== null && (
+              <div style={{ fontSize: 11, color: isDark ? '#94a3b8' : '#64748b', marginTop: 1 }}>
+                Cảm giác như {current.feels_like_c}°C
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Chỉ số phụ — co đều theo chiều ngang */}
+        <div style={{ display: 'flex', gap: 8, flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          {[
+            { label: '💧 Độ ẩm',    val: current.humidity      != null ? `${current.humidity}%`        : '--' },
+            { label: '💨 Gió',       val: current.wind_kph      != null ? `${current.wind_kph} km/h`    : '--' },
+            { label: '🌞 UV',        val: current.uv_index      != null ? `${current.uv_index}`          : '--' },
+            { label: '👁️ Tầm nhìn', val: current.visibility_km != null ? `${current.visibility_km} km` : '--' },
+          ].map(({ label, val }) => (
+            <div key={label} style={{ background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '8px 12px', minWidth: 72, textAlign: 'center', flex: '1 1 72px', maxWidth: 110 }}>
+              <div style={{ fontSize: 10, color: isDark ? '#93c5fd' : '#2563eb', fontWeight: 700, whiteSpace: 'nowrap' }}>{label}</div>
+              <div style={{ fontSize: 14, fontWeight: 900, color: isDark ? '#ffffff' : '#1e40af', marginTop: 2 }}>{val}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Lời khuyên du lịch */}
+      {travel_advice && (
+        <div style={{ padding: '10px 24px', background: isDark ? '#0f172a' : '#eff6ff', borderTop: isDark ? '1px solid #1e3a5f' : '1px solid #dbeafe', fontSize: 13, fontWeight: 700, color: isDark ? '#bfdbfe' : '#1e40af' }}>
+          {travel_advice}
+        </div>
+      )}
+
+      {/* Dự báo — grid tự co vừa khung, không tràn */}
+      {forecast && forecast.length > 0 && (
+        <div style={{ padding: '16px 24px 20px', background: cardBg }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: textSub, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+            📅 Dự báo {forecast.length} ngày tới
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${forecast.length}, 1fr)`, gap: 8 }}>
+            {forecast.map((day, i) => (
+              <div key={i} style={{ background: isDark ? '#0f172a' : '#f8fafc', border: isDark ? '1px solid #1e293b' : '1px solid #f1f5f9', borderRadius: 14, padding: '10px 6px', textAlign: 'center' }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: textSub, marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{day.day || `N${i+1}`}</div>
+                <div style={{ fontSize: 22, marginBottom: 3 }}>{day.icon}</div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: textMain }}>{day.high_c !== null ? `${day.high_c}°` : '--'}</div>
+                <div style={{ fontSize: 11, color: textSub }}>{day.low_c !== null ? `${day.low_c}°` : '--'}</div>
+                {day.rain_chance != null && (
+                  <div style={{ marginTop: 4, fontSize: 10, fontWeight: 700, color: '#3b82f6' }}>💧{day.rain_chance}%</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── COMPONENT CHÍNH ──────────────────────────────────────────
 const AiSchedule = ({ data: initialData, onSave, onPlanChange, isDark = false }) => {
   const numDays  = parseInt(initialData?.days?.toString().split(' ')[0]) || 3;
@@ -1245,6 +1352,13 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange, isDark = false })
   const [mapQuery,    setMapQuery]    = useState('');
   const [modal,       setModal]       = useState({ show: false, type: '', day: null, session: '', subType: '' });
   const [mapModal,    setMapModal]    = useState({ show: false, query: '', placeName: '' });
+
+  // 🌤️ Weather data — lift lên đây để chia sẻ với từng ngày
+  const [weatherData, setWeatherData] = useState(null);
+  useEffect(() => {
+    if (!initialData.location) return;
+    fetchWeather(initialData.location).then(data => setWeatherData(data));
+  }, [initialData.location]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 🧋 State nút Tham Khảo Đồ Uống
   const [drinksOpen, setDrinksOpen] = useState(false);
@@ -1417,6 +1531,9 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange, isDark = false })
         <p style={{ fontSize: '28px', color: '#64748b' }}>Hành trình {numDays} ngày {numDays - 1} đêm của bạn sẵn sàng ✨</p>
       </div>
 
+      {/* 🌤️ THỜI TIẾT */}
+      <WeatherWidget location={initialData.location} isDark={isDark} externalData={weatherData} />
+
       {/* 1. PHƯƠNG TIỆN & CHUYẾN BAY ĐỀ XUẤT */}
       {((initialData.transport && initialData.transport.options && initialData.transport.options.length > 0) || realFlights.length > 0) && (
         <div style={{ marginBottom: '55px' }}>
@@ -1557,11 +1674,48 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange, isDark = false })
         <div style={{ fontSize: '36px', fontWeight: '800', lineHeight: '1', marginBottom: '16px' }}>🧩 Kế hoạch chi tiết theo buổi</div>
       </div>
 
-      {dailyPlans.map(d => (
+      {dailyPlans.map(d => {
+        // 🌤️ Lấy dự báo thời tiết cho ngày tương ứng (d.day bắt đầu từ 1 → index 0)
+        const dayForecast = weatherData?.forecast?.[d.day - 1] || null;
+
+        return (
         <div key={d.day} style={{ marginBottom: '45px', padding: '35px', backgroundColor: isDark ? '#1e293b' : '#f8fafc', borderRadius: '40px', marginTop: '40px' }}>
-          <div style={{ fontWeight: '900', color: '#10b981', fontSize: '26px', marginBottom: '30px' }}>
-            <FontAwesomeIcon icon={faRegularCalendar} /> Ngày {d.day}
+          {/* Header ngày + badge thời tiết */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '30px' }}>
+            <div style={{ fontWeight: '900', color: '#10b981', fontSize: '26px' }}>
+              <FontAwesomeIcon icon={faRegularCalendar} /> Ngày {d.day}
+            </div>
+
+            {/* 🌤️ Badge thời tiết ngày */}
+            {dayForecast && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                background: isDark ? 'rgba(30,58,95,0.8)' : '#dbeafe',
+                border: isDark ? '1px solid #1e3a5f' : '1px solid #bfdbfe',
+                padding: '6px 16px', borderRadius: '99px',
+              }}>
+                <span style={{ fontSize: '20px' }}>{dayForecast.icon}</span>
+                <span style={{ fontSize: '14px', fontWeight: '800', color: isDark ? '#93c5fd' : '#1e40af' }}>
+                  {dayForecast.high_c !== null ? `${dayForecast.high_c}°` : '--'}
+                  {' / '}
+                  {dayForecast.low_c !== null ? `${dayForecast.low_c}°` : '--'}
+                </span>
+                <span style={{ fontSize: '13px', fontWeight: '600', color: isDark ? '#bfdbfe' : '#3b82f6' }}>
+                  {dayForecast.condition}
+                </span>
+                {dayForecast.rain_chance != null && (
+                  <span style={{
+                    background: isDark ? '#1e3a5f' : '#eff6ff',
+                    color: '#3b82f6', fontSize: '12px', fontWeight: '800',
+                    padding: '2px 8px', borderRadius: '99px',
+                  }}>
+                    💧 {dayForecast.rain_chance}%
+                  </span>
+                )}
+              </div>
+            )}
           </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '35px' }}>
             
             {/* SÁNG */}
@@ -1593,7 +1747,8 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange, isDark = false })
 
           </div>
         </div>
-      ))}
+        );
+      })}
 
       {/* NÚT LƯU */}
       <div style={{ textAlign: 'center', marginTop: '60px', paddingBottom: '40px' }}>

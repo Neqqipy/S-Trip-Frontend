@@ -5,7 +5,7 @@ import {
   faXmark, faUtensils, faMapLocationDot,
   faSun, faCloudSun, faMoon, faSpinner
 } from '@fortawesome/free-solid-svg-icons';
-import { enrichPlacesWithCoords } from '../services/geocodeUtils';
+import { enrichPlacesWithCoords, getProvinceBounds, inBounds } from '../services/geocodeUtils';
 
 // ── Mock fallback ─────────────────────────────────────────────
 const mockTours = [
@@ -55,12 +55,24 @@ function buildDayPlaces(data) {
 // ── Lấy tọa độ: hotel (điểm O) + địa điểm trong ngày ────────
 async function resolveMarkers(hotel, places, location) {
   let hotelMarker = null;
+
+  // Lấy bounds tỉnh 1 lần — dùng cho cả hotel lẫn places
+  const b = await getProvinceBounds(location).catch(() => null);
+
   if (hotel) {
     const existLat = hotel.lat || hotel.latitude;
     const existLng = hotel.lng || hotel.longitude;
-    if (existLat && existLng) {
+    const coordsExist = existLat && existLng;
+    // ✅ FIX: chỉ dùng tọa độ sẵn có nếu nằm trong bounds tỉnh
+    const coordsValid = coordsExist && inBounds(parseFloat(existLat), parseFloat(existLng), b);
+
+    if (coordsValid) {
       hotelMarker = { ...hotel, type: 'hotel', lat: parseFloat(existLat), lng: parseFloat(existLng) };
     } else {
+      // Tọa độ không có hoặc nằm ngoài tỉnh → geocode lại theo tên + location
+      if (coordsExist && !coordsValid) {
+        console.warn(`[MapBubble] Hotel "${hotel.name}" có tọa độ ngoài bounds "${location}" → geocode lại.`);
+      }
       try {
         const { tours: [enrichedHotel] } = await enrichPlacesWithCoords(
           location,
@@ -73,19 +85,28 @@ async function resolveMarkers(hotel, places, location) {
   }
 
   let dayMarkers = [];
-  const allReady = places.every(p => p.lat && p.lng);
+  // ✅ FIX: loại địa điểm có tọa độ sẵn nhưng nằm ngoài bounds (dữ liệu lạc)
+  const validPlaces  = places.filter(p => p.lat && p.lng && inBounds(+p.lat, +p.lng, b));
+  const invalidPlaces = places.filter(p => !p.lat || !p.lng || !inBounds(+(p.lat||0), +(p.lng||0), b));
+
+  const allReady = invalidPlaces.length === 0 && validPlaces.length === places.length;
   if (allReady) {
-    dayMarkers = places.filter(p => p.lat && p.lng);
+    dayMarkers = validPlaces;
   } else {
-    const tours = places.filter(p => p.type === 'tour');
-    const foods  = places.filter(p => p.type === 'food');
+    // Geocode lại các điểm chưa có hoặc sai tọa độ
+    const toGeocode = invalidPlaces;
+    const tours = toGeocode.filter(p => p.type === 'tour');
+    const foods  = toGeocode.filter(p => p.type === 'food');
     try {
       const { tours: eTours, foods: eFoods } = await enrichPlacesWithCoords(location, tours, foods);
       const enrichedMap = {};
       [...eTours, ...eFoods].forEach(p => { enrichedMap[p.name + p.type] = p; });
-      dayMarkers = places.map(p => enrichedMap[p.name + p.type] || p).filter(p => p.lat && p.lng);
+      const reGeocodedValid = toGeocode
+        .map(p => enrichedMap[p.name + p.type] || p)
+        .filter(p => p.lat && p.lng);
+      dayMarkers = [...validPlaces, ...reGeocodedValid];
     } catch {
-      dayMarkers = places.filter(p => p.lat && p.lng);
+      dayMarkers = validPlaces;
     }
   }
 

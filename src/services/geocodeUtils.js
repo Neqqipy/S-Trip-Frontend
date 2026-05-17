@@ -49,7 +49,7 @@ function extractKeywords(name) {
 }
 
 // ── Lấy bounding box tỉnh ─────────────────────────────────────
-async function getProvinceBounds(location) {
+export async function getProvinceBounds(location) {
   // 1. Kiểm tra memory cache
   if (provinceBoundsCache[location]) return provinceBoundsCache[location];
 
@@ -79,7 +79,7 @@ async function getProvinceBounds(location) {
   return null;
 }
 
-function inBounds(lat, lng, b) {
+export function inBounds(lat, lng, b) {
   if (!b) return true;
   const pad = 0.2;
   const dlat = (b.maxLat - b.minLat) * pad;
