@@ -11,12 +11,14 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 const Hero = ({ onSearch, isDark = false }) => {
-  const [origin, setOrigin] = useState('');
-  const [location, setLocation] = useState('');
-  const [departureDate, setDepartureDate] = useState(''); 
-  const [days, setDays] = useState('');
-  const [budget, setBudget] = useState('');
-  const [passengers, setPassengers] = useState(1);
+  // Khôi phục giá trị từ lần tìm kiếm trước
+  const _last = (() => { try { return JSON.parse(localStorage.getItem('s_trip_last_search') || '{}'); } catch { return {}; } })();
+  const [origin, setOrigin] = useState(_last.origin || '');
+  const [location, setLocation] = useState(_last.location || '');
+  const [departureDate, setDepartureDate] = useState(_last.departureDate || ''); 
+  const [days, setDays] = useState(_last.days || '');
+  const [budget, setBudget] = useState(_last.budget || '');
+  const [passengers, setPassengers] = useState(_last.passengers || 1);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [hoveredTag, setHoveredTag] = useState(null);
   const [emptyFields, setEmptyFields] = useState({});

@@ -1,26 +1,13 @@
 // ProfilePage.jsx
 // ================================================================
 // 👤 TRANG HỒ SƠ CÁ NHÂN — S-Trip
-// Gồm: Yêu thích, Lịch trình đã lưu, Lịch sử tìm kiếm, Cài đặt tài khoản
-// ================================================================
-// Cách dùng trong App.js (nếu dùng React Router):
-//
-//   import { BrowserRouter, Routes, Route } from 'react-router-dom';
-//   import ProfilePage from './components/ProfilePage';
-//
-//   <Routes>
-//     <Route path="/"        element={<Home />} />
-//     <Route path="/profile" element={<ProfilePage />} />
-//   </Routes>
-//
-// Nếu KHÔNG dùng React Router, xem phần cuối file để dùng state-based routing.
 // ================================================================
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = ''; // proxy qua React dev server
 
-// ── Icons SVG inline (không cần thêm thư viện) ──────────────────
+// ── Icons SVG inline ──────────────────
 const Icon = {
   heart:    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>,
   bookmark: <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>,
@@ -37,70 +24,173 @@ const Icon = {
   plane:    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>,
 };
 
-// ── Color palette (khớp với S-Trip xanh ngọc) ───────────────────
-const C = {
-  primary:   '#10b981',
-  primary2:  '#059669',
-  dark:      '#0f172a',
-  card:      '#1e293b',
-  border:    '#334155',
-  text:      '#f8fafc',
-  muted:     '#94a3b8',
-  danger:    '#ef4444',
-  warn:      '#f59e0b',
+const GOOGLE_IMG_DOMAINS = ['googleusercontent.com', 'ggpht.com', 'googleapis.com', 'googleapi'];
+
+const proxyImage = (url) => {
+  if (!url) return null;
+  if (url.includes('placehold.co') || url.includes('placeholder')) return url;
+  if (url.includes('api/proxy-image')) return url;
+
+  let optimizedUrl = url;
+  if (GOOGLE_IMG_DOMAINS.some(d => url.includes(d))) {
+    if (optimizedUrl.includes('=')) {
+      optimizedUrl = optimizedUrl.replace(/=.*$/, '=w600-h450-k-no');
+    } else {
+      optimizedUrl = `${optimizedUrl}=w600-h450-k-no`;
+    }
+    return `${BASE_URL}/api/proxy-image?url=${encodeURIComponent(optimizedUrl)}`;
+  }
+  return url;
 };
 
-// ================================================================
-// 🗄️ API HELPERS
-// ================================================================
+// Hook thông minh khử mờ ảnh: Tự gọi API lấy ảnh nét và UPDATE lưu đè vĩnh viễn vào DB
+const useCrispImageProfile = (item, tabType, T) => {
+  const [imgUrl, setImgUrl] = useState(item?.thumbnail || null);
+
+  useEffect(() => {
+    if (!item?.thumbnail) return;
+    
+    const initialThumbnail = item.thumbnail;
+    // Kiểm tra xem ảnh gốc trả về từ DB có phải ảnh mờ gstatic không
+    const isLowRes = initialThumbnail.includes('gstatic.com') || initialThumbnail.includes('encrypted-tbn');
+    
+    // Nếu ảnh ĐÃ NÉT SẴN rồi thì lấy luôn, dừng lại không gọi API nữa (Tốn 0 lượt Serp_API)
+    if (!isLowRes) {
+      setImgUrl(initialThumbnail);
+      return;
+    }
+
+    let isMounted = true;
+    const updateHighResInDB = async () => {
+      try {
+        let highResUrl = null;
+        
+        // 1. Thử tìm ảnh nét trong kho ảnh review
+        const revData = await api.get(`/api/places/reviews?name=${encodeURIComponent(item.name)}`);
+        const photos = (revData?.reviews || []).flatMap(r => r.photos || []);
+        
+        if (photos.length > 0) {
+          highResUrl = photos[0];
+        } else {
+          // 2. Nếu review không có, tìm trong kho ảnh chính thức của địa điểm
+          const imgData = await api.get(`/api/places/images?name=${encodeURIComponent(item.name)}`);
+          if (imgData?.images?.length > 0) highResUrl = imgData.images[0];
+        }
+
+        // Nếu tìm được ảnh nét cao và component chưa bị tắt
+        if (highResUrl && isMounted) {
+          setImgUrl(highResUrl);
+
+          // 💾 GỌI LÊN BACKEND LƯU ĐÈ ẢNH NÉT VÀO DATABASE VĨNH VIỄN
+          const endpoint = tabType === 'saved' ? `/api/saved-places/${item.id}` : `/api/favorites/${item.id}`;
+          await api.put(endpoint, {
+            ...item,
+            thumbnail: highResUrl // Lưu đè link nét
+          });
+          console.log(`Đã đồng bộ ảnh nét vĩnh viễn vào DB cho: ${item.name}`);
+        }
+      } catch (err) {
+        console.error("Lỗi tự động cập nhật ảnh nét:", err);
+      }
+    };
+
+    updateHighResInDB();
+    return () => { isMounted = false; };
+  }, [item?.id, item?.thumbnail]);
+
+  return imgUrl;
+};
+
+const C = { primary: '#10b981', primary2: '#059669', dark: '#0f172a', card: '#1e293b', border: '#334155', text: '#f8fafc', muted: '#94a3b8', danger: '#ef4444', warn: '#f59e0b' };
+
+const THEME = {
+  dark: { bg: 'linear-gradient(135deg, #0a1628 0%, #0f2040 40%, #0a1628 100%)', text: '#f8fafc', muted: '#94a3b8', card: 'rgba(255,255,255,0.04)', cardBorder: 'rgba(255,255,255,0.08)', inputBg: 'rgba(255,255,255,0.06)', inputBorder: 'rgba(255,255,255,0.12)', inputColor: '#f8fafc', headerBg: 'rgba(16,185,129,0.08)', headerBorder:'rgba(16,185,129,0.15)', btnBg: 'rgba(255,255,255,0.06)', btnBorder: 'rgba(255,255,255,0.1)', rowBorder: 'rgba(255,255,255,0.05)', scrollbar: '#334155' },
+  light: { bg: 'linear-gradient(135deg, #f0fdf8 0%, #ecfdf5 40%, #f0fdf8 100%)', text: '#0f172a', muted: '#64748b', card: 'rgba(16,185,129,0.06)', cardBorder: 'rgba(16,185,129,0.18)', inputBg: '#f8fafc', inputBorder: '#d1fae5', inputColor: '#0f172a', headerBg: 'rgba(16,185,129,0.08)', headerBorder:'rgba(16,185,129,0.2)', btnBg: 'rgba(16,185,129,0.08)', btnBorder: 'rgba(16,185,129,0.2)', rowBorder: 'rgba(16,185,129,0.1)', scrollbar: '#a7f3d0' },
+};
+
 const api = {
   get:  (path) => fetch(`${BASE_URL}${path}`, { credentials: 'include' }).then(r => r.json()),
-  post: (path, body) => fetch(`${BASE_URL}${path}`, {
-    method: 'POST', credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  }).then(r => r.json()),
+  post: (path, body) => fetch(`${BASE_URL}${path}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()),
   del:  (path) => fetch(`${BASE_URL}${path}`, { method: 'DELETE', credentials: 'include' }).then(r => r.json()),
 };
 
-// ================================================================
-// 🎨 MAIN PROFILE PAGE
-// ================================================================
-export default function ProfilePage({ onBack, isDark = true }) {
-  const [user,       setUser]       = useState(null);
-  const [tab,        setTab]        = useState('saved');   // saved | favorites | history | settings
-  const [loading,    setLoading]    = useState(true);
+const formatDate = (ds) => {
+  if (!ds) return '';
+  const d = new Date(ds);
+  return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+};
 
-  // Fetch user info
+const removeAccents = (str) => {
+  if (!str) return '';
+  return str
+    .normalize('NFD') // Tách dấu ra khỏi chữ cái
+    .replace(/[\u0300-\u036f]/g, '') // Xóa các dấu
+    .replace(/đ/g, 'd').replace(/Đ/g, 'D') // Xử lý riêng chữ đ/Đ
+    .toLowerCase(); // Chuyển hết về chữ thường
+};
+
+const standardizeLocation = (locName) => {
+  if (!locName) return 'Không xác định';
+  const name = locName.trim();
+  const lowerName = name.toLowerCase();
+  
+  // Gộp Huế và Thừa Thiên Huế
+  if (lowerName === 'huế' || lowerName === 'thừa thiên huế' || lowerName === 'thừa thiên - huế') {
+    return 'Thừa Thiên Huế';
+  }
+  // Gộp Sài Gòn và Hồ Chí Minh (phòng hờ)
+  if (lowerName === 'sài gòn' || lowerName === 'hồ chí minh' || lowerName === 'tp. hồ chí minh') {
+    return 'TP. Hồ Chí Minh';
+  }
+  // Gộp Đà Lạt và Lâm Đồng (phòng hờ)
+  if (lowerName === 'đà lạt' || lowerName === 'lâm đồng') {
+    return 'Lâm Đồng (Đà Lạt)';
+  }
+  
+  // Trả về tên gốc nếu không thuộc các trường hợp trên
+  return name;
+};
+
+export default function ProfilePage({ onBack, isDark = true, user: userProp = null, onUserChange, onLoadSchedule }) {
+  // Dùng user từ App.js nếu có, fallback tự fetch nếu dùng standalone
+  const [user,       setUser]       = useState(userProp);
+  const [tab,        setTab]        = useState('saved');
+  const [loading,    setLoading]    = useState(!userProp);
+
   useEffect(() => {
+    if (userProp) { setUser(userProp); setLoading(false); return; }
     api.get('/api/auth/me').then(d => {
       if (d.success) setUser(d.user);
       setLoading(false);
     });
-  }, []);
+  }, [userProp]);
+
+  // Cập nhật cả local state lẫn App.js
+  const handleUserUpdate = (updated) => {
+    setUser(updated);
+    onUserChange?.(updated);
+  };
 
   if (loading) return <LoadingScreen />;
   if (!user)   return <NotLoggedIn onBack={onBack} />;
 
   const tabs = [
-    { id: 'saved',     label: 'Lịch trình đã lưu', icon: Icon.calendar },
-    { id: 'favorites', label: 'Yêu thích',          icon: Icon.heart    },
-    { id: 'history',   label: 'Lịch sử tìm kiếm',  icon: Icon.search   },
-    { id: 'settings',  label: 'Cài đặt',            icon: Icon.settings },
+    { id: 'saved',       label: 'Lịch trình đã lưu',  icon: Icon.calendar  },
+    { id: 'savedplaces', label: 'Lưu trữ',             icon: Icon.bookmark  },
+    { id: 'favorites',   label: 'Yêu thích',           icon: Icon.heart     },
+    { id: 'history',     label: 'Lịch sử tìm kiếm',   icon: Icon.search    },
+    { id: 'settings',    label: 'Cài đặt',             icon: Icon.settings  },
   ];
 
+  const T = isDark ? THEME.dark : THEME.light;
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0a1628 0%, #0f2040 40%, #0a1628 100%)',
-      fontFamily: "'Segoe UI', sans-serif",
-      color: C.text,
-    }}>
+    <div style={{ minHeight: '100vh', background: T.bg, fontFamily: "'Segoe UI', sans-serif", color: T.text, transition: 'background 0.3s ease, color 0.3s ease' }}>
       <style>{`
         @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
         @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.5} }
         .sp-tab:hover  { background: rgba(16,185,129,0.12) !important; color: #10b981 !important; }
-        .sp-card:hover { transform: translateY(-3px); box-shadow: 0 12px 36px rgba(0,0,0,0.4) !important; }
+        .sp-card:hover { transform: translateY(-3px); box-shadow: 0 12px 36px rgba(0,0,0,0.2) !important; }
         .sp-card       { transition: all 0.25s ease; }
         .sp-btn:hover  { opacity: 0.85; transform: translateY(-1px); }
         .sp-btn        { transition: all 0.2s ease; }
@@ -108,344 +198,837 @@ export default function ProfilePage({ onBack, isDark = true }) {
         .sp-input:focus{ outline:none; border-color: #10b981 !important; box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: ${T.scrollbar}; border-radius: 10px; }
       `}</style>
 
-      {/* ── HEADER ── */}
-      <div style={{
-        background: 'rgba(16,185,129,0.08)',
-        borderBottom: '1px solid rgba(16,185,129,0.15)',
-        backdropFilter: 'blur(20px)',
-        position: 'sticky', top: 0, zIndex: 100,
-      }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', height: 68, gap: 16 }}>
-          <button
-            onClick={onBack}
-            className="sp-btn"
-            style={{
-              width: 42, height: 42, borderRadius: 12,
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'rgba(255,255,255,0.06)',
-              color: C.text, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
+      {/* Header */}
+      <div style={{ background: T.headerBg, borderBottom: `1px solid ${T.headerBorder}`, backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 100 }}>
+        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', height: 68, gap: 16 }}>
+          <button onClick={onBack} className="sp-btn" style={{ width: 42, height: 42, borderRadius: 12, border: `1px solid ${T.btnBorder}`, background: T.btnBg, color: T.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {Icon.back}
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.5px' }}>Tài khoản</span>
-            <span style={{ fontSize: 13, color: C.primary, fontWeight: 700, background: 'rgba(16,185,129,0.15)', padding: '3px 10px', borderRadius: 20 }}>
-              ✈️ S-Trip
-            </span>
+            <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.5px', color: T.text }}>Tài khoản</span>
+            <span style={{ fontSize: 13, color: C.primary, fontWeight: 700, background: 'rgba(16,185,129,0.15)', padding: '3px 10px', borderRadius: 20 }}>✈️ S-Trip</span>
           </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px', display: 'grid', gridTemplateColumns: '280px 1fr', gap: 28 }}>
-
-        {/* ── SIDEBAR ── */}
-        <div style={{ animation: 'fadeUp 0.4s ease' }}>
-          {/* Avatar card */}
-          <AvatarCard user={user} onUpdate={setUser} />
-
-          {/* Nav tabs */}
-          <div style={{
-            marginTop: 16,
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 20, overflow: 'hidden',
-          }}>
+      <div style={{ maxWidth: 1300, margin: '0 auto', padding: '32px 24px', display: 'grid', gridTemplateColumns: '280px 1fr', gap: 28 }}>
+        {/* Sidebar */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <AvatarCard user={user} onUpdate={handleUserUpdate} isDark={isDark} T={T} />
+          <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 24, overflow: 'hidden' }}>
             {tabs.map((t, i) => (
-              <button
-                key={t.id}
-                className="sp-tab"
-                onClick={() => setTab(t.id)}
-                style={{
-                  width: '100%', padding: '14px 20px',
-                  border: 'none', borderBottom: i < tabs.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                  background: tab === t.id ? 'rgba(16,185,129,0.15)' : 'transparent',
-                  color: tab === t.id ? C.primary : C.muted,
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  cursor: 'pointer', fontWeight: tab === t.id ? 800 : 600,
-                  fontSize: 14, textAlign: 'left', transition: 'all 0.2s',
-                }}
-              >
-                <span style={{ opacity: tab === t.id ? 1 : 0.6 }}>{t.icon}</span>
-                {t.label}
-                {tab === t.id && (
-                  <div style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: C.primary }} />
-                )}
+              <button key={t.id} className="sp-tab" onClick={() => setTab(t.id)} style={{ width: '100%', padding: '14px 20px', border: 'none', borderBottom: i < tabs.length - 1 ? `1px solid ${T.rowBorder}` : 'none', background: tab === t.id ? 'rgba(16,185,129,0.15)' : 'transparent', color: tab === t.id ? C.primary : T.muted, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', fontWeight: tab === t.id ? 800 : 600, fontSize: 14, textAlign: 'left', transition: 'all 0.2s' }}>
+                <span style={{ opacity: tab === t.id ? 1 : 0.6 }}>{t.icon}</span>{t.label}
+                {tab === t.id && <div style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: C.primary }} />}
               </button>
             ))}
           </div>
-
-          {/* Stats */}
-          <StatsBar user={user} />
+          <StatsBar user={user} T={T} />
         </div>
 
-        {/* ── CONTENT ── */}
-        <div style={{ animation: 'fadeUp 0.4s ease 0.1s both' }}>
-          {tab === 'saved'     && <SavedSchedules />}
-          {tab === 'favorites' && <Favorites />}
-          {tab === 'history'   && <SearchHistory />}
-          {tab === 'settings'  && <Settings user={user} onUpdate={setUser} />}
+        {/* Content */}
+        <div style={{ minWidth: 0 }}>
+          {tab === 'saved'       && <SavedSchedules T={T} onLoadSchedule={onLoadSchedule} />}
+          {tab === 'savedplaces' && <SavedPlaces T={T} />}
+          {tab === 'favorites'   && <Favorites T={T} />}
+          {tab === 'history'     && <SearchHistory T={T} />}
+          {tab === 'settings'    && <Settings user={user} onUpdate={handleUserUpdate} T={T} />}
         </div>
       </div>
     </div>
   );
 }
 
-// ================================================================
+function Section({ title, icon, count, filteredCount, filterLabel, action, children }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 14, background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1))', color: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {icon}
+          </div>
+          <div>
+            <h2 style={{ fontSize: 24, fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>{title}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+              {count !== undefined && (
+                <div style={{ fontSize: 13, color: C.primary, fontWeight: 700 }}>
+                  {filteredCount !== undefined ? `${filteredCount} / ${count} mục` : `${count} mục`}
+                </div>
+              )}
+              {filterLabel && (
+                <div style={{ fontSize: 12, fontWeight: 700, padding: '2px 10px', borderRadius: 10, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: C.primary, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {filterLabel.emoji} {filterLabel.label}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        {action}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Empty({ icon, text, sub }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '60px 20px', background: 'rgba(255,255,255,0.02)', borderRadius: 24, border: '1px dashed rgba(255,255,255,0.1)' }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>{icon}</div>
+      <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>{text}</div>
+      <div style={{ fontSize: 13, color: '#94a3b8' }}>{sub}</div>
+    </div>
+  );
+}
+
+function Skeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {[1,2,3].map(i => (
+        <div key={i} style={{ height: 80, borderRadius: 16, background: 'rgba(255,255,255,0.04)', animation: 'pulse 1.5s ease infinite' }} />
+      ))}
+    </div>
+  );
+}
+
+function LoadingScreen() {
+  return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a1628', color: '#10b981', fontSize: 18, fontWeight: 700 }}>⏳ Đang tải...</div>;
+}
+
+function NotLoggedIn({ onBack }) {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a1628', color: 'white', gap: 16 }}>
+      <div style={{ fontSize: 48 }}>🔒</div>
+      <div style={{ fontSize: 20, fontWeight: 800 }}>Bạn chưa đăng nhập</div>
+      <button onClick={onBack} style={{ padding: '10px 24px', borderRadius: 99, border: 'none', background: C.primary, color: 'white', fontWeight: 800, cursor: 'pointer' }}>Quay lại Trang chủ</button>
+    </div>
+  );
+}
+
 // 🖼️ AVATAR CARD
-// ================================================================
-function AvatarCard({ user, onUpdate }) {
+function AvatarCard({ user, onUpdate, isDark, T }) {
   const fileRef  = useRef();
-  const [uploading, setUploading] = useState(false);
-  const [preview,   setPreview]   = useState(user.avatar || '');
+  const [uploading,    setUploading]    = useState(false);
+  const [preview,      setPreview]      = useState(user.avatar || '');
+  const [uploadMsg,    setUploadMsg]    = useState('');
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  useEffect(() => { if (user.avatar) setPreview(user.avatar); }, [user.avatar]);
 
   const handleFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { alert('Ảnh tối đa 10MB'); return; }
+    if (file.size > 10 * 1024 * 1024) { setUploadMsg('err:Ảnh tối đa 10MB'); return; }
+    if (!file.type.startsWith('image/')) { setUploadMsg('err:Chỉ chấp nhận file ảnh'); return; }
 
-    // Preview ngay lập tức
     const reader = new FileReader();
     reader.onload = (ev) => setPreview(ev.target.result);
     reader.readAsDataURL(file);
+    e.target.value = '';
 
-    // Upload lên server
-    setUploading(true);
+    setUploading(true); setUploadMsg('');
     const form = new FormData();
     form.append('avatar', file);
     try {
-      const res  = await fetch(`${BASE_URL}/api/auth/update-avatar`, {
-        method: 'POST', credentials: 'include', body: form,
-      });
+      const res  = await fetch(`${BASE_URL}/api/auth/update-avatar`, { method: 'POST', credentials: 'include', body: form });
       const data = await res.json();
-      if (data.success) onUpdate(data.user);
-    } catch { alert('Upload thất bại'); }
-    finally { setUploading(false); }
+      if (data.success) {
+        onUpdate(data.user);
+        if (data.user?.avatar) setPreview(data.user.avatar);
+        setUploadMsg('ok'); setTimeout(() => setUploadMsg(''), 3000);
+      } else {
+        setUploadMsg('err:' + (data.error || 'Upload thất bại'));
+        setPreview(user.avatar || '');
+      }
+    } catch (err) {
+      setUploadMsg('err:Lỗi kết nối server');
+      setPreview(user.avatar || '');
+    } finally { setUploading(false); }
   };
 
   const initials = (user.name || user.email || '?')[0].toUpperCase();
 
   return (
-    <div style={{
-      background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.08) 100%)',
-      border: '1px solid rgba(16,185,129,0.2)',
-      borderRadius: 24, padding: '28px 20px',
-      textAlign: 'center',
-    }}>
-      {/* Avatar */}
-      <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
-        <div style={{
-          width: 100, height: 100, borderRadius: '50%',
-          border: '3px solid rgba(16,185,129,0.5)',
-          overflow: 'hidden',
-          background: 'linear-gradient(135deg, #10b981, #059669)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 36, fontWeight: 900, color: 'white',
-          boxShadow: '0 0 30px rgba(16,185,129,0.3)',
-        }}>
-          {preview
-            ? <img src={preview} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : initials
-          }
-        </div>
+    <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.08) 100%)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 24, padding: '28px 20px', textAlign: 'center' }}>
+      {/* Lightbox */}
+      {lightboxOpen && preview && (
+        <>
+          <style>{`@keyframes lb-in { from{opacity:0;transform:scale(0.82)} to{opacity:1;transform:scale(1)} } @keyframes lb-bg { from{opacity:0} to{opacity:1} } .lb-close:hover { background:rgba(255,255,255,0.25) !important; transform:scale(1.1); }`}</style>
+          <div onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 20, animation: 'lb-bg 0.2s ease', cursor: 'zoom-out' }}>
+            <img src={preview} alt={user.name} onClick={e => e.stopPropagation()} style={{ maxWidth: '80vw', maxHeight: '80vh', borderRadius: 20, objectFit: 'contain', boxShadow: '0 40px 100px rgba(0,0,0,0.8), 0 0 0 2px rgba(16,185,129,0.4)', animation: 'lb-in 0.28s cubic-bezier(0.34,1.4,0.64,1)', cursor: 'default', userSelect: 'none' }} />
+            <div style={{ color: 'white', fontWeight: 800, fontSize: 18, textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>{user.name}</div>
+            <button className="lb-close" onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', top: 24, right: 28, width: 44, height: 44, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.12)', color: 'white', fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', backdropFilter: 'blur(8px)' }}>✕</button>
+          </div>
+        </>
+      )}
 
-        {/* Camera button */}
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="sp-btn"
-          style={{
-            position: 'absolute', bottom: 0, right: 0,
-            width: 32, height: 32, borderRadius: '50%',
-            border: '2px solid #0f172a',
-            background: C.primary, color: 'white',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', fontSize: 14,
-          }}
+      <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
+        <div onClick={() => preview && setLightboxOpen(true)} style={{ width: 100, height: 100, borderRadius: '50%', border: '3px solid rgba(16,185,129,0.5)', overflow: 'hidden', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 900, color: 'white', boxShadow: '0 0 30px rgba(16,185,129,0.3)', cursor: preview ? 'zoom-in' : 'default', transition: 'box-shadow 0.2s, transform 0.2s' }}
+          onMouseEnter={e => { if (preview) { e.currentTarget.style.boxShadow='0 0 44px rgba(16,185,129,0.6)'; e.currentTarget.style.transform='scale(1.05)'; }}}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow='0 0 30px rgba(16,185,129,0.3)'; e.currentTarget.style.transform='scale(1)'; }}
         >
+          {preview ? <img src={preview} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
+        </div>
+        <button onClick={() => fileRef.current?.click()} disabled={uploading} className="sp-btn" style={{ position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: '50%', border: `2px solid ${isDark ? '#0f172a' : '#ffffff'}`, background: C.primary, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14 }}>
           {uploading ? '⏳' : Icon.camera}
         </button>
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
       </div>
 
-      <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 4 }}>{user.name}</div>
-      <div style={{ fontSize: 13, color: C.muted, marginBottom: 14 }}>{user.email}</div>
-
-      {/* Badge */}
-      <div style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '5px 14px', borderRadius: 20,
-        background: 'rgba(16,185,129,0.15)',
-        border: '1px solid rgba(16,185,129,0.3)',
-        fontSize: 12, fontWeight: 700, color: C.primary,
-      }}>
-        ✈️ Traveler
-      </div>
+      <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 4, color: T.text }}>{user.name}</div>
+      <div style={{ fontSize: 13, color: T.muted, marginBottom: 14 }}>{user.email}</div>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', fontSize: 12, fontWeight: 700, color: C.primary }}>✈️ Traveler</div>
+      {uploadMsg && <div style={{ marginTop: 10, padding: '7px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: uploadMsg === 'ok' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.12)', border: `1px solid ${uploadMsg === 'ok' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, color: uploadMsg === 'ok' ? C.primary : C.danger }}>{uploadMsg === 'ok' ? '✅ Cập nhật ảnh thành công!' : uploadMsg.replace(/^err:/, '❌ ')}</div>}
     </div>
   );
 }
 
-// ================================================================
-// 📊 STATS BAR
-// ================================================================
-function StatsBar({ user }) {
-  const [stats, setStats] = useState({ schedules: 0, favorites: 0, searches: 0 });
-
+function StatsBar({ user, T }) {
+  const [stats, setStats] = useState({ schedules: 0, favorites: 0, savedPlaces: 0, searches: 0 });
   useEffect(() => {
-    // Lấy count từ API
-    Promise.all([
-      api.get('/api/schedules'),
-      api.get('/api/favorites'),
-      api.get('/api/search-history'),
-    ]).then(([s, f, h]) => {
-      setStats({
-        schedules: s.schedules?.length || 0,
-        favorites: f.favorites?.length || 0,
-        searches:  h.history?.length   || 0,
-      });
-    }).catch(() => {});
+    Promise.all([ api.get('/api/schedules'), api.get('/api/favorites'), api.get('/api/saved-places'), api.get('/api/search-history') ])
+      .then(([s, f, sp, h]) => setStats({ schedules: s.schedules?.length || 0, favorites: f.favorites?.length || 0, savedPlaces: sp.savedPlaces?.length || 0, searches: h.history?.length || 0 }))
+      .catch(() => {});
   }, []);
-
-  const items = [
-    { label: 'Lịch trình', value: stats.schedules },
-    { label: 'Yêu thích',  value: stats.favorites  },
-    { label: 'Tìm kiếm',   value: stats.searches   },
-  ];
-
+  const items = [ { label: 'Lịch trình', value: stats.schedules }, { label: 'Đã lưu', value: stats.savedPlaces }, { label: 'Yêu thích', value: stats.favorites }, { label: 'Tìm kiếm', value: stats.searches } ];
   return (
-    <div style={{
-      marginTop: 14,
-      display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
-    }}>
+    <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
       {items.map(item => (
-        <div key={item.label} style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 14, padding: '12px 8px', textAlign: 'center',
-        }}>
+        <div key={item.label} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
           <div style={{ fontSize: 22, fontWeight: 900, color: C.primary }}>{item.value}</div>
-          <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginTop: 2 }}>{item.label}</div>
+          <div style={{ fontSize: 11, color: T.muted, fontWeight: 600, marginTop: 2 }}>{item.label}</div>
         </div>
       ))}
     </div>
   );
 }
 
-// ================================================================
+// ── MOCK DATA (xóa khi dùng API thật) ──────────────────────
+const MOCK_SCHEDULES = [
+  {
+    id: 1, title: 'Khám phá Huế', location: 'Huế', days: 2,
+    updated_at: '2026-05-18T11:36:00Z',
+    schedule: {
+      summary: 'Hành trình 2 ngày khám phá kinh thành Huế, di sản văn hóa thế giới với những cung điện cổ kính, ẩm thực đặc sắc và sông Hương thơ mộng.',
+      days: [
+        {
+          day: 1, title: 'Kinh thành & Lăng tẩm',
+          activities: [
+            { time: '07:30', type: 'food',    name: 'Bún bò Huế Mụ Rớt',           note: 'Quán nổi tiếng nhất Huế, ăn sáng đặc trưng' },
+            { time: '09:00', type: 'explore', name: 'Đại Nội - Hoàng Thành Huế',    note: 'Kinh thành triều Nguyễn, di sản UNESCO' },
+            { time: '12:00', type: 'food',    name: 'Cơm Hến bờ sông',              note: 'Đặc sản Huế, ăn trưa nhẹ' },
+            { time: '14:00', type: 'explore', name: 'Lăng Khải Định',               note: 'Kiến trúc kết hợp Á - Âu độc đáo' },
+            { time: '16:30', type: 'explore', name: 'Lăng Tự Đức',                  note: 'Lăng mộ đẹp nhất triều Nguyễn' },
+            { time: '19:00', type: 'food',    name: 'Phố đi bộ Nguyễn Đình Chiểu', note: 'Ẩm thực đường phố buổi tối' },
+          ]
+        },
+        {
+          day: 2, title: 'Sông Hương & Chùa chiền',
+          activities: [
+            { time: '06:30', type: 'explore', name: 'Chùa Thiên Mụ',             note: 'Ngắm bình minh, biểu tượng của Huế' },
+            { time: '09:00', type: 'explore', name: 'Làng hương Thủy Xuân',      note: 'Làm hương truyền thống, check-in đẹp' },
+            { time: '11:30', type: 'food',    name: 'Bánh mì Phượng Huế',        note: 'Bánh mì đặc trưng miền Trung' },
+            { time: '13:30', type: 'hotel',   name: 'Khách sạn Silk Path Grand', note: 'Nghỉ ngơi, tắm hồ bơi, thư giãn' },
+            { time: '16:00', type: 'explore', name: 'Thuyền rồng sông Hương',    note: 'Nghe nhã nhạc Cung Đình trên thuyền' },
+            { time: '19:30', type: 'food',    name: 'Nhà hàng Lạc Thành',        note: 'Tiệc tất niên hành trình' },
+          ]
+        }
+      ],
+      budget: '3200000', passengers: 2,
+      tags: ['di sản', 'văn hóa', 'ẩm thực', 'lịch sử']
+    }
+  },
+  {
+    id: 2, title: 'Đà Nẵng - Hội An 3N2Đ', location: 'Đà Nẵng', days: 3,
+    updated_at: '2026-05-10T08:45:00Z',
+    schedule: {
+      summary: '3 ngày 2 đêm khám phá thành phố biển Đà Nẵng và phố cổ Hội An — nơi giao thoa văn hóa độc đáo nhất miền Trung.',
+      days: [
+        {
+          day: 1, title: 'Ngày biển & Bà Nà',
+          activities: [
+            { time: '08:00', type: 'explore', name: 'Cầu Vàng - Bà Nà Hills', note: 'Cáp treo lên núi, Cầu Vàng check-in' },
+            { time: '13:00', type: 'food',    name: 'Bữa trưa Bà Nà Hills',   note: 'Buffet hải sản, view núi' },
+            { time: '16:00', type: 'explore', name: 'Bãi biển Mỹ Khê',        note: 'Tắm biển buổi chiều mát' },
+            { time: '19:00', type: 'food',    name: 'Mỳ Quảng Bà Vị',        note: 'Đặc sản nổi tiếng Đà Nẵng' },
+          ]
+        },
+        {
+          day: 2, title: 'Hội An phố cổ',
+          activities: [
+            { time: '09:00', type: 'explore', name: 'Phố cổ Hội An',              note: 'Đi bộ, chụp ảnh, mua sắm' },
+            { time: '12:00', type: 'food',    name: 'Cao lầu Hội An Bà Bé',      note: 'Món ngon đặc trưng nhất Hội An' },
+            { time: '19:30', type: 'explore', name: 'Thả đèn hoa đăng sông Hoài', note: 'Trải nghiệm văn hóa tâm linh' },
+          ]
+        },
+        {
+          day: 3, title: 'Ngũ Hành Sơn & Về nhà',
+          activities: [
+            { time: '08:00', type: 'explore', name: 'Ngũ Hành Sơn',           note: '5 ngọn núi đá vôi huyền bí' },
+            { time: '11:00', type: 'explore', name: 'Làng nghề đá Non Nước',  note: 'Mua quà lưu niệm' },
+            { time: '13:00', type: 'food',    name: 'Bánh xèo Đà Nẵng',      note: 'Bữa trưa trước khi về' },
+          ]
+        }
+      ],
+      budget: '5800000', passengers: 2,
+      tags: ['biển', 'phố cổ', 'cầu vàng', 'văn hóa']
+    }
+  }
+];
+
+const TYPE_ICON = {
+  food:    { emoji: '🍜', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  hotel:   { emoji: '🏨', color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+  explore: { emoji: '🗺️', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  camera:  { emoji: '📸', color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
+  default: { emoji: '📍', color: '#94a3b8', bg: 'rgba(148,163,184,0.1)'  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 🗓️ MODAL XEM CHI TIẾT LỊCH TRÌNH
+// ════════════════════════════════════════════════════════════
+function ScheduleModal({ schedule, onClose, onLoadToMain }) {
+  const [activeDay, setActiveDay] = useState(0);
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  if (!schedule) return null;
+
+  // Parse editedPlans từ data_json (cấu trúc thật từ DB)
+  const dataJson = schedule.data_json || {};
+  const editedPlans = dataJson.editedPlans || [];
+  const searchData = dataJson.searchData || {};
+
+  // Chuyển editedPlans[{ day, morning, afternoon, evening }]
+  // thành days[{ day, activities[] }] để modal hiển thị
+  const SLOT_TIME = { morning: '🌅 Sáng', afternoon: '☀️ Chiều', evening: '🌙 Tối' };
+  const days = editedPlans.map((plan) => {
+    const activities = [];
+    ['morning', 'afternoon', 'evening'].forEach(slot => {
+      const slotData = plan[slot] || {};
+      if (slotData.tour) activities.push({
+        slot,
+        type: 'explore',
+        name: slotData.tour.name,
+        note: slotData.tour.desc?.replace(/^"|"$/g, '') || '',
+        thumbnail: slotData.tour.thumbnail,
+        rating: slotData.tour.rating,
+      });
+      if (slotData.food) activities.push({
+        slot,
+        type: 'food',
+        name: slotData.food.name,
+        note: slotData.food.desc?.replace(/^"|"$/g, '') || '',
+        thumbnail: slotData.food.thumbnail,
+        rating: slotData.food.rating,
+      });
+    });
+    return { day: plan.day, title: `Ngày ${plan.day}`, activities };
+  });
+
+  const currentDay = days[activeDay] || {};
+  const activities = currentDay.activities || [];
+
+  return (
+    <>
+      <style>{`
+        @keyframes modalIn    { from{opacity:0;transform:scale(0.95) translateY(16px)} to{opacity:1;transform:scale(1) translateY(0)} }
+        @keyframes overlayIn  { from{opacity:0} to{opacity:1} }
+        @keyframes slideRight { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
+        .day-tab:hover { background: rgba(16,185,129,0.1) !important; color: #10b981 !important; }
+        .act-row:hover { background: rgba(255,255,255,0.05) !important; }
+        .sm-btn:hover  { opacity: 0.8; transform: translateY(-1px); }
+        .sm-btn        { transition: all 0.2s; }
+      `}</style>
+
+      {/* Overlay */}
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 1000, animation: 'overlayIn 0.2s ease' }} />
+
+      {/* Modal container */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', pointerEvents: 'none' }}>
+        <div onClick={e => e.stopPropagation()} style={{ pointerEvents: 'auto', width: '100%', maxWidth: 760, maxHeight: '90vh', background: 'linear-gradient(145deg, #0f1e35 0%, #0d1a2e 100%)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 28, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 40px 100px rgba(0,0,0,0.6)', animation: 'modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}>
+
+          {/* Header */}
+          <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.08) 100%)', borderBottom: '1px solid rgba(16,185,129,0.15)', padding: '24px 28px 20px', position: 'relative', flexShrink: 0 }}>
+            <button onClick={onClose} className="sm-btn" style={{ position: 'absolute', top: 20, right: 20, width: 38, height: 38, borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.06)', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 18, flexShrink: 0, background: 'linear-gradient(135deg, rgba(16,185,129,0.3), rgba(5,150,105,0.15))', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>🗺️</div>
+              <div style={{ flex: 1, paddingRight: 40 }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: '#f8fafc', marginBottom: 6, lineHeight: 1.2 }}>{schedule.title}</div>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <span style={{ fontSize: 13, color: C.primary, display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.map} {schedule.location}</span>
+                  <span style={{ fontSize: 13, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.plane} {schedule.days} ngày</span>
+                  <span style={{ fontSize: 13, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.clock} {formatDate(schedule.updated_at)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+              {searchData.budget && <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 99, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 12, fontWeight: 700, color: '#f59e0b' }}>💰 ~{Number(String(searchData.budget).replace(/\D/g,'')).toLocaleString('vi-VN')}đ</div>}
+              {searchData.passengers && <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', fontSize: 12, fontWeight: 700, color: '#a5b4fc' }}>👥 {searchData.passengers} người</div>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 99, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', fontSize: 12, fontWeight: 700, color: C.primary }}>📅 {schedule.days} ngày · {days.reduce((acc, d) => acc + (d.activities?.length || 0), 0)} hoạt động</div>
+            </div>
+          </div>
+
+          {/* Day Tabs */}
+          {days.length > 1 && (
+            <div style={{ display: 'flex', gap: 0, overflowX: 'auto', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.2)' }}>
+              {days.map((d, i) => (
+                <button key={i} className="day-tab" onClick={() => setActiveDay(i)} style={{ flexShrink: 0, padding: '14px 20px', border: 'none', borderBottom: `3px solid ${i === activeDay ? C.primary : 'transparent'}`, background: i === activeDay ? 'rgba(16,185,129,0.08)' : 'transparent', color: i === activeDay ? C.primary : '#94a3b8', cursor: 'pointer', fontWeight: 700, fontSize: 13, transition: 'all 0.2s', whiteSpace: 'nowrap' }}>
+                  ☀️&nbsp;&nbsp;Ngày {d.day}{d.title ? ` — ${d.title}` : ''}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Activities */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+            {days.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>Lịch trình chưa có chi tiết</div>
+              </div>
+            )}
+            {days.length > 0 && (
+              <div key={activeDay} style={{ animation: 'slideRight 0.25s ease' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 11, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: C.primary, fontSize: 14 }}>{currentDay.day}</div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: '#f8fafc' }}>{currentDay.title || `Ngày ${currentDay.day}`}</div>
+                    <div style={{ fontSize: 12, color: '#94a3b8' }}>{activities.length} hoạt động</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  {[
+                    { slot: 'morning',   label: '🌅 Buổi sáng',  color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.2)'  },
+                    { slot: 'afternoon', label: '☀️ Buổi chiều', color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)' },
+                    { slot: 'evening',   label: '🌙 Buổi tối',   color: '#818cf8', bg: 'rgba(129,140,248,0.08)', border: 'rgba(129,140,248,0.2)' },
+                  ].map(({ slot, label, color, bg, border }) => {
+                    const slotActs = activities.filter(a => a.slot === slot);
+                    if (!slotActs.length) return null;
+                    return (
+                      <div key={slot}>
+                        {/* Buổi header */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                          <div style={{ height: 1, width: 16, background: color, opacity: 0.4 }} />
+                          <span style={{ fontSize: 11, fontWeight: 800, color, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{label}</span>
+                          <div style={{ flex: 1, height: 1, background: color, opacity: 0.15 }} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {slotActs.map((act, ai) => {
+                            const cfg = TYPE_ICON[act.type] || TYPE_ICON.default;
+                            return (
+                              <div key={ai} className="act-row" style={{ display: 'flex', gap: 12, padding: '10px 12px', borderRadius: 14, transition: '0.2s', border: `1px solid ${border}`, background: bg, alignItems: 'center' }}>
+                                <div style={{ flexShrink: 0, width: 52, height: 52, borderRadius: 10, overflow: 'hidden', background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {act.thumbnail
+                                    ? <img src={act.thumbnail} alt={act.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display='none'; e.target.parentNode.innerHTML = `<span style='font-size:22px'>${cfg.emoji}</span>`; }} />
+                                    : <span style={{ fontSize: 22 }}>{cfg.emoji}</span>
+                                  }
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                                    <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 5, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', flexShrink: 0 }}>{cfg.emoji} {act.type === 'food' ? 'Ăn uống' : 'Tham quan'}</span>
+                                    {act.rating && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700, flexShrink: 0 }}>⭐ {act.rating}</span>}
+                                  </div>
+                                  <div style={{ fontSize: 14, fontWeight: 800, color: '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>{act.name}</div>
+                                  {act.note && <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{act.note}</div>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '14px 24px', background: 'rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+            <button className="sm-btn" onClick={(e) => onLoadToMain(schedule, e)} style={{ padding: '12px 32px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 16px rgba(16,185,129,0.3)' }}>
+              Xem lịch trình đầy đủ {Icon.arrow}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // 📅 SAVED SCHEDULES
-// ================================================================
-function SavedSchedules() {
-  const [schedules, setSchedules] = useState([]);
-  const [loading,   setLoading]   = useState(true);
+function SavedSchedules({ T, onLoadSchedule }) {
+  const [schedules,        setSchedules]        = useState([]);
+  const [loading,          setLoading]          = useState(true);
+  const [selectedSchedule, setSelectedSchedule] = useState(null);
 
   useEffect(() => {
     api.get('/api/schedules')
-      .then(d => { setSchedules(d.schedules || []); })
+      .then(d => setSchedules(d.schedules || d.savedPlaces || d || []))
+      .catch(() => setSchedules([]))
       .finally(() => setLoading(false));
   }, []);
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, e) => {
+    e.stopPropagation();
     if (!window.confirm('Xoá lịch trình này?')) return;
     const res = await api.del(`/api/schedules/${id}`);
     if (res.success) setSchedules(s => s.filter(x => x.id !== id));
   };
 
+  const handleOpen  = useCallback((s) => { setSelectedSchedule(s); }, []);
+  const handleClose = useCallback(() => { setSelectedSchedule(null); }, []);
+
+  const handleLoadToMainDashboard = useCallback((scheduleItem, e) => {
+    e.stopPropagation();
+    if (scheduleItem.data_json && onLoadSchedule) {
+      onLoadSchedule(scheduleItem.data_json);
+    } else if (onLoadSchedule) {
+      onLoadSchedule(null);
+    } else {
+      alert('Lịch trình chưa có data_json để tái hiện trên trang chủ!');
+    }
+  }, [onLoadSchedule]);
+
   return (
-    <Section title="Lịch trình đã lưu" icon={Icon.calendar} count={schedules.length}>
-      {loading && <Skeleton />}
+    <>
+      <style>{`
+        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+      `}</style>
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.primary }}>{Icon.calendar}</div>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: (T||{}).text || '#f8fafc' }}>Lịch trình đã lưu</div>
+            {schedules.length > 0 && <div style={{ fontSize: 13, color: C.primary, fontWeight: 700 }}>{schedules.length} mục</div>}
+          </div>
+        </div>
+      </div>
+
+      {/* Loading skeleton */}
+      {loading && [1, 2].map(i => (
+        <div key={i} style={{ height: 100, borderRadius: 24, marginBottom: 16, background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite' }} />
+      ))}
+
+      {/* Empty state */}
       {!loading && schedules.length === 0 && (
-        <Empty icon="🗓️" text="Chưa có lịch trình nào được lưu" sub="Tạo lịch trình và bấm 'Lưu lịch trình' để thấy ở đây" />
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>🗓️</div>
+          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8, color: (T||{}).text || '#f8fafc' }}>Chưa có lịch trình nào được lưu</div>
+          <div style={{ fontSize: 13 }}>Tạo lịch trình và bấm "Lưu lịch trình" để thấy ở đây</div>
+        </div>
       )}
-      <div style={{ display: 'grid', gap: 14 }}>
+
+      {/* Cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {schedules.map((s, i) => (
-          <div
-            key={s.id}
-            className="sp-card"
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 18, padding: '18px 20px',
-              display: 'flex', gap: 16, alignItems: 'center',
-              animation: `fadeUp 0.3s ease ${i * 0.06}s both`,
-            }}
-          >
-            {/* Icon */}
-            <div style={{
-              width: 52, height: 52, borderRadius: 14, flexShrink: 0,
-              background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1))',
-              border: '1px solid rgba(16,185,129,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 22,
-            }}>
-              🗺️
-            </div>
-
-            {/* Info */}
+          <div key={s.id} className="sp-card" onClick={() => handleOpen(s)} style={{ background: (T||{}).card || 'rgba(255,255,255,0.04)', border: `1px solid ${(T||{}).cardBorder || 'rgba(255,255,255,0.08)'}`, borderRadius: 24, padding: '22px 28px', display: 'flex', gap: 20, alignItems: 'center', cursor: 'pointer', animation: `fadeUp 0.3s ease ${i * 0.06}s both` }}>
+            <div style={{ width: 56, height: 56, borderRadius: 16, flexShrink: 0, background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1))', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🗺️</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {s.title}
-              </div>
-              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, color: C.primary, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  {Icon.map} {s.location}
-                </span>
-                <span style={{ fontSize: 12, color: C.muted, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  {Icon.plane} {s.days} ngày
-                </span>
-                <span style={{ fontSize: 12, color: C.muted, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  {Icon.clock} {formatDate(s.updated_at)}
-                </span>
+              <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: (T||{}).text || '#f8fafc' }}>{s.title}</div>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, color: C.primary, display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.map} {s.location}</span>
+                <span style={{ fontSize: 13, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.plane} {s.days} ngày</span>
+                <span style={{ fontSize: 13, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.clock} {formatDate(s.updated_at)}</span>
               </div>
             </div>
-
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              <button
-                className="sp-btn"
-                style={{
-                  padding: '8px 16px', borderRadius: 10, border: 'none',
-                  background: 'rgba(16,185,129,0.15)', color: C.primary,
-                  fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                }}
-              >
-                Xem
-              </button>
-              <button
-                className="sp-del"
-                onClick={() => handleDelete(s.id)}
-                style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  background: 'transparent', color: C.muted,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: '0.2s',
-                }}
-              >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+              <button className="sp-del" onClick={(e) => handleDelete(s.id, e)} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'rgba(239,68,68,0.08)', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
                 {Icon.trash}
               </button>
+              <div style={{ color: C.primary }}>{Icon.arrow}</div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Modal */}
+      {selectedSchedule && (
+        <ScheduleModal schedule={selectedSchedule} onClose={handleClose} onLoadToMain={handleLoadToMainDashboard} />
+      )}
+    </>
+  );
+}
+
+// 🗂️ Lọc & Nhóm địa điểm
+const TYPE_CONFIG = {
+  hotel:     { label: 'Khách sạn',     emoji: '🏨' },
+  tour:      { label: 'Tham quan',     emoji: '🗺️' },
+  food:      { label: 'Ăn uống',       emoji: '🍜' },
+  drink:     { label: 'Đồ uống',       emoji: '🧋' },
+  specialty: { label: 'Đặc sản',       emoji: '🛍️' },
+  default:   { label: 'Địa điểm khác', emoji: '📍' }
+};
+
+const FILTER_TABS = [
+  { id: 'all',   label: 'Tất cả' },
+  { id: 'hotel', label: 'Khách sạn', emoji: '🏨' },
+  { id: 'tour',  label: 'Tham quan', emoji: '🗺️' },
+  { id: 'food',  label: 'Ăn uống',   emoji: '🍜' },
+  { id: 'drink', label: 'Đồ uống',   emoji: '🧋' },
+  { id: 'specialty', label: 'Đặc sản',   emoji: '🛍️' },
+];
+
+function LocationGroup({ locationName, items, T, accentColor, children }) {
+  const [open, setOpen] = useState(true);
+  if (items.length === 0) return null;
+  
+  return (
+    <div style={{ 
+      marginBottom: 32, 
+      border: `1px solid ${T.cardBorder}`, 
+      borderRadius: 24, 
+      background: T.card, 
+      overflow: 'hidden' 
+    }}>
+      {/* Header nút bấm */}
+      <button 
+        onClick={() => setOpen(!open)} 
+        style={{ 
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+          padding: '16px 24px', 
+          border: 'none', 
+          borderBottom: open ? `1px solid ${T.cardBorder}` : 'none',
+          background: `linear-gradient(135deg, ${accentColor}18 0%, ${accentColor}08 100%)`, 
+          color: T.text, 
+          cursor: 'pointer', transition: 'all 0.2s'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 24 }}>📍</span>
+          <span style={{ fontWeight: 900, fontSize: 18 }}>{locationName}</span>
+          <span style={{ background: `${accentColor}25`, color: accentColor, padding: '3px 14px', borderRadius: 12, fontSize: 14, fontWeight: 800 }}>
+            {items.length}
+          </span>
+        </div>
+        <span style={{ fontSize: 14, color: T.muted }}>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {/* Danh sách địa điểm */}
+      {open && (
+        <div style={{ padding: '24px' }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(3, 1fr)', 
+            gap: '20px' 
+          }}>
+            {children}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlaceItemCard({ item, tabType, onRemove, T, removeColor, i }) {
+  const TYPE_ALIAS = {
+    'khach-san': 'hotel', 'khachsan': 'hotel', 'accommodation': 'hotel', 'lodging': 'hotel',
+    'dac-san': 'specialty', 'dacsan': 'specialty', 'local': 'specialty', 'souvenir': 'specialty', 'shop': 'specialty',
+    'an-uong': 'food', 'anuong': 'food', 'restaurant': 'food', 'cafe': 'drink', 'coffee': 'drink',
+    'tham-quan': 'tour', 'thamquan': 'tour', 'attraction': 'tour',
+  };
+  const normalizedType = TYPE_ALIAS[item.type?.toLowerCase()] || item.type;
+  const config = TYPE_CONFIG[normalizedType] || TYPE_CONFIG.default;
+  const crispImg = useCrispImageProfile(item, tabType, T);
+
+  return (
+    <div className="sp-card" style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 24, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
+      <div style={{ height: 180, position: 'relative', overflow: 'hidden', background: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 54 }}>
+        {crispImg ? (
+          <img src={proxyImage(crispImg)} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} onError={e => { e.target.style.display = 'none'; }} />
+        ) : config.emoji}
+        
+        <div style={{ position: 'absolute', top: 12, left: 12, padding: '4px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', fontSize: 12, fontWeight: 800, color: 'white' }}>
+          {config.emoji} {config.label}
+        </div>
+        <button onClick={() => onRemove(item.id)} style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 10, border: 'none', background: 'rgba(0,0,0,0.6)', color: removeColor, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 'bold' }}>✕</button>
+      </div>
+      <div style={{ padding: '18px 20px' }}>
+        <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+        {item.rating && <span style={{ fontSize: 14, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>{Icon.star} {item.rating}</span>}
+      </div>
+    </div>
+  );
+}
+
+// 🔍 THANH TÌM KIẾM
+function SearchBar({ value, onChange, T }) {
+  return (
+    <div style={{ position: 'relative', width: '300px' }}>
+      <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: T.muted }}>
+        🔍
+      </span>
+      <input
+        type="text"
+        placeholder="Tìm kiếm tỉnh thành..." // 🟢 Đã đổi text ở đây
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: '100%', height: '42px', padding: '0 36px 0 44px',
+          borderRadius: 20, border: `1.5px solid ${T.cardBorder}`,
+          background: T.inputBg, color: T.text, fontSize: 14, fontWeight: 600,
+          outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
+        }}
+        onFocus={e => {
+          e.target.style.borderColor = C.primary;
+          e.target.style.boxShadow = '0 0 0 4px rgba(16,185,129,0.15)';
+        }}
+        onBlur={e => {
+          e.target.style.borderColor = T.cardBorder;
+          e.target.style.boxShadow = 'none';
+        }}
+      />
+      {value && (
+        <button 
+          onClick={() => onChange('')} 
+          style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 16 }}
+        >✕</button>
+      )}
+    </div>
+  );
+}
+
+// 🗂️ THANH LỌC
+function FilterBar({ current, onChange, items = [], T }) {
+  const getCount = (type) => {
+    if (!items) return 0;
+    if (type === 'all') return items.length;
+    return items.filter(i => i.type === type).length;
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 800, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+        Lọc theo loại
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {FILTER_TABS.map(f => {
+          const count = getCount(f.id);
+          if (count === 0 && f.id !== 'all') return null;
+
+          return (
+            <button
+              key={f.id}
+              onClick={() => onChange(f.id)}
+              style={{
+                height: '42px',
+                padding: '0 16px', borderRadius: 24,
+                border: `1.5px solid ${current === f.id ? C.primary : T.cardBorder}`,
+                background: current === f.id ? 'rgba(16,185,129,0.15)' : 'transparent',
+                color: current === f.id ? C.primary : T.muted,
+                fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex', alignItems: 'center', gap: 8
+              }}
+            >
+              {f.emoji && <span style={{ fontSize: 16 }}>{f.emoji}</span>}
+              {f.label}
+              <span style={{
+                background: current === f.id ? C.primary : T.cardBorder,
+                color: current === f.id ? 'white' : T.text,
+                padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 800,
+                marginLeft: 4
+              }}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// 🔖 TAB: LƯU TRỮ
+function SavedPlaces({ T }) {
+  const [items,   setItems]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter,  setFilter]  = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    api.get('/api/saved-places').then(d => setItems(d.savedPlaces || [])).finally(() => setLoading(false));
+  }, []);
+
+  const handleRemove = async (id) => {
+    await api.del(`/api/saved-places/${id}`);
+    setItems(f => f.filter(x => x.id !== id));
+  };
+
+  const searchedItems = items.filter(item => {
+    if (!searchQuery) return true;
+    const q = removeAccents(searchQuery);
+    const loc = removeAccents(item.location || '');
+    return loc.includes(q); 
+  });
+
+  const filteredItems = searchedItems.filter(item => filter === 'all' || item.type === filter);
+
+  const grouped = filteredItems.reduce((acc, item) => {
+    const loc = standardizeLocation(item.location);
+    if (!acc[loc]) acc[loc] = [];
+    acc[loc].push(item);
+    return acc;
+  }, {});
+  const locations = Object.keys(grouped).sort();
+
+  return (
+    <Section 
+      title="Lưu trữ" 
+      icon={Icon.bookmark} 
+      count={items.length}
+      // 🟢 ĐƯA THANH TÌM KIẾM LÊN NGANG HÀNG TIÊU ĐỀ
+      action={!loading && items.length > 0 && <SearchBar value={searchQuery} onChange={setSearchQuery} T={T} />}
+    >
+      {loading && <Skeleton />}
+      
+      {/* 🟢 BỘ LỌC NẰM ĐỘC LẬP MỘT DÒNG */}
+      {!loading && items.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <FilterBar current={filter} onChange={setFilter} items={searchedItems} T={T} />
+        </div>
+      )}
+
+      {!loading && items.length === 0 && <Empty icon="🔖" text="Chưa có địa điểm nào được lưu" sub="Bấm 🔖 trên bất kỳ địa điểm nào để lưu vào đây" />}
+      {!loading && items.length > 0 && filteredItems.length === 0 && <Empty icon="🔍" text="Không tìm thấy kết quả" sub="Vui lòng thử từ khóa hoặc bộ lọc khác" />}
+      
+      {!loading && locations.map(loc => (
+        <LocationGroup key={loc} locationName={loc} items={grouped[loc]} T={T} accentColor={C.warn}>
+          {grouped[loc].map((item, i) => (
+            <PlaceItemCard key={item.id} item={item} tabType="saved" onRemove={handleRemove} T={T} removeColor="#fbbf24" i={i} />
+            ))}
+        </LocationGroup>
+      ))}
     </Section>
   );
 }
 
-// ================================================================
-// ❤️ FAVORITES
-// ================================================================
-function Favorites() {
+// ❤️ TAB: YÊU THÍCH
+function Favorites({ T }) {
   const [items,   setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter,  setFilter]  = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    api.get('/api/favorites')
-      .then(d => setItems(d.favorites || []))
-      .finally(() => setLoading(false));
+    api.get('/api/favorites').then(d => setItems(d.favorites || [])).finally(() => setLoading(false));
   }, []);
 
   const handleRemove = async (id) => {
@@ -453,91 +1036,67 @@ function Favorites() {
     setItems(f => f.filter(x => x.id !== id));
   };
 
-  const typeEmoji = { hotel: '🏨', tour: '🗺️', food: '🍜', drink: '🧋', default: '📍' };
+  const searchedItems = items.filter(item => {
+    if (!searchQuery) return true;
+    const q = removeAccents(searchQuery);
+    const loc = removeAccents(item.location || '');
+    return loc.includes(q); 
+  });
+
+  const filteredItems = searchedItems.filter(item => filter === 'all' || item.type === filter);
+
+  const grouped = filteredItems.reduce((acc, item) => {
+    const loc = standardizeLocation(item.location);
+    if (!acc[loc]) acc[loc] = [];
+    acc[loc].push(item);
+    return acc;
+  }, {});
+  const locations = Object.keys(grouped).sort();
 
   return (
-    <Section title="Địa điểm yêu thích" icon={Icon.heart} count={items.length}>
+    <Section 
+      title="Địa điểm yêu thích" 
+      icon={Icon.heart} 
+      count={items.length}
+      // 🟢 ĐƯA THANH TÌM KIẾM LÊN NGANG HÀNG TIÊU ĐỀ
+      action={!loading && items.length > 0 && <SearchBar value={searchQuery} onChange={setSearchQuery} T={T} />}
+    >
       {loading && <Skeleton />}
-      {!loading && items.length === 0 && (
-        <Empty icon="❤️" text="Chưa có địa điểm yêu thích" sub="Bấm ❤️ trên bất kỳ địa điểm nào để lưu vào đây" />
+      
+      {/* 🟢 BỘ LỌC NẰM ĐỘC LẬP MỘT DÒNG */}
+      {!loading && items.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <FilterBar current={filter} onChange={setFilter} items={searchedItems} T={T} />
+        </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
-        {items.map((item, i) => (
-          <div
-            key={item.id}
-            className="sp-card"
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 18, overflow: 'hidden',
-              animation: `fadeUp 0.3s ease ${i * 0.06}s both`,
-            }}
-          >
-            {/* Ảnh */}
-            <div style={{
-              height: 130, background: 'linear-gradient(135deg, #1e293b, #0f172a)',
-              position: 'relative', overflow: 'hidden',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 40,
-            }}>
-              {item.thumbnail
-                ? <img src={item.thumbnail} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} onError={e => { e.target.style.display = 'none'; }} />
-                : typeEmoji[item.type] || typeEmoji.default
-              }
-              {/* Remove btn */}
-              <button
-                onClick={() => handleRemove(item.id)}
-                style={{
-                  position: 'absolute', top: 8, right: 8,
-                  width: 30, height: 30, borderRadius: 8,
-                  border: 'none', background: 'rgba(0,0,0,0.5)',
-                  color: '#f87171', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 14,
-                }}
-              >
-                ✕
-              </button>
-            </div>
 
-            <div style={{ padding: '14px 16px' }}>
-              <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {item.name}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: C.primary }}>{item.location}</span>
-                {item.rating && (
-                  <span style={{ fontSize: 12, color: C.warn, display: 'flex', alignItems: 'center', gap: 3, fontWeight: 700 }}>
-                    {Icon.star} {item.rating}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {!loading && items.length === 0 && <Empty icon="❤️" text="Chưa có địa điểm yêu thích" sub="Bấm ❤️ trên bất kỳ địa điểm nào để lưu vào đây" />}
+      {!loading && items.length > 0 && filteredItems.length === 0 && <Empty icon="🔍" text="Không tìm thấy kết quả" sub="Vui lòng thử từ khóa hoặc bộ lọc khác" />}
+      
+      {!loading && locations.map(loc => (
+        <LocationGroup key={loc} locationName={loc} items={grouped[loc]} T={T} accentColor={C.danger}>
+          {grouped[loc].map((item, i) => (
+            <PlaceItemCard key={item.id} item={item} tabType="favorite" onRemove={handleRemove} T={T} removeColor="#f87171" i={i} />
+            ))}
+        </LocationGroup>
+      ))}
     </Section>
   );
 }
 
-// ================================================================
 // 🔍 SEARCH HISTORY
-// ================================================================
-function SearchHistory() {
+function SearchHistory({ T }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/api/search-history')
-      .then(d => setHistory(d.history || []))
-      .finally(() => setLoading(false));
+    api.get('/api/search-history').then(d => setHistory(d.history || [])).finally(() => setLoading(false));
   }, []);
 
   const handleDelete = async (id) => {
     await api.del(`/api/search-history/${id}`);
     setHistory(h => h.filter(x => x.id !== id));
   };
-
   const handleClearAll = async () => {
     if (!window.confirm('Xoá toàn bộ lịch sử?')) return;
     await api.del('/api/search-history/all');
@@ -545,87 +1104,22 @@ function SearchHistory() {
   };
 
   return (
-    <Section
-      title="Lịch sử tìm kiếm"
-      icon={Icon.search}
-      count={history.length}
-      action={history.length > 0 && (
-        <button
-          onClick={handleClearAll}
-          className="sp-btn"
-          style={{
-            padding: '6px 14px', borderRadius: 8,
-            border: '1px solid rgba(239,68,68,0.3)',
-            background: 'rgba(239,68,68,0.1)', color: C.danger,
-            fontSize: 12, fontWeight: 700, cursor: 'pointer',
-          }}
-        >
-          Xoá tất cả
-        </button>
-      )}
-    >
+    <Section title="Lịch sử tìm kiếm" icon={Icon.search} count={history.length} action={history.length > 0 && ( <button onClick={handleClearAll} className="sp-btn" style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: C.danger, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}> Xoá tất cả </button> )}>
       {loading && <Skeleton />}
-      {!loading && history.length === 0 && (
-        <Empty icon="🔍" text="Chưa có lịch sử tìm kiếm" sub="Các chuyến đi bạn đã tìm kiếm sẽ hiện ở đây" />
-      )}
+      {!loading && history.length === 0 && <Empty icon="🔍" text="Chưa có lịch sử tìm kiếm" sub="Các chuyến đi bạn đã tìm kiếm sẽ hiện ở đây" />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {history.map((h, i) => (
-          <div
-            key={h.id}
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              borderRadius: 14, padding: '14px 18px',
-              display: 'flex', alignItems: 'center', gap: 14,
-              animation: `fadeUp 0.3s ease ${i * 0.05}s both`,
-            }}
-          >
-            <div style={{
-              width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-              background: 'rgba(16,185,129,0.1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18,
-            }}>
-              🔍
-            </div>
-
+          <div key={h.id} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, animation: `fadeUp 0.3s ease ${i * 0.05}s both` }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🔍</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>
-                {h.origin} → <span style={{ color: C.primary }}>{h.destination}</span>
-              </div>
-              <div style={{ fontSize: 12, color: C.muted, marginTop: 3, display: 'flex', gap: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{h.origin} → <span style={{ color: C.primary }}>{h.destination}</span></div>
+              <div style={{ fontSize: 12, color: T.muted, marginTop: 3, display: 'flex', gap: 12 }}>
                 <span>{h.days} ngày · {h.passengers} người</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  {Icon.clock} {formatDate(h.searched_at)}
-                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>{Icon.clock} {formatDate(h.searched_at)}</span>
               </div>
             </div>
-
-            {/* Re-search button */}
-            <button
-              className="sp-btn"
-              style={{
-                padding: '7px 14px', borderRadius: 9,
-                border: 'none', background: 'rgba(16,185,129,0.15)',
-                color: C.primary, fontWeight: 700, fontSize: 12, cursor: 'pointer',
-              }}
-            >
-              Tìm lại
-            </button>
-
-            <button
-              className="sp-del"
-              onClick={() => handleDelete(h.id)}
-              style={{
-                width: 32, height: 32, borderRadius: 8,
-                border: 'none', background: 'transparent',
-                color: C.muted, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: '0.2s',
-              }}
-            >
-              {Icon.trash}
-            </button>
+            <button className="sp-btn" style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: 'rgba(16,185,129,0.15)', color: C.primary, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Tìm lại</button>
+            <button className="sp-del" onClick={() => handleDelete(h.id)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: 'transparent', color: T.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s' }}>{Icon.trash}</button>
           </div>
         ))}
       </div>
@@ -633,15 +1127,22 @@ function SearchHistory() {
   );
 }
 
-// ================================================================
+function StatusMsg({ status, okText }) {
+  const isErr = status.startsWith('err:');
+  return (
+    <div style={{ marginTop: 10, padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: isErr ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.15)', border: `1px solid ${isErr ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`, color: isErr ? C.danger : C.primary }}>
+      {isErr ? `❌ ${status.slice(4)}` : okText}
+    </div>
+  );
+}
+
 // ⚙️ SETTINGS
-// ================================================================
-function Settings({ user, onUpdate }) {
+function Settings({ user, onUpdate, T }) {
   const [name,        setName]        = useState(user.name || '');
   const [currentPw,   setCurrentPw]   = useState('');
   const [newPw,       setNewPw]       = useState('');
   const [confirmPw,   setConfirmPw]   = useState('');
-  const [nameStatus,  setNameStatus]  = useState('');  // '' | 'ok' | 'err'
+  const [nameStatus,  setNameStatus]  = useState('');
   const [pwStatus,    setPwStatus]    = useState('');
   const [nameLoading, setNameLoading] = useState(false);
   const [pwLoading,   setPwLoading]   = useState(false);
@@ -652,8 +1153,7 @@ function Settings({ user, onUpdate }) {
     const res = await api.post('/api/auth/update-profile', { name: name.trim() });
     if (res.success) { onUpdate(res.user); setNameStatus('ok'); }
     else setNameStatus('err:' + (res.error || 'Lỗi'));
-    setNameLoading(false);
-    setTimeout(() => setNameStatus(''), 3000);
+    setNameLoading(false); setTimeout(() => setNameStatus(''), 3000);
   };
 
   const handleUpdatePassword = async () => {
@@ -663,218 +1163,42 @@ function Settings({ user, onUpdate }) {
     const res = await api.post('/api/auth/change-password', { current_password: currentPw, new_password: newPw });
     if (res.success) { setPwStatus('ok'); setCurrentPw(''); setNewPw(''); setConfirmPw(''); }
     else setPwStatus('err:' + (res.error || 'Lỗi'));
-    setPwLoading(false);
-    setTimeout(() => setPwStatus(''), 4000);
+    setPwLoading(false); setTimeout(() => setPwStatus(''), 4000);
   };
 
-  const inputStyle = {
-    width: '100%', padding: '13px 16px',
-    border: '1.5px solid rgba(255,255,255,0.1)',
-    borderRadius: 12, background: 'rgba(255,255,255,0.05)',
-    color: C.text, fontSize: 14, boxSizing: 'border-box',
-    transition: '0.2s',
-  };
-
-  const labelStyle = { fontSize: 13, fontWeight: 700, color: C.muted, display: 'block', marginBottom: 8 };
+  const inputStyle = { width: '100%', padding: '13px 16px', border: `1.5px solid ${T.inputBorder}`, borderRadius: 12, background: T.inputBg, color: T.text, fontSize: 14, boxSizing: 'border-box', transition: '0.2s' };
+  const labelStyle = { fontSize: 13, fontWeight: 700, color: T.muted, display: 'block', marginBottom: 8 };
 
   return (
     <Section title="Cài đặt tài khoản" icon={Icon.settings}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-        {/* ── Đổi tên ── */}
-        <div style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 18, padding: '22px 24px',
-        }}>
-          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
-            {Icon.edit} Đổi tên hiển thị
-          </div>
+        {/* Đổi tên */}
+        <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 18, padding: '22px 24px' }}>
+          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8, color: T.text }}>{Icon.edit} Đổi tên hiển thị</div>
           <label style={labelStyle}>Tên mới</label>
-          <input
-            className="sp-input"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            style={inputStyle}
-            placeholder="Nhập tên mới..."
-          />
-          {nameStatus && (
-            <StatusMsg status={nameStatus} okText="✅ Đã cập nhật tên thành công!" />
-          )}
-          <button
-            className="sp-btn"
-            onClick={handleUpdateName}
-            disabled={nameLoading || !name.trim()}
-            style={{
-              marginTop: 14, padding: '11px 24px',
-              borderRadius: 12, border: 'none',
-              background: 'linear-gradient(135deg, #10b981, #059669)',
-              color: 'white', fontWeight: 800, fontSize: 14,
-              cursor: nameLoading ? 'not-allowed' : 'pointer',
-              opacity: nameLoading ? 0.7 : 1,
-            }}
-          >
+          <input className="sp-input" value={name} onChange={e => setName(e.target.value)} style={inputStyle} placeholder="Nhập tên mới..." />
+          {nameStatus && <StatusMsg status={nameStatus} okText="✅ Đã cập nhật tên thành công!" />}
+          <button className="sp-btn" onClick={handleUpdateName} disabled={nameLoading || !name.trim()} style={{ marginTop: 14, padding: '11px 24px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: 800, fontSize: 14, cursor: nameLoading ? 'not-allowed' : 'pointer', opacity: nameLoading ? 0.7 : 1 }}>
             {nameLoading ? '⏳ Đang lưu...' : 'Lưu tên mới'}
           </button>
         </div>
 
-        {/* ── Đổi mật khẩu ── */}
+        {/* Đổi mật khẩu */}
         {!user.google_id && (
-          <div style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 18, padding: '22px 24px',
-          }}>
-            <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
-              🔒 Đổi mật khẩu
-            </div>
+          <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 18, padding: '22px 24px' }}>
+            <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8, color: T.text }}>🔒 Đổi mật khẩu</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={labelStyle}>Mật khẩu hiện tại</label>
-                <input className="sp-input" type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} style={inputStyle} placeholder="••••••••" />
-              </div>
-              <div>
-                <label style={labelStyle}>Mật khẩu mới</label>
-                <input className="sp-input" type="password" value={newPw} onChange={e => setNewPw(e.target.value)} style={inputStyle} placeholder="••••••••" />
-              </div>
-              <div>
-                <label style={labelStyle}>Xác nhận mật khẩu mới</label>
-                <input className="sp-input" type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} style={inputStyle} placeholder="••••••••" />
-              </div>
+              <div><label style={labelStyle}>Mật khẩu hiện tại</label><input className="sp-input" type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} style={inputStyle} placeholder="••••••••" /></div>
+              <div><label style={labelStyle}>Mật khẩu mới</label><input className="sp-input" type="password" value={newPw} onChange={e => setNewPw(e.target.value)} style={inputStyle} placeholder="••••••••" /></div>
+              <div><label style={labelStyle}>Xác nhận mật khẩu mới</label><input className="sp-input" type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} style={inputStyle} placeholder="••••••••" /></div>
             </div>
             {pwStatus && <StatusMsg status={pwStatus} okText="✅ Đổi mật khẩu thành công!" />}
-            <button
-              className="sp-btn"
-              onClick={handleUpdatePassword}
-              disabled={pwLoading || !currentPw || !newPw || !confirmPw}
-              style={{
-                marginTop: 14, padding: '11px 24px',
-                borderRadius: 12, border: 'none',
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                color: 'white', fontWeight: 800, fontSize: 14,
-                cursor: pwLoading ? 'not-allowed' : 'pointer',
-                opacity: pwLoading ? 0.7 : 1,
-              }}
-            >
-              {pwLoading ? '⏳ Đang lưu...' : 'Đổi mật khẩu'}
+            <button className="sp-btn" onClick={handleUpdatePassword} disabled={pwLoading || !currentPw || !newPw || !confirmPw} style={{ marginTop: 14, padding: '11px 24px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: 800, fontSize: 14, cursor: pwLoading ? 'not-allowed' : 'pointer', opacity: (pwLoading || !currentPw || !newPw || !confirmPw) ? 0.5 : 1 }}>
+              {pwLoading ? '⏳ Đang lưu...' : 'Cập nhật mật khẩu'}
             </button>
           </div>
         )}
-
-        {/* ── Thông tin tài khoản ── */}
-        <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 18, padding: '18px 24px',
-        }}>
-          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 14 }}>ℹ️ Thông tin tài khoản</div>
-          {[
-            { label: 'Email',         value: user.email },
-            { label: 'Ngày tạo',      value: formatDate(user.created_at) },
-            { label: 'Đăng nhập qua', value: user.google_id ? '🌐 Google' : '📧 Email' },
-          ].map(row => (
-            <div key={row.label} style={{
-              display: 'flex', justifyContent: 'space-between',
-              padding: '10px 0',
-              borderBottom: '1px solid rgba(255,255,255,0.05)',
-            }}>
-              <span style={{ fontSize: 13, color: C.muted }}>{row.label}</span>
-              <span style={{ fontSize: 13, fontWeight: 700 }}>{row.value}</span>
-            </div>
-          ))}
-        </div>
       </div>
     </Section>
   );
-}
-
-// ================================================================
-// 🧩 SHARED COMPONENTS
-// ================================================================
-function Section({ title, icon, count, action, children }) {
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ color: C.primary }}>{icon}</div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>{title}</h2>
-          {count !== undefined && count > 0 && (
-            <span style={{
-              background: 'rgba(16,185,129,0.15)', color: C.primary,
-              fontSize: 12, fontWeight: 800, padding: '3px 10px', borderRadius: 20,
-            }}>{count}</span>
-          )}
-        </div>
-        {action}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function StatusMsg({ status, okText }) {
-  const isOk  = status === 'ok';
-  const msg   = isOk ? okText : status.replace(/^err:/, '');
-  return (
-    <div style={{
-      marginTop: 12, padding: '10px 14px', borderRadius: 10,
-      background: isOk ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
-      border: `1px solid ${isOk ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
-      color: isOk ? C.primary : C.danger,
-      fontSize: 13, fontWeight: 600,
-    }}>
-      {msg}
-    </div>
-  );
-}
-
-function Empty({ icon, text, sub }) {
-  return (
-    <div style={{ textAlign: 'center', padding: '60px 20px', color: C.muted }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>{icon}</div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8 }}>{text}</div>
-      <div style={{ fontSize: 13 }}>{sub}</div>
-    </div>
-  );
-}
-
-function Skeleton() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {[1,2,3].map(i => (
-        <div key={i} style={{
-          height: 80, borderRadius: 16,
-          background: 'rgba(255,255,255,0.04)',
-          animation: 'pulse 1.5s ease infinite',
-        }} />
-      ))}
-    </div>
-  );
-}
-
-function LoadingScreen() {
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a1628', color: '#10b981', fontSize: 18, fontWeight: 700 }}>
-      ⏳ Đang tải...
-    </div>
-  );
-}
-
-function NotLoggedIn({ onBack }) {
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a1628', color: 'white', gap: 16 }}>
-      <div style={{ fontSize: 48 }}>🔒</div>
-      <div style={{ fontSize: 20, fontWeight: 800 }}>Bạn chưa đăng nhập</div>
-      <button onClick={onBack} style={{ padding: '12px 28px', borderRadius: 12, border: 'none', background: '#10b981', color: 'white', fontWeight: 800, cursor: 'pointer', fontSize: 15 }}>
-        Quay lại trang chủ
-      </button>
-    </div>
-  );
-}
-
-function formatDate(str) {
-  if (!str) return '';
-  try {
-    return new Date(str).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  } catch { return str; }
 }

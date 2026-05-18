@@ -15,6 +15,8 @@ import { fetchTripPlan } from './services/api';
 import { enrichPlacesWithCoords } from './services/geocodeUtils';
 import './App.css';
 
+const BASE_URL = ''; // proxy qua React dev server
+
 // Component bọc logic trang chủ để giữ nguyên tính năng Scroll Spy
 const HomePage = ({ 
   handleSearch, isLoading, searchData, editedPlans, setEditedPlans, 
@@ -35,10 +37,10 @@ const HomePage = ({
             isDark={isDark}
             onSave={async () => {
               try {
-                const res = await fetch('http://127.0.0.1:5000/api/schedules/save', {
+                const res = await fetch('/api/schedules/save', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include', // Bắt buộc để gửi kèm cookie phiên đăng nhập
+                  credentials: 'include',
                   body: JSON.stringify({
                     title: `Khám phá ${searchData.location}`,
                     location: searchData.location,
@@ -51,7 +53,6 @@ const HomePage = ({
                 if (data.success) {
                   setToast({ show: true, message: 'Đã lưu thành công vào Hồ sơ của bạn!', type: 'success' });
                 } else {
-                  // Báo lỗi (ví dụ: chưa đăng nhập)
                   setToast({ show: true, message: data.error || 'Lỗi khi lưu!', type: 'error' });
                 }
               } catch (err) {
@@ -70,18 +71,29 @@ const HomePage = ({
 };
 
 function AppContent() {
-  // --- GIỮ NGUYÊN TOÀN BỘ TRẠNG THÁI CŨ ---
-  const [searchData, setSearchData] = useState(null);
+  const [searchData, setSearchData] = useState(() => {
+    const savedData = localStorage.getItem('s_trip_last_search');
+    return savedData ? JSON.parse(savedData) : null;
+  });
   const [editedPlans, setEditedPlans] = useState(null);
   const [activeSection, setActiveSection] = useState('home'); 
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+  const savedTheme = localStorage.getItem('sTripTheme');
+    return savedTheme === 'dark'; // Trả về true nếu đã lưu dark
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sTripTheme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  // user state nâng lên AppContent để chia sẻ giữa Navbar và ProfilePage
+  const [user, setUser] = useState(null);
 
   // Flag để tạm dừng scroll spy khi user vừa click nav
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef(null);
-  // Dùng ref để scroll spy luôn đọc giá trị mới nhất mà không cần re-register listener
   const activeSectionRef = useRef(activeSection);
   const searchDataRef = useRef(searchData);
   const isLoadingRef = useRef(isLoading);
@@ -90,14 +102,30 @@ function AppContent() {
   useEffect(() => { searchDataRef.current = searchData; }, [searchData]);
   useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
 
-  const location = useLocation(); // Để theo dõi URL hiện tại
+  // ✅ [THÊM MỚI] Kiểm tra session khi app load (chuyển từ Navbar sang đây)
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/auth/me`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (d.success) setUser(d.user); })
+      .catch(() => {});
+
+    // Xử lý Google OAuth redirect ?auth_success=1
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auth_success')) {
+      fetch(`${BASE_URL}/api/auth/me`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => { if (d.success) setUser(d.user); });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const location = useLocation();
 
   // --- 1. TỰ ĐỘNG THEO DÕI VỊ TRÍ CUỘN ---
   useEffect(() => {
     let scrollStopTimer;
 
     const handleScroll = () => {
-      // Đang cuộn tự động bằng click Nav -> Bỏ qua
       if (isScrollingRef.current) {
         clearTimeout(scrollStopTimer);
         scrollStopTimer = setTimeout(() => { isScrollingRef.current = false; }, 150);
@@ -110,10 +138,8 @@ function AppContent() {
       const itinerary = document.getElementById('itinerary-section');
       const featured = document.getElementById('featured-section');
 
-      // Hàm kiểm tra xem section đã chạm/vượt qua mốc Navbar chưa
       const isPastNavbar = (el) => el && el.getBoundingClientRect().top <= 150;
 
-      // Ưu tiên check từ dưới lên trên (Vì khi bạn cuộn xuống cuối, Featured sẽ nổi lên)
       if (isPastNavbar(featured)) {
         setActiveSection('featured');
       } 
@@ -121,7 +147,7 @@ function AppContent() {
         setActiveSection('schedule');
       } 
       else if (hero) {
-        setActiveSection('home'); // Mặc định là Trang chủ
+        setActiveSection('home');
       }
     };
 
@@ -134,10 +160,8 @@ function AppContent() {
 
   // --- 2. HÀM ĐIỀU HƯỚNG MƯỢT MÀ ---
   const scrollToSection = (id) => {
-    // Xóa timeout cũ để không bị đụng độ
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     
-    // Khóa Scroll Spy ngay lập tức
     isScrollingRef.current = true;
 
     if (id === 'dashboard') {
@@ -147,29 +171,24 @@ function AppContent() {
       return;
     }
 
-    // Đổi state active cho Navbar đổi màu ngay tức khắc
     if (id === 'hero-section') setActiveSection('home');
     else if (id === 'itinerary-section') setActiveSection('schedule');
     else if (id === 'featured-section') setActiveSection('featured');
 
-    // Cuộn mượt mà
     setTimeout(() => {
       if (id === 'hero-section') {
-        // Cuộn thẳng lên đỉnh màn hình (áp dụng cho Trang chủ)
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         const element = document.getElementById(id);
-        // Dùng scrollIntoView, CSS scrollMarginTop ở trên sẽ tự động chừa chỗ cho Navbar
         if (element) {
            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }
 
-      // Mở khóa Scroll Spy sau khi dự kiến cuộn xong
       scrollTimeoutRef.current = setTimeout(() => { 
         isScrollingRef.current = false; 
       }, 800);
-    }, 50); // Delay 50ms để React kịp mount DOM nếu bạn vừa nhảy từ Dashboard về
+    }, 50);
   };
 
   // --- 3. XỬ LÝ TÌM KIẾM ---
@@ -177,7 +196,6 @@ function AppContent() {
     setIsLoading(true);
     setSearchData(null);
     setEditedPlans(null);
-    // Set 'schedule' để nav active đúng ngay khi search
     setActiveSection('schedule');
 
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
@@ -187,7 +205,6 @@ function AppContent() {
       const el = document.getElementById('itinerary-section');
       if (el) el.scrollIntoView({ behavior: 'smooth' });
       
-      // Clear và set lại fallback timeout
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
       scrollTimeoutRef.current = setTimeout(() => { isScrollingRef.current = false; }, 800);
     }, 100);
@@ -198,15 +215,30 @@ function AppContent() {
     );
 
     if (result) {
-      setSearchData({
+      const fullPlan = {
         ...formData,
         realHotels: result.hotels || [],
         realFlights: result.flights || [],
         realTours: result.tours || [],
         realFoods: result.foods || [],
         transport: result.transport || null,
-      });
+      };
+      setSearchData(fullPlan);
+      localStorage.setItem('s_trip_last_search', JSON.stringify(fullPlan));
       setToast({ show: true, message: 'Đã AI hóa lịch trình thực tế cho bạn!', type: 'success' });
+
+      // 💾 Lưu lịch sử tìm kiếm vào DB (chạy nền, không block UI)
+      fetch(`${BASE_URL}/api/search-history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          origin: formData.origin || '',
+          destination: formData.location || '',
+          days: parseInt(String(formData.days || '3').split(' ')[0]),
+          passengers: parseInt(formData.passengers || 1),
+        }),
+      }).catch(() => {}); // silent fail nếu chưa đăng nhập
 
       enrichPlacesWithCoords(formData.location, result.tours || [], result.foods || [])
         .then(({ tours: enrichedTours, foods: enrichedFoods }) => {
@@ -226,17 +258,19 @@ function AppContent() {
         activeSection={activeSection} 
         onNavigate={scrollToSection} 
         onRefresh={() => {
-          window.location.hash = '/';
-          window.location.reload();
-        }} 
+          setActiveSection('home');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
         hasItinerary={hasItinerary}
         isDark={isDark}
         onToggleTheme={() => setIsDark(prev => !prev)}
+        // ✅ [THÊM MỚI] Truyền user và callback cập nhật xuống Navbar
+        user={user}
+        onUserChange={setUser}
       />
       
       <div> 
         <Routes>
-          {/* ĐỊNH NGHĨA CÁC ĐƯỜNG DẪN */}
           <Route path="/" element={
             activeSection !== 'dashboard' ? (
               <HomePage 
@@ -248,13 +282,27 @@ function AppContent() {
               />
             ) : (
               <div style={{ paddingTop: '110px' }}>
-                {/* Truyền thêm isDark để đồng bộ giao diện Sáng/Tối */}
-                <ProfilePage onBack={() => setActiveSection('home')} isDark={isDark} />
+                {/* ✅ [THÊM MỚI] Truyền onUserChange để ProfilePage cập nhật avatar lên Navbar */}
+                <ProfilePage
+                  onBack={() => setActiveSection('home')}
+                  isDark={isDark}
+                  user={user}
+                  onUserChange={setUser}
+                  onLoadSchedule={(dataJson) => {
+                    if (!dataJson) { setActiveSection('home'); return; }
+                    setSearchData(dataJson.searchData);
+                    setEditedPlans(dataJson.editedPlans);
+                    setActiveSection('home');
+                    setTimeout(() => {
+                      const el = document.getElementById('itinerary-section');
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                  }}
+                />
               </div>
             )
           } />
 
-          {/* TRANG XEM TẤT CẢ 63 TỈNH THÀNH */}
           <Route path="/destinations" element={
             <div style={{ paddingTop: '100px' }}>
               <FeaturedDestinations onNavigate={scrollToSection} isDark={isDark} />
@@ -267,14 +315,13 @@ function AppContent() {
       </div>
 
       {toast.show && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} isDark={isDark} />
       )}
       <Footer onNavigate={scrollToSection} />
     </div>
   );
 }
 
-// Wrap toàn bộ app trong Router
 function App() {
   return (
     <Router>

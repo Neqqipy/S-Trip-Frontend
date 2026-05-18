@@ -17,14 +17,148 @@ import {
  } from '@fortawesome/free-regular-svg-icons';
 import { fetchReviews, fetchImages, fetchWeather } from '../services/api';
 
+// ═════════════════════════════════════════════════════════════
+// 🗂️ GLOBAL STATE CACHE — favorites & saved-places
+//
+// Fetch toàn bộ danh sách 1 lần khi app load, lưu vào Set.
+// Mỗi hook tra cứu Set local → instant, không tốn network.
+// Toggle → cập nhật Set ngay + notify tất cả card cùng tên.
+// Search lại / render lại → state vẫn giữ (Set là module-level).
+// ═════════════════════════════════════════════════════════════
+
+const _favCache = {
+  set: new Set(), ready: false, fetching: false, listeners: [],
+};
+const _spCache = {
+  set: new Set(), ready: false, fetching: false, listeners: [],
+};
+
+const _cacheKey = (name, location) => `${name}|||${location}`;
+const _notify   = (cache) => cache.listeners.forEach(fn => fn());
+
+const _ensureLoaded = (cache, apiPath, dataKey) => {
+  if (cache.ready || cache.fetching) return;
+  cache.fetching = true;
+  fetch(`${BASE_URL}${apiPath}`, { credentials: 'include' })
+    .then(r => r.json())
+    .then(d => {
+      const items = d[dataKey] || [];
+      cache.set.clear();
+      items.forEach(item => {
+        if (item.name) cache.set.add(_cacheKey(item.name, item.location || ''));
+      });
+      cache.ready    = true;
+      cache.fetching = false;
+      _notify(cache);
+    })
+    .catch(() => { cache.fetching = false; });
+};
+
+const _useCacheEntry = (cache, apiPath, dataKey, name, location) => {
+  const [, forceUpdate] = useState(0);
+  useEffect(() => {
+    const fn = () => forceUpdate(n => n + 1);
+    cache.listeners.push(fn);
+    _ensureLoaded(cache, apiPath, dataKey);
+    return () => { cache.listeners = cache.listeners.filter(f => f !== fn); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return cache.ready ? cache.set.has(_cacheKey(name, location)) : false;
+};
+
+// ─────────────────────────────────────────────────────────────
+// ❤️ useFavorite — toggle YÊU THÍCH với /api/favorites
+// ─────────────────────────────────────────────────────────────
+const useFavorite = ({ name, location = '', rating = '', thumbnail = '', type = 'default' }) => {
+  const inCache = _useCacheEntry(_favCache, '/api/favorites', 'favorites', name, location);
+  const [loading, setLoading] = useState(false);
+
+  const saved = inCache;
+
+  const toggle = async (e) => {
+    if (e) e.stopPropagation();
+    if (loading) return;
+    setLoading(true);
+    const key = _cacheKey(name, location);
+    if (!saved) _favCache.set.add(key); else _favCache.set.delete(key);
+    _notify(_favCache);
+    try {
+      if (!saved) {
+        const res = await fetch(`${BASE_URL}/api/favorites`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ name, location, rating: String(rating), thumbnail, type }),
+        });
+        const d = await res.json();
+        if (!d.success) { _favCache.set.delete(key); _notify(_favCache); }
+      } else {
+        const res = await fetch(`${BASE_URL}/api/favorites/remove-by-name`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ name, location }),
+        });
+        const d = await res.json();
+        if (!d.success) { _favCache.set.add(key); _notify(_favCache); }
+      }
+    } catch (_) {}
+    finally { setLoading(false); }
+  };
+
+  return { saved, loading, toggle };
+};
+
+// ─────────────────────────────────────────────────────────────
+// 🔖 useSavedPlace — toggle LƯU ĐỊA ĐIỂM với /api/saved-places
+// ─────────────────────────────────────────────────────────────
+const useSavedPlace = ({ name, location = '', rating = '', thumbnail = '', type = 'default' }) => {
+  const inCache = _useCacheEntry(_spCache, '/api/saved-places', 'savedPlaces', name, location);
+  const [loading, setLoading] = useState(false);
+
+  const saved = inCache;
+
+  const toggle = async (e) => {
+    if (e) e.stopPropagation();
+    if (loading) return;
+    setLoading(true);
+    const key = _cacheKey(name, location);
+    if (!saved) _spCache.set.add(key); else _spCache.set.delete(key);
+    _notify(_spCache);
+    try {
+      if (!saved) {
+        const res = await fetch(`${BASE_URL}/api/saved-places`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ name, location, rating: String(rating), thumbnail, type }),
+        });
+        const d = await res.json();
+        if (!d.success) { _spCache.set.delete(key); _notify(_spCache); }
+      } else {
+        const res = await fetch(`${BASE_URL}/api/saved-places/remove-by-name`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ name, location }),
+        });
+        const d = await res.json();
+        if (!d.success) { _spCache.set.add(key); _notify(_spCache); }
+      }
+    } catch (_) {}
+    finally { setLoading(false); }
+  };
+
+  return { saved, loading, toggle };
+};
+
 // 🖼️ Proxy ảnh Google qua backend để tránh bị chặn hotlink
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = ''; // proxy qua React dev server
 const GOOGLE_IMG_DOMAINS = ['googleusercontent.com', 'ggpht.com', 'googleapis.com', 'googleapi'];
 const proxyImage = (url) => {
   if (!url) return null;
   if (url.includes('placehold.co') || url.includes('placeholder')) return url;
+  
+  let optimizedUrl = url;
   if (GOOGLE_IMG_DOMAINS.some(d => url.includes(d))) {
-    return `${BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
+    // 🟢 Ép tham số size của Google Maps thành kích thước lớn w600-h450 chuẩn nét
+    if (optimizedUrl.includes('=')) {
+      optimizedUrl = optimizedUrl.replace(/=.*$/, '=w600-h450-k-no');
+    } else {
+      optimizedUrl = `${optimizedUrl}=w600-h450-k-no`;
+    }
+    return `${BASE_URL}/api/proxy-image?url=${encodeURIComponent(optimizedUrl)}`;
   }
   return url;
 };
@@ -129,7 +263,7 @@ const DrinksPanel = ({ location, isOpen, onClose, isDark }) => {
       })
       .catch(() => setError('Không thể tải dữ liệu đồ uống.'))
       .finally(() => setLoading(false));
-  }, [isOpen, location, fetched]);
+  }, [isOpen, location, fetched, cacheKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Lock scroll khi mở
   useEffect(() => {
@@ -289,7 +423,7 @@ const DrinksPanel = ({ location, isOpen, onClose, isDark }) => {
 
           {/* Danh sách */}
           {!loading && !error && drinks.map((d, i) => (
-            <DrinkCard key={i} item={d} location={location} isDark={isDark} /> // ✅ Truyền isDark
+            <DrinkCard key={i} item={d} location={location} isDark={isDark} />
           ))}
         </div>
 
@@ -322,8 +456,13 @@ const DrinksPanel = ({ location, isOpen, onClose, isDark }) => {
 // ─────────────────────────────────────────────────────────────
 // 🧃 DRINK CARD — card cho từng quán đồ uống
 // ─────────────────────────────────────────────────────────────
-const DrinkCard = ({ item, location, isDark }) => { // ✅ Thêm isDark
-  const [saved, setSaved] = useState(false);
+const DrinkCard = ({ item, location, isDark }) => {
+  const { saved: isFav,   loading: favLoading,   toggle: toggleFav   } = useFavorite({
+    name: item.name, location, rating: item.rating, thumbnail: item.thumbnail, type: 'drink',
+  });
+  const { saved: isSaved, loading: savedLoading, toggle: toggleSaved } = useSavedPlace({
+    name: item.name, location, rating: item.rating, thumbnail: item.thumbnail, type: 'drink',
+  });
   const [mapOpen, setMapOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -359,20 +498,39 @@ const DrinkCard = ({ item, location, isDark }) => { // ✅ Thêm isDark
           cursor: 'default',
         }}
       >
-        {/* Bookmark */}
-        <button
-          onClick={() => setSaved(!saved)}
-          style={{
-            position: 'absolute', top: 10, right: 10,
-            width: 30, height: 30, borderRadius: 8,
-            border: 'none', background: saved ? (isDark ? '#854d0e' : '#fef08a') : (isDark ? '#334155' : '#f8fafc'), // ✅ Đổi màu
-            color: saved ? (isDark ? '#fde047' : '#eab308') : '#9ca3af', // ✅ Đổi màu
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13, transition: '0.2s', zIndex: 2,
-          }}
-        >
-          <FontAwesomeIcon icon={saved ? faBookmarkSolid : faBookmarkRegular} />
-        </button>
+        {/* ❤️ Yêu thích + 🔖 Lưu địa điểm — 2 nút riêng biệt */}
+        <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5, zIndex: 2 }}>
+          {/* ❤️ Yêu thích → /api/favorites */}
+          <button
+            onClick={toggleFav}
+            disabled={favLoading}
+            title={isFav ? 'Bỏ yêu thích' : 'Thêm vào Yêu thích'}
+            style={{
+              width: 30, height: 30, borderRadius: 8, border: 'none',
+              background: isFav ? (isDark ? '#7f1d1d' : '#fee2e2') : (isDark ? '#334155' : '#f8fafc'),
+              color: isFav ? '#ef4444' : '#9ca3af',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, transition: '0.2s', opacity: favLoading ? 0.6 : 1,
+            }}
+          >
+            <FontAwesomeIcon icon={isFav ? faHeartSolid : faHeartRegular} />
+          </button>
+          {/* 🔖 Lưu địa điểm → /api/saved-places */}
+          <button
+            onClick={toggleSaved}
+            disabled={savedLoading}
+            title={isSaved ? 'Bỏ lưu địa điểm' : 'Lưu địa điểm'}
+            style={{
+              width: 30, height: 30, borderRadius: 8, border: 'none',
+              background: isSaved ? (isDark ? '#854d0e' : '#fef08a') : (isDark ? '#334155' : '#f8fafc'),
+              color: isSaved ? (isDark ? '#fde047' : '#eab308') : '#9ca3af',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, transition: '0.2s', opacity: savedLoading ? 0.6 : 1,
+            }}
+          >
+            <FontAwesomeIcon icon={isSaved ? faBookmarkSolid : faBookmarkRegular} />
+          </button>
+        </div>
 
         {/* Ảnh */}
         <div style={{
@@ -480,7 +638,7 @@ const DrinkCard = ({ item, location, isDark }) => { // ✅ Thêm isDark
         <ReviewsModal
           placeName={item.name}
           placeId={item.place_id || ''}
-          onClose={() => setReviewsOpen(false)}
+          onClose={() => setReviewsOpen(false)} locationName={location} placeType="drink"
         />
       )}
     </>
@@ -546,7 +704,7 @@ const SpecialtiesPanel = ({ location, isOpen, onClose, isDark }) => {
       })
       .catch(() => setError('Không thể tải dữ liệu đặc sản.'))
       .finally(() => setLoading(false));
-  }, [isOpen, location, fetched]);
+  }, [isOpen, location, fetched, cacheKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : '';
@@ -676,14 +834,18 @@ const SpecialtiesPanel = ({ location, isOpen, onClose, isDark }) => {
 };
 
 // 🍜 SPECIALTY CARD
-const SpecialtyCard = ({ item, location, isDark }) => { // ✅ Thêm isDark
-  const [saved, setSaved] = useState(false);
+const SpecialtyCard = ({ item, location, isDark }) => {
+  const { saved: isFav,   loading: favLoading,   toggle: toggleFav   } = useFavorite({
+    name: item.name, location, rating: item.rating, thumbnail: item.thumbnail, type: 'dacsan',
+  });
+  const { saved: isSaved, loading: savedLoading, toggle: toggleSaved } = useSavedPlace({
+    name: item.name, location, rating: item.rating, thumbnail: item.thumbnail, type: 'dacsan',
+  });
   const [mapOpen, setMapOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [fallbackImg, setFallbackImg] = useState(null);
 
-  // Khi ảnh thumbnail lỗi → thử reviews trước, rồi mới images (tuần tự, tránh gọi thừa)
   const handleImgError = async () => {
     setImgError(true);
     try {
@@ -700,10 +862,41 @@ const SpecialtyCard = ({ item, location, isDark }) => { // ✅ Thêm isDark
 
   return (
     <>
-      <div className="sp-card" style={{ backgroundColor: isDark ? '#1e293b' : 'white', borderRadius: 18, border: isDark ? '1px solid #334155' : '1px solid #f1f5f9', padding: '14px', marginBottom: 12, display: 'flex', gap: 14, position: 'relative', cursor: 'default' }}> {/* ✅ Đổi màu */}
-        <button onClick={() => setSaved(!saved)} style={{ position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 8, border: 'none', background: saved ? (isDark ? '#854d0e' : '#fef08a') : (isDark ? '#334155' : '#f8fafc'), color: saved ? (isDark ? '#fde047' : '#eab308') : '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, transition: '0.2s', zIndex: 2 }}> {/* ✅ Đổi màu */}
-          <FontAwesomeIcon icon={saved ? faBookmarkSolid : faBookmarkRegular} />
-        </button>
+      <div className="sp-card" style={{ backgroundColor: isDark ? '#1e293b' : 'white', borderRadius: 18, border: isDark ? '1px solid #334155' : '1px solid #f1f5f9', padding: '14px', marginBottom: 12, display: 'flex', gap: 14, position: 'relative', cursor: 'default' }}>
+
+        {/* ❤️ Yêu thích + 🔖 Lưu đặc sản — 2 nút riêng biệt */}
+        <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5, zIndex: 2 }}>
+          {/* ❤️ Yêu thích → /api/favorites */}
+          <button
+            onClick={toggleFav}
+            disabled={favLoading}
+            title={isFav ? 'Bỏ yêu thích' : 'Thêm vào Yêu thích'}
+            style={{
+              width: 30, height: 30, borderRadius: 8, border: 'none',
+              background: isFav ? (isDark ? '#7f1d1d' : '#fee2e2') : (isDark ? '#334155' : '#f8fafc'),
+              color: isFav ? '#ef4444' : '#9ca3af',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, transition: '0.2s', opacity: favLoading ? 0.6 : 1,
+            }}
+          >
+            <FontAwesomeIcon icon={isFav ? faHeartSolid : faHeartRegular} />
+          </button>
+          {/* 🔖 Lưu địa điểm → /api/saved-places */}
+          <button
+            onClick={toggleSaved}
+            disabled={savedLoading}
+            title={isSaved ? 'Bỏ lưu đặc sản' : 'Lưu đặc sản'}
+            style={{
+              width: 30, height: 30, borderRadius: 8, border: 'none',
+              background: isSaved ? (isDark ? '#854d0e' : '#fef08a') : (isDark ? '#334155' : '#f8fafc'),
+              color: isSaved ? (isDark ? '#fde047' : '#eab308') : '#9ca3af',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, transition: '0.2s', opacity: savedLoading ? 0.6 : 1,
+            }}
+          >
+            <FontAwesomeIcon icon={isSaved ? faBookmarkSolid : faBookmarkRegular} />
+          </button>
+        </div>
 
         <div style={{ width: 80, height: 80, flexShrink: 0, borderRadius: 12, overflow: 'hidden', background: 'linear-gradient(135deg, #ffedd5, #fed7aa)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {(item.thumbnail || fallbackImg) && displayImg ? (
@@ -713,9 +906,9 @@ const SpecialtyCard = ({ item, location, isDark }) => { // ✅ Thêm isDark
           )}
         </div>
 
-        <div style={{ flex: 1, minWidth: 0, paddingRight: 28 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: '#ea580c', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>🍜 Đặc sản địa phương</div>
-          <div style={{ fontSize: 15, fontWeight: 900, color: isDark ? '#ffffff' : '#111827', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.35, marginBottom: 4 }}>{item.name}</div> {/* ✅ Đổi màu */}
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 72 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: '#ea580c', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>🎁 Đặc sản địa phương</div>
+          <div style={{ fontSize: 15, fontWeight: 900, color: isDark ? '#ffffff' : '#111827', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.35, marginBottom: 4 }}>{item.name}</div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 4 }}>
             <span style={{ color: '#f59e0b', fontSize: 12, fontWeight: 700 }}>⭐ {item.rating || 'N/A'}</span>
             {item.price && item.price !== 'Giá tùy chọn' && (
@@ -741,7 +934,7 @@ const SpecialtyCard = ({ item, location, isDark }) => { // ✅ Thêm isDark
         </div>
       </div>
       {mapOpen && <MapModal placeName={item.name} query={`${item.name} ${location}`} onClose={() => setMapOpen(false)} />}
-      {reviewsOpen && <ReviewsModal placeName={item.name} placeId={item.place_id || ''} onClose={() => setReviewsOpen(false)} />}
+      {reviewsOpen && <ReviewsModal placeName={item.name} placeId={item.place_id || ''} onClose={() => setReviewsOpen(false)} locationName={location} placeType="specialty" />}
     </>
   );
 };
@@ -829,7 +1022,7 @@ const Stars = ({ rating = 0 }) => (
 );
 
 // 📸 ReviewsModal
-const ReviewsModal = ({ placeName, placeId, onClose }) => {
+const ReviewsModal = ({ placeName, placeId, onClose, locationName = '' , placeType = 'default'}) => {
   const [tab,      setTab]      = useState('images');
   const [reviews,  setReviews]  = useState([]);
   const [images,   setImages]   = useState([]);
@@ -839,8 +1032,9 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
   const [lightbox, setLightbox] = useState(null);
   const [filterStar, setFilterStar] = useState('all'); 
   const [visibleCount, setVisibleCount] = useState(5);
-  const [isSaved, setIsSaved] = useState(false);
-  const [isFavorited, setIsFavorited] = useState(false);
+
+  const { saved: isSaved,      toggle: toggleSaved }     = useSavedPlace({ name: placeName, location: locationName, type: placeType });
+  const { saved: isFavorited,  toggle: toggleFavorited } = useFavorite({ name: placeName, location: locationName, type: placeType });
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') lightbox ? setLightbox(null) : onClose(); };
@@ -902,10 +1096,10 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
                   {total && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{Number(total).toLocaleString()} đánh giá trên Google</div>}
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexShrink: 0, marginLeft: 12 }}>
-                  <button onClick={() => setIsFavorited(!isFavorited)} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: isFavorited ? '#fee2e2' : '#f1f5f9', color: isFavorited ? '#ef4444' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, transition: '0.2s' }} title="Yêu thích">
+                  <button onClick={toggleFavorited} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: isFavorited ? '#fee2e2' : '#f1f5f9', color: isFavorited ? '#ef4444' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, transition: '0.2s' }} title="Yêu thích">
                     <FontAwesomeIcon icon={isFavorited ? faHeartSolid : faHeartRegular} />
                   </button>
-                  <button onClick={() => setIsSaved(!isSaved)} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: isSaved ? '#fef08a' : '#f1f5f9', color: isSaved ? '#eab308' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, transition: '0.2s' }} title="Lưu trữ">
+                  <button onClick={toggleSaved} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: isSaved ? '#fef08a' : '#f1f5f9', color: isSaved ? '#eab308' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, transition: '0.2s' }} title="Lưu trữ">
                     <FontAwesomeIcon icon={isSaved ? faBookmarkSolid : faBookmarkRegular} />
                   </button>
                   <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: '#f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#374151' }}>
@@ -1003,7 +1197,26 @@ const ReviewsModal = ({ placeName, placeId, onClose }) => {
 const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit, guestCount, isDark }) => {
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [isHovered,   setIsHovered]   = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+
+  const placeType = type === 'Khách sạn' ? 'hotel' : type === 'Điểm tham quan' ? 'tour' : type === 'Địa điểm ăn uống' ? 'food' : 'default';
+
+  // ❤️ Yêu thích → /api/favorites
+  const { saved: isFav,   loading: favLoading,   toggle: toggleFav   } = useFavorite({
+    name: data.name || data.airline || '',
+    location: locationName || '',
+    rating: data.rating,
+    thumbnail: data.thumbnail,
+    type: placeType,
+  });
+
+  // 🔖 Lưu địa điểm → /api/saved-places
+  const { saved: isSaved, loading: savedLoading, toggle: toggleSaved } = useSavedPlace({
+    name: data.name || data.airline || '',
+    location: locationName || '',
+    rating: data.rating,
+    thumbnail: data.thumbnail,
+    type: placeType,
+  });
 
   const [imgError, setImgError] = useState(false);
   const [fallbackImg, setFallbackImg] = useState(null);
@@ -1058,13 +1271,49 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
         zIndex: isHovered ? 10 : 1, position: 'relative',
       }}
     >
-      <button onClick={(e) => { e.stopPropagation(); setIsSaved(!isSaved); }} style={{ position: 'absolute', top: '12px', right: '12px', backgroundColor: isSaved ? (isDark ? '#854d0e' : '#fef08a') : (isDark ? '#374151' : 'rgba(255,255,255,0.85)'), color: isSaved ? (isDark ? '#fde047' : '#eab308') : (isDark ? '#9ca3af' : '#9ca3af'), border: isDark ? '1px solid #4b5563' : '1px solid #f1f5f9', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 20, backdropFilter: 'blur(4px)', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: '0.2s' }}
-        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-        title={isSaved ? "Bỏ lưu" : "Lưu địa điểm"}
-      >
-        <FontAwesomeIcon icon={isSaved ? faBookmarkSolid : faBookmarkRegular} style={{ fontSize: '15px' }} />
-      </button>
+      {/* ❤️ Yêu thích + 🔖 Lưu địa điểm — chỉ hiện với tour/food, KHÔNG hiện cho chuyến bay */}
+      {!isFlight && <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: 6, zIndex: 20 }}>
+        {/* ❤️ Yêu thích → /api/favorites */}
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleFav(e); }}
+          disabled={favLoading}
+          title={isFav ? 'Bỏ yêu thích' : 'Thêm vào Yêu thích'}
+          style={{
+            backgroundColor: isFav ? (isDark ? '#7f1d1d' : '#fee2e2') : (isDark ? '#374151' : 'rgba(255,255,255,0.85)'),
+            color: isFav ? '#ef4444' : '#9ca3af',
+            border: isDark ? '1px solid #4b5563' : '1px solid #f1f5f9',
+            borderRadius: '8px', width: '32px', height: '32px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', backdropFilter: 'blur(4px)',
+            boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: '0.2s',
+            opacity: favLoading ? 0.6 : 1,
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <FontAwesomeIcon icon={isFav ? faHeartSolid : faHeartRegular} style={{ fontSize: '15px' }} />
+        </button>
+        {/* 🔖 Lưu địa điểm → /api/saved-places */}
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleSaved(e); }}
+          disabled={savedLoading}
+          title={isSaved ? 'Bỏ lưu địa điểm' : 'Lưu địa điểm'}
+          style={{
+            backgroundColor: isSaved ? (isDark ? '#854d0e' : '#fef08a') : (isDark ? '#374151' : 'rgba(255,255,255,0.85)'),
+            color: isSaved ? (isDark ? '#fde047' : '#eab308') : '#9ca3af',
+            border: isDark ? '1px solid #4b5563' : '1px solid #f1f5f9',
+            borderRadius: '8px', width: '32px', height: '32px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', backdropFilter: 'blur(4px)',
+            boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: '0.2s',
+            opacity: savedLoading ? 0.6 : 1,
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <FontAwesomeIcon icon={isSaved ? faBookmarkSolid : faBookmarkRegular} style={{ fontSize: '15px' }} />
+        </button>
+      </div>}
 
       {/* Thêm điều kiện isFlight ? 'white' : ... để ép nền trắng cho logo hãng bay */}
       <div style={{ width: '120px', height: '120px', flexShrink: 0, borderRadius: '14px', overflow: 'hidden', backgroundColor: isFlight ? 'white' : (isDark ? '#111827' : '#f8fafc'), display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -1136,7 +1385,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
         </div>
       </div>
 
-      {reviewsOpen && <ReviewsModal placeName={data.name || data.airline} placeId={data.place_id || ""} onClose={() => setReviewsOpen(false)} />}
+      {reviewsOpen && <ReviewsModal placeName={data.name || data.airline} placeId={data.place_id || ""} onClose={() => setReviewsOpen(false)} locationName={locationName} placeType={placeType} />}
     </div>
   );
 };
@@ -1412,6 +1661,7 @@ const exportICalFile = ({dailyPlans=[],initialData={},currentHotel=null}) => {
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
 };
 
+// eslint-disable-next-line no-unused-vars
 const ICalButton = ({ dailyPlans, initialData, currentHotel, isDark }) => {
   const [status, setStatus] = React.useState('idle');
   const handleClick = () => {
@@ -1462,6 +1712,7 @@ const _preloadImages = async (el) => {
   return () => imgs.forEach((img, i) => { img.src = origSrcs[i]; });
 };
 
+// eslint-disable-next-line no-unused-vars
 const ScreenshotButton = ({ contentRef, location, isDark }) => {
   const [status,   setStatus]   = React.useState('idle');
   const [progress, setProgress] = React.useState('');
@@ -1571,6 +1822,7 @@ const ScreenshotButton = ({ contentRef, location, isDark }) => {
 // ─────────────────────────────────────────────────────────────
 // 🔗 ShareButton — tạo link chia sẻ + copy + Zalo/Messenger
 // ─────────────────────────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
 const ShareButton = ({ dailyPlans, initialData, currentHotel, plan, isDark }) => {
   const [status,   setStatus]   = React.useState('idle');
   const [shareUrl, setShareUrl] = React.useState('');
@@ -1800,6 +2052,41 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, isDark = fa
   const [modal,       setModal]       = useState({ show: false, type: '', day: null, session: '', subType: '' });
   const [mapModal,    setMapModal]    = useState({ show: false, query: '', placeName: '' });
   const contentRef = useRef(null);
+
+  // 💾 Trạng thái lưu lịch trình — đồng bộ nút trong và ngoài action panel
+  const [scheduleSaved,      setScheduleSaved]      = useState(false);
+  const [scheduleSaveLoading, setScheduleSaveLoading] = useState(false);
+
+  const handleSaveSchedule = async () => {
+    if (scheduleSaveLoading || scheduleSaved) return;
+    setScheduleSaveLoading(true);
+    try {
+      if (onSave) await onSave();
+      setScheduleSaved(true);
+    } catch (_) {}
+    finally { setScheduleSaveLoading(false); }
+  };
+
+  useEffect(() => {
+    const forceRefreshGlobalCache = (cache, apiPath, dataKey) => {
+      fetch(`${BASE_URL}${apiPath}`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => {
+          const items = d[dataKey] || [];
+          cache.set.clear(); // Xóa sạch dữ liệu cũ lưu trong RAM
+          items.forEach(item => {
+            if (item.name) cache.set.add(_cacheKey(item.name, item.location || '')); // Nạp dữ liệu mới nhất từ file JSON/DB vào
+          });
+          cache.ready = true;
+          cache.listeners.forEach(fn => fn()); // Kích hoạt lệnh render lại đồng loạt cho toàn bộ thẻ Card trên màn hình
+        })
+        .catch(err => console.error("Lỗi làm tươi bộ nhớ Cache:", err));
+    };
+
+    // Gọi lệnh làm mới bộ chứa Yêu thích và Lưu trữ
+    forceRefreshGlobalCache(_favCache, '/api/favorites', 'favorites');
+    forceRefreshGlobalCache(_spCache, '/api/saved-places', 'savedPlaces');
+  }, [initialData]);
 
   // 🌤️ Weather data — lift lên đây để chia sẻ với từng ngày
   const [weatherData, setWeatherData] = useState(null);
@@ -2302,11 +2589,25 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, isDark = fa
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
 
           {/* 1. Lưu Dashboard */}
-          <button className="ap-card" onClick={onSave}
-            style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 8px 28px rgba(16,185,129,0.40)' }}>
-            <div className="ap-icon-ring" style={{ background: 'rgba(255,255,255,0.2)' }}>💾</div>
-            <div className="ap-label">Lưu vào Dashboard</div>
-            <div className="ap-sub">Truy cập lại bất cứ lúc nào</div>
+          <button className="ap-card" onClick={handleSaveSchedule}
+            disabled={scheduleSaveLoading || scheduleSaved}
+            style={{
+              background: scheduleSaved
+                ? 'linear-gradient(135deg, #059669 0%, #047857 100%)'
+                : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              boxShadow: scheduleSaved ? '0 8px 28px rgba(5,150,105,0.35)' : '0 8px 28px rgba(16,185,129,0.40)',
+              opacity: scheduleSaveLoading ? 0.75 : 1,
+              cursor: scheduleSaved ? 'default' : scheduleSaveLoading ? 'wait' : 'pointer',
+            }}>
+            <div className="ap-icon-ring" style={{ background: 'rgba(255,255,255,0.2)' }}>
+              {scheduleSaveLoading ? '⏳' : scheduleSaved ? '✅' : '💾'}
+            </div>
+            <div className="ap-label">
+              {scheduleSaveLoading ? 'Đang lưu...' : scheduleSaved ? 'Đã lưu!' : 'Lưu vào Dashboard'}
+            </div>
+            <div className="ap-sub">
+              {scheduleSaved ? 'Xem trong tab Lịch trình đã lưu' : 'Truy cập lại bất cứ lúc nào'}
+            </div>
           </button>
 
           {/* 2. iCal */}

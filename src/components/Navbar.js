@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faArrowRightToBracket,
@@ -11,39 +11,24 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { faUser } from '@fortawesome/free-regular-svg-icons';
 
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = ''; // proxy qua React dev server
 
-// ✅ Props mới: hasItinerary — khoá nút "Lịch trình" khi chưa tìm kiếm
-const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, onToggleTheme }) => {
+// ✅ Nhận thêm props: user, onUserChange (quản lý user ở App.js, không tự quản lý nữa)
+const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, onToggleTheme, user, onUserChange }) => {
   const [showAuth,   setShowAuth]   = useState(false);
   const [isLogin,    setIsLogin]    = useState(true);
   const [showLockTip,setShowLockTip]= useState(false);
 
   // ── Auth state ──
-  const [user,       setUser]       = useState(null);   // null = chưa đăng nhập
   const [email,      setEmail]      = useState('');
   const [password,   setPassword]   = useState('');
   const [name,       setName]       = useState('');
   const [authError,  setAuthError]  = useState('');
   const [authLoading,setAuthLoading]= useState(false);
-  const [menuOpen,   setMenuOpen]   = useState(false);  // dropdown avatar
+  const [menuOpen,   setMenuOpen]   = useState(false);
 
-  // Kiểm tra session khi load trang
-  useEffect(() => {
-    fetch(`${BASE_URL}/api/auth/me`, { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => { if (d.success) setUser(d.user); })
-      .catch(() => {});
-
-    // Xử lý Google OAuth redirect ?auth_success=1
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('auth_success')) {
-      fetch(`${BASE_URL}/api/auth/me`, { credentials: 'include' })
-        .then(r => r.json())
-        .then(d => { if (d.success) setUser(d.user); });
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
+  // ✅ Bỏ useEffect fetch /api/auth/me — đã chuyển lên App.js
+  // ✅ Bỏ xử lý Google OAuth redirect — đã chuyển lên App.js
 
   const openModal = (loginMode = true) => {
     setIsLogin(loginMode);
@@ -69,7 +54,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
       });
       const data = await res.json();
       if (data.success) {
-        setUser(data.user);
+        onUserChange(data.user); // ✅ Dùng callback từ App.js
         setShowAuth(false);
       } else {
         setAuthError(data.error || 'Có lỗi xảy ra');
@@ -87,11 +72,11 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
 
   const handleLogout = async () => {
     await fetch(`${BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
-    setUser(null);
+    localStorage.removeItem('s_trip_last_search');
+    onUserChange(null); // ✅ Dùng callback từ App.js
     setMenuOpen(false);
   };
 
-  // Tất cả scroll đều uỷ quyền cho App.js (onNavigate) để isScrollingRef hoạt động đúng
   const handleHomeClick = () => {
     if (onNavigate) onNavigate('hero-section');
   };
@@ -128,7 +113,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
     logoContainer: {
       display: 'flex', 
       alignItems: 'center', 
-      gap: '18px', // Khoảng cách giữa ảnh và chữ
+      gap: '18px',
       textDecoration: 'none', 
       cursor: 'pointer',
     },
@@ -137,7 +122,6 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
       width: '88px',
       borderRadius: '50%',
       objectFit: 'cover',
-      // Tăng độ sáng (brightness) và tạo hiệu ứng tỏa hào quang (drop-shadow) màu xanh ngọc
       filter: 'drop-shadow(0 0 12px rgba(16, 185, 129, 0.9)) brightness(1.15)', 
     },
     brandTextContainer: {
@@ -149,27 +133,25 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
       fontSize: '38px', 
       fontWeight: '900', 
       color: 'white',
-      // Hiệu ứng chữ phát sáng màu trắng giống trong ảnh mẫu
       textShadow: '0 0 4px rgba(255,255,255,0.6), 0 0 8px rgba(255,255,255,0.25)',
       lineHeight: '1.1',
     },
     brandSubtitle: {
       fontSize: '15px',
       fontWeight: '700',
-      color: '#34d399', // Màu xanh ngọc
-      letterSpacing: '3px', // Giãn cách chữ rộng ra
+      color: '#34d399',
+      letterSpacing: '3px',
       marginTop: '10px',
       textShadow: '0 0 6px rgba(16, 185, 129, 0.5)',
     },
     brandLine: {
       height: '1px',
-      width: '100%', // Kẻ dài bằng chữ
-      backgroundColor: 'rgba(16, 185, 129, 0.4)', // Đường kẻ mờ
+      width: '100%',
+      backgroundColor: 'rgba(16, 185, 129, 0.4)',
       marginTop: '5px',
     },
     nav: { display: 'flex', gap: '45px', alignItems: 'center' },
 
-    // ── Link style — active / normal / locked
     link: (isActive, locked) => ({
       color: locked ? 'rgba(255,255,255,0.35)' : (isActive ? '#10b981' : 'white'),
       textDecoration: 'none', fontWeight: '700', fontSize: '22px',
@@ -182,7 +164,6 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
       height: '4px', backgroundColor: '#10b981', borderRadius: '2px',
     },
 
-    // ── Tooltip khoá
     lockTooltip: {
       position: 'absolute', top: '140%', left: '50%', transform: 'translateX(-50%)',
       backgroundColor: '#1f2937', color: 'white', padding: '10px 20px',
@@ -233,14 +214,12 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
 
   return (
     <>
-      {/* CSS animation cho tooltip */}
       <style>{`
         @keyframes fadeInDown {
           from { opacity: 0; transform: translate(-50%, -6px); }
           to   { opacity: 1; transform: translate(-50%, 0); }
         }
 
-        /* ── DARK MODE TOGGLE ── */
         .theme-toggle-track {
           width: 68px;
           height: 36px;
@@ -301,12 +280,10 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
           {/* LOGO */}
           <div style={styles.logoContainer} onClick={onRefresh}>
             <img 
-              src="/S.jpg" // Đảm bảo tên file ảnh của bạn khớp nhé
+              src="/S.jpg"
               alt="S-Trip Logo" 
               style={styles.logoImage} 
             />
-            
-            {/* Vùng chứa chữ S-Trip và Khám Phá Việt Nam */}
             <div style={styles.brandTextContainer}>
               <span style={styles.brandTitle}>S-Trip</span>
               <span style={styles.brandSubtitle}>KHÁM PHÁ VIỆT NAM</span>
@@ -325,7 +302,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
               {activeSection === 'home' && <div style={styles.underline} />}
             </div>
 
-            {/* LỊCH TRÌNH — có thể bị khoá */}
+            {/* LỊCH TRÌNH */}
             <div style={{ position: 'relative' }}>
               <div
                 style={styles.link(isScheduleActive, isItineraryLocked)}
@@ -338,7 +315,6 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
                 {isScheduleActive && !isItineraryLocked && <div style={styles.underline} />}
               </div>
 
-              {/* Tooltip hiện khi click lúc bị khoá */}
               {showLockTip && (
                 <div style={styles.lockTooltip}>
                   <div style={styles.tooltipArrow} />
@@ -383,9 +359,16 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
                     transition: '0.2s',
                   }}
                 >
+                  {/* ✅ Avatar tự cập nhật khi user state thay đổi từ ProfilePage */}
                   {user.avatar ? (
                     <img src={user.avatar} alt={user.name}
-                      style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                      style={{
+                        width: 36, height: 36, borderRadius: '50%', objectFit: 'cover',
+                        imageRendering: 'high-quality',
+                        WebkitBackfaceVisibility: 'hidden',
+                        transform: 'translateZ(0)',
+                        boxShadow: '0 0 0 2px rgba(16,185,129,0.6)',
+                      }} />
                   ) : (
                     <div style={{
                       width: 36, height: 36, borderRadius: '50%',
@@ -422,8 +405,8 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
 
                       <button
                         onClick={() => {
-                          if (onNavigate) onNavigate('dashboard'); // Chuyển sang trang Profile
-                          setMenuOpen(false); // Đóng menu
+                          if (onNavigate) onNavigate('dashboard');
+                          setMenuOpen(false);
                         }}
                         style={{
                           width: '100%', padding: '14px 20px', border: 'none',
@@ -523,7 +506,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
               </div>
 
               <div style={styles.inputGroup}>
-                <div style={styles.inputIcon}><FontAwesomeIcon icon={faLock} /></div>
+                <div style={styles.inputIcon}><FontAwesomeIcon icon={faUser} /></div>
                 <input
                   type="password" placeholder="Mật khẩu" style={styles.input}
                   value={password} onChange={e => setPassword(e.target.value)}

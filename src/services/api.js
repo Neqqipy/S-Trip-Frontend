@@ -1,5 +1,5 @@
 // src/services/api.js
-const BASE_URL = 'http://127.0.0.1:5000';
+const BASE_URL = ''; // proxy qua React dev server
 
 export const fetchAutocomplete = async (query) => {
   try {
