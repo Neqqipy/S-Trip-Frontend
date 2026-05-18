@@ -8,7 +8,7 @@ import AiSchedule from './components/AiSchedule';
 import ChatAI from './components/ChatAI';
 import MapBubble from './components/MapBubble';
 import Footer from './components/Footer';
-import Dashboard from './components/Dashboard';
+import ProfilePage from './components/Profilepage';
 import SkeletonLoader from './components/SkeletonLoader';
 import Toast from './components/Toast';
 import { fetchTripPlan } from './services/api';
@@ -31,9 +31,33 @@ const HomePage = ({
         {searchData && !isLoading && (
           <AiSchedule 
             data={searchData} 
-            onSave={() => setToast({ show: true, message: 'Đã lưu vào Dashboard!', type: 'success' })}
             onPlanChange={setEditedPlans}
             isDark={isDark}
+            onSave={async () => {
+              try {
+                const res = await fetch('http://127.0.0.1:5000/api/schedules/save', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include', // Bắt buộc để gửi kèm cookie phiên đăng nhập
+                  body: JSON.stringify({
+                    title: `Khám phá ${searchData.location}`,
+                    location: searchData.location,
+                    days: parseInt(String(searchData.days || '3').split(' ')[0]),
+                    data_json: { searchData, editedPlans }
+                  })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                  setToast({ show: true, message: 'Đã lưu thành công vào Hồ sơ của bạn!', type: 'success' });
+                } else {
+                  // Báo lỗi (ví dụ: chưa đăng nhập)
+                  setToast({ show: true, message: data.error || 'Lỗi khi lưu!', type: 'error' });
+                }
+              } catch (err) {
+                setToast({ show: true, message: 'Lỗi kết nối đến máy chủ', type: 'error' });
+              }
+            }}
           />
         )}
       </div>
@@ -224,7 +248,8 @@ function AppContent() {
               />
             ) : (
               <div style={{ paddingTop: '110px' }}>
-                <Dashboard onBack={() => setActiveSection('home')} />
+                {/* Truyền thêm isDark để đồng bộ giao diện Sáng/Tối */}
+                <ProfilePage onBack={() => setActiveSection('home')} isDark={isDark} />
               </div>
             )
           } />

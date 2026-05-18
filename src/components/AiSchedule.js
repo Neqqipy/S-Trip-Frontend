@@ -18,7 +18,7 @@ import {
 import { fetchReviews, fetchImages, fetchWeather } from '../services/api';
 
 // 🖼️ Proxy ảnh Google qua backend để tránh bị chặn hotlink
-const BASE_URL = 'http://127.0.0.1:5000';
+const BASE_URL = 'http://localhost:5000';
 const GOOGLE_IMG_DOMAINS = ['googleusercontent.com', 'ggpht.com', 'googleapis.com', 'googleapi'];
 const proxyImage = (url) => {
   if (!url) return null;
@@ -1345,13 +1345,461 @@ const WeatherWidget = ({ location, isDark, externalData }) => {
   );
 };
 
+
+// ─────────────────────────────────────────────────────────────
+// iCal Export — tao file .ics chuan RFC 5545
+// ─────────────────────────────────────────────────────────────
+const _pad  = (n) => String(n).padStart(2, '0');
+const _fmt  = (d) => d.getFullYear()+_pad(d.getMonth()+1)+_pad(d.getDate())+'T'+_pad(d.getHours())+_pad(d.getMinutes())+'00';
+const _uid  = () => 'strip-'+Math.random().toString(36).slice(2,10)+'@strip.app';
+const _esc  = (s='') => String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+const _fold = (line) => {
+  if (line.length<=75) return line;
+  let out='',pos=0;
+  while(pos<line.length){out+=(pos===0?'':' ')+line.slice(pos,pos+(pos===0?75:74))+'\r\n';pos+=pos===0?75:74;}
+  return out.trimEnd();
+};
+const _vevent = ({summary,description,location,dtStart,dtEnd}) =>
+  ['BEGIN:VEVENT','UID:'+_uid(),'DTSTAMP:'+_fmt(new Date()),'DTSTART:'+_fmt(dtStart),'DTEND:'+_fmt(dtEnd),
+   'SUMMARY:'+_esc(summary),description?'DESCRIPTION:'+_esc(description):null,location?'LOCATION:'+_esc(location):null,
+   'END:VEVENT'].filter(Boolean).map(_fold).join('\r\n');
+const _SCFG = {
+  morning:   {startH:8, startM:0, dur:2, label:'Sang',  emoji:'[Sang]'},
+  afternoon: {startH:13,startM:0, dur:2, label:'Chieu', emoji:'[Chieu]'},
+  evening:   {startH:18,startM:30,dur:2, label:'Toi',   emoji:'[Toi]'},
+};
+const exportICalFile = ({dailyPlans=[],initialData={},currentHotel=null}) => {
+  const loc = initialData.location || 'Diem den';
+  let base = initialData.startDate ? new Date(initialData.startDate) : new Date();
+  if (isNaN(base.getTime())) base = new Date();
+  if (!initialData.startDate) base.setDate(base.getDate()+1);
+  base.setHours(0,0,0,0);
+  const events = [];
+  if (currentHotel?.name) {
+    const ci=new Date(base); ci.setHours(14,0,0,0);
+    const co=new Date(base); co.setDate(co.getDate()+dailyPlans.length); co.setHours(12,0,0,0);
+    events.push(_vevent({summary:'[Khach san] '+currentHotel.name,
+      description:[currentHotel.desc,currentHotel.price&&'Gia: '+currentHotel.price,currentHotel.rating&&'Danh gia: '+currentHotel.rating].filter(Boolean).join(' | '),
+      location:currentHotel.name+', '+loc,dtStart:ci,dtEnd:co}));
+  }
+  dailyPlans.forEach((dayPlan) => {
+    const offset=dayPlan.day-1;
+    Object.entries(_SCFG).forEach(([session,cfg]) => {
+      const sd=dayPlan[session]||{};
+      if (sd.tour?.name) {
+        const s=new Date(base); s.setDate(s.getDate()+offset); s.setHours(cfg.startH,cfg.startM,0,0);
+        const e=new Date(s); e.setHours(e.getHours()+cfg.dur);
+        events.push(_vevent({summary:cfg.emoji+' '+sd.tour.name,
+          description:[sd.tour.desc,sd.tour.rating&&'Danh gia: '+sd.tour.rating,sd.tour.price&&'Gia: '+sd.tour.price].filter(Boolean).join(' | '),
+          location:sd.tour.lat&&sd.tour.lng?sd.tour.name+', '+loc+' ('+sd.tour.lat+','+sd.tour.lng+')':sd.tour.name+', '+loc,
+          dtStart:s,dtEnd:e}));
+      }
+      if (sd.food?.name) {
+        const s=new Date(base); s.setDate(s.getDate()+offset); s.setHours(cfg.startH+cfg.dur,cfg.startM,0,0);
+        const e=new Date(s); e.setHours(e.getHours()+1); e.setMinutes(e.getMinutes()+30);
+        events.push(_vevent({summary:'[An uong] '+cfg.emoji+' '+sd.food.name,
+          description:[sd.food.desc,sd.food.rating&&'Danh gia: '+sd.food.rating,sd.food.price&&'Gia: '+sd.food.price].filter(Boolean).join(' | '),
+          location:sd.food.name+', '+loc,dtStart:s,dtEnd:e}));
+      }
+    });
+  });
+  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//S-Trip//S-Trip App//VI',
+    'X-WR-CALNAME:'+_esc('S-Trip: '+loc),'X-WR-TIMEZONE:Asia/Ho_Chi_Minh',
+    'CALSCALE:GREGORIAN','METHOD:PUBLISH',...events,'END:VCALENDAR'].join('\r\n');
+  const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=Object.assign(document.createElement('a'),{href:url,download:'strip-'+loc.replace(/\s+/g,'-').toLowerCase()+'.ics'});
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+};
+
+const ICalButton = ({ dailyPlans, initialData, currentHotel, isDark }) => {
+  const [status, setStatus] = React.useState('idle');
+  const handleClick = () => {
+    try {
+      exportICalFile({ dailyPlans, initialData, currentHotel });
+      setStatus('success'); setTimeout(() => setStatus('idle'), 3000);
+    } catch(err) { setStatus('error'); setTimeout(() => setStatus('idle'), 3000); }
+  };
+  const cfgMap = {
+    idle:    { label: 'Xuat lich (.ics)', bg: '#2563eb', shadow: '0 12px 30px rgba(37,99,235,0.35)' },
+    success: { label: 'Da tai xuong!',    bg: '#059669', shadow: 'none' },
+    error:   { label: 'Co loi xay ra',    bg: '#dc2626', shadow: 'none' },
+  };
+  const cfg = cfgMap[status];
+  return (
+    <button onClick={handleClick} disabled={status !== 'idle'} title="Import vao Google Calendar / Apple Calendar"
+      style={{ backgroundColor: cfg.bg, color: 'white', padding: '22px 50px', borderRadius: '99px', border: 'none',
+        fontWeight: '800', fontSize: '22px', cursor: status==='idle'?'pointer':'default',
+        boxShadow: cfg.shadow, transition: 'all 0.3s ease', display: 'inline-flex', alignItems: 'center', gap: '10px',
+        opacity: status!=='idle' ? 0.85 : 1 }}>
+      {status === 'idle' ? '📅' : ''} {cfg.label}
+    </button>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// 📸 ScreenshotButton — chụp DOM thật, cắt thành nhiều ảnh
+// Dùng html2canvas (npm install html2canvas)
+// ─────────────────────────────────────────────────────────────
+
+// Chuyển tất cả <img> trong el sang blob URL để html2canvas đọc được (fix ảnh trắng)
+const _preloadImages = async (el) => {
+  const imgs = [...el.querySelectorAll('img')];
+  const origSrcs = [];
+
+  await Promise.all(imgs.map(async (img, i) => {
+    origSrcs[i] = img.src;
+    if (!img.src || img.src.startsWith('data:') || img.src.startsWith('blob:')) return;
+    try {
+      const res  = await fetch(img.src, { mode: 'cors' });
+      const blob = await res.blob();
+      img.src = URL.createObjectURL(blob);
+      await new Promise(r => { img.onload = r; img.onerror = r; });
+    } catch (_) { /* giữ nguyên nếu lỗi */ }
+  }));
+
+  // Trả về hàm restore để hoàn lại src gốc sau khi chụp
+  return () => imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+};
+
+const ScreenshotButton = ({ contentRef, location, isDark }) => {
+  const [status,   setStatus]   = React.useState('idle');
+  const [progress, setProgress] = React.useState('');
+
+  const handleClick = async () => {
+    if (status !== 'idle') return;
+    const el = contentRef?.current;
+    if (!el) return;
+
+    setStatus('loading');
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+
+      // 1. Pre-load ảnh → blob URL (fix ảnh proxy bị trắng)
+      setProgress('Đang tải ảnh...');
+      const restore = await _preloadImages(el);
+
+      // 2. Chụp toàn bộ element thành 1 canvas duy nhất
+      setProgress('Đang chụp...');
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: isDark ? '#111827' : '#ffffff',
+        logging: false,
+        ignoreElements: (node) => node.tagName === 'IFRAME',
+        onclone: (doc) => {
+          // Ẩn iframe map, hiện overlay placeholder
+          doc.querySelectorAll('iframe').forEach(f => { f.style.display = 'none'; });
+          doc.querySelectorAll('.map-screenshot-overlay').forEach(d => { d.style.display = 'flex'; });
+          // Bỏ hover transform
+          doc.querySelectorAll('button').forEach(b => {
+            b.style.transform = 'none';
+            b.style.boxShadow = 'none';
+          });
+        },
+      });
+
+      // 3. Restore src gốc
+      restore();
+
+      // 4. Download 1 ảnh duy nhất
+      setProgress('Đang lưu...');
+      const loc = (location || 's-trip').toLowerCase().replace(/\s+/g, '-');
+      await new Promise((res) => {
+        canvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a   = Object.assign(document.createElement('a'), {
+            href:     url,
+            download: `strip-${loc}.png`,
+          });
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          res();
+        }, 'image/png');
+      });
+
+      setStatus('success');
+      setProgress('');
+    } catch (err) {
+      console.error('[ScreenshotButton]', err);
+      setStatus('error');
+      setProgress('');
+    } finally {
+      setTimeout(() => setStatus('idle'), 3500);
+    }
+  };
+
+  const cfgMap = {
+    idle:    { label: '📸 Xuất ảnh lịch trình', bg: '#7c3aed', shadow: '0 12px 30px rgba(124,58,237,0.35)' },
+    loading: { label: progress || 'Đang xử lý...', bg: '#6d28d9', shadow: 'none' },
+    success: { label: '✅ Đã tải xong!',           bg: '#059669', shadow: 'none' },
+    error:   { label: '❌ Có lỗi — thử lại',       bg: '#dc2626', shadow: 'none' },
+  };
+  const cfg = cfgMap[status];
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={status === 'loading'}
+      style={{
+        backgroundColor: cfg.bg,
+        color: 'white',
+        padding: '22px 50px',
+        borderRadius: '99px',
+        border: 'none',
+        fontWeight: '800',
+        fontSize: '22px',
+        cursor: status === 'loading' ? 'wait' : 'pointer',
+        boxShadow: cfg.shadow,
+        transition: 'all 0.3s ease',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '10px',
+        opacity: status === 'loading' ? 0.85 : 1,
+        minWidth: 280,
+        justifyContent: 'center',
+      }}
+    >
+      {cfg.label}
+    </button>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// 🔗 ShareButton — tạo link chia sẻ + copy + Zalo/Messenger
+// ─────────────────────────────────────────────────────────────
+const ShareButton = ({ dailyPlans, initialData, currentHotel, plan, isDark }) => {
+  const [status,   setStatus]   = React.useState('idle');
+  const [shareUrl, setShareUrl] = React.useState('');
+  const [copied,   setCopied]   = React.useState(false);
+  const [panelOpen, setPanelOpen] = React.useState(false);
+
+  const handleShare = async () => {
+    if (status === 'loading') return;
+    setStatus('loading');
+    try {
+      const body = {
+        plan:       plan || {},
+        dailyPlans: dailyPlans || [],
+        meta: {
+          location:  initialData.location,
+          days:      parseInt(String(initialData.days || '3').split(' ')[0]),
+          origin:    initialData.origin || initialData.from || '',
+          startDate: initialData.startDate || initialData.departure_date || '',
+        },
+      };
+      const res  = await fetch(`${BASE_URL}/api/trip/save`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Lỗi server');
+
+      setShareUrl(data.share_url);
+      setStatus('success');
+      setPanelOpen(true);
+    } catch (err) {
+      console.error('[ShareButton]', err);
+      setStatus('error');
+      setTimeout(() => setStatus('idle'), 3000);
+    }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
+  const encodedUrl = encodeURIComponent(shareUrl);
+  const encodedText = encodeURIComponent(`Xem lịch trình ${initialData.location} của mình trên S-Trip! `);
+
+  const btnBase = {
+    padding: '12px 24px', borderRadius: 99, border: 'none',
+    fontWeight: 800, fontSize: 15, cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', gap: 8,
+    transition: 'all 0.2s',
+  };
+
+  return (
+    <>
+      {/* Nút chính */}
+      <button
+        onClick={handleShare}
+        disabled={status === 'loading'}
+        title="Tạo link chia sẻ lịch trình"
+        style={{
+          backgroundColor: '#0ea5e9',
+          color: 'white',
+          padding: '22px 50px',
+          borderRadius: '99px',
+          border: 'none',
+          fontWeight: '800',
+          fontSize: '22px',
+          cursor: status === 'loading' ? 'wait' : 'pointer',
+          boxShadow: status === 'idle' ? '0 12px 30px rgba(14,165,233,0.35)' : 'none',
+          transition: 'all 0.3s ease',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '10px',
+          opacity: status === 'loading' ? 0.8 : 1,
+        }}
+      >
+        {status === 'loading' ? '⏳' : status === 'error' ? '❌' : '🔗'}
+        {status === 'loading' ? 'Đang tạo link...' : status === 'error' ? 'Có lỗi xảy ra' : 'Chia sẻ lịch trình'}
+      </button>
+
+      {/* Panel chia sẻ */}
+      {panelOpen && shareUrl && ReactDOM.createPortal(
+        <>
+          <style>{`
+            @keyframes spShareFade { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+            .share-panel { animation: spShareFade 0.25s cubic-bezier(.22,1,.36,1) forwards; }
+          `}</style>
+          {/* Overlay */}
+          <div
+            onClick={() => setPanelOpen(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 99998,
+              backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          />
+          {/* Panel */}
+          <div
+            className="share-panel"
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'fixed', bottom: 40, left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 99999,
+              backgroundColor: isDark ? '#1e293b' : 'white',
+              border: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
+              borderRadius: 28,
+              padding: '28px 32px',
+              width: 'min(480px, 92vw)',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.25)',
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: isDark ? '#f8fafc' : '#111827' }}>
+                  🔗 Chia sẻ lịch trình
+                </div>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                  Link hoạt động ngay · Có OG preview cho Zalo & Messenger
+                </div>
+              </div>
+              <button
+                onClick={() => setPanelOpen(false)}
+                style={{ width: 34, height: 34, borderRadius: '50%', border: 'none',
+                  background: isDark ? '#334155' : '#f1f5f9', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 16, color: '#64748b' }}
+              >
+                <FontAwesomeIcon icon={faXmark} />
+              </button>
+            </div>
+
+            {/* URL box */}
+            <div style={{
+              display: 'flex', gap: 8, marginBottom: 20,
+              padding: '12px 16px',
+              background: isDark ? '#0f172a' : '#f8fafc',
+              border: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
+              borderRadius: 14,
+            }}>
+              <span style={{
+                flex: 1, fontSize: 13, fontWeight: 600,
+                color: isDark ? '#94a3b8' : '#475569',
+                wordBreak: 'break-all', lineHeight: 1.4,
+              }}>
+                {shareUrl}
+              </span>
+              <button
+                onClick={handleCopy}
+                style={{
+                  ...btnBase,
+                  padding: '8px 16px', fontSize: 13,
+                  backgroundColor: copied ? '#059669' : '#0ea5e9',
+                  color: 'white', flexShrink: 0,
+                }}
+              >
+                {copied ? '✅ Đã copy' : '📋 Copy'}
+              </button>
+            </div>
+
+            {/* Social buttons */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+
+              {/* Zalo */}
+              <a
+                href={`https://zalo.me/share?url=${encodedUrl}&text=${encodedText}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{
+                  ...btnBase,
+                  backgroundColor: '#0068ff', color: 'white',
+                  textDecoration: 'none', flex: '1 1 120px',
+                  justifyContent: 'center',
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 48 48" fill="white">
+                  <path d="M24 4C13 4 4 13 4 24s9 20 20 20 20-9 20-20S35 4 24 4zm8.7 28.5l-2.5-1.5c-1.2 1.3-2.9 2.1-4.8 2.1-3.9 0-7-3.1-7-7s3.1-7 7-7c1.7 0 3.2.6 4.4 1.6l2.2-2c-1.7-1.5-4-2.4-6.6-2.4-5.5 0-10 4.5-10 10s4.5 10 10 10c2.9 0 5.5-1.2 7.3-3.1v.3z"/>
+                </svg>
+                Chia sẻ Zalo
+              </a>
+
+              {/* Messenger */}
+              <a
+                href={`https://www.facebook.com/dialog/send?link=${encodedUrl}&app_id=966242223397117&redirect_uri=${encodedUrl}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{
+                  ...btnBase,
+                  backgroundColor: '#0099ff', color: 'white',
+                  textDecoration: 'none', flex: '1 1 120px',
+                  justifyContent: 'center',
+                }}
+              >
+                💬 Messenger
+              </a>
+
+              {/* Facebook */}
+              <a
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{
+                  ...btnBase,
+                  backgroundColor: '#1877f2', color: 'white',
+                  textDecoration: 'none', flex: '1 1 120px',
+                  justifyContent: 'center',
+                }}
+              >
+                👤 Facebook
+              </a>
+            </div>
+
+            <div style={{ marginTop: 16, fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>
+              Khi chia sẻ qua Zalo / Messenger, link sẽ hiện preview ảnh + mô tả lịch trình tự động ✨
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+    </>
+  );
+};
+
 // ── COMPONENT CHÍNH ──────────────────────────────────────────
-const AiSchedule = ({ data: initialData, onSave, onPlanChange, isDark = false }) => {
+const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, isDark = false }) => {
   const numDays  = parseInt(initialData?.days?.toString().split(' ')[0]) || 3;
   const [dailyPlans,  setDailyPlans]  = useState([]);
   const [mapQuery,    setMapQuery]    = useState('');
   const [modal,       setModal]       = useState({ show: false, type: '', day: null, session: '', subType: '' });
   const [mapModal,    setMapModal]    = useState({ show: false, query: '', placeName: '' });
+  const contentRef = useRef(null);
 
   // 🌤️ Weather data — lift lên đây để chia sẻ với từng ngày
   const [weatherData, setWeatherData] = useState(null);
@@ -1522,7 +1970,8 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange, isDark = false })
         </div>
       )}
 
-      {/* HEADER */}
+      {/* HEADER — bọc từ đây đến hết dailyPlans bằng contentRef để chụp ảnh */}
+      <div ref={contentRef}>
       <div style={{ textAlign: 'center', marginBottom: '60px' }}>
         <h1 style={{ fontSize: '80px', fontWeight: '900' }}>
           <FontAwesomeIcon icon={faWandMagicSparkles} style={{ color: '#10b981', marginRight: '18px' }} />
@@ -1596,8 +2045,20 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange, isDark = false })
   <div style={{ backgroundColor: isDark ? '#1e293b' : '#f8fafc', padding: '30px', borderRadius: '40px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
     <PlaceCard type="Khách sạn" data={currentHotel} locationName={initialData.location} setMapQuery={setMapQuery} guestCount={passengers} onEdit={() => setModal({ show: true, type: 'Khách sạn' })} isDark={isDark} />
     
-    <div style={{ borderRadius: '25px', overflow: 'hidden', height: '450px', border: isDark ? 'none' : '1px solid #e2e8f0' }}>
-      <iframe title="map" width="100%" height="100%" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`} />
+    <div style={{ borderRadius: '25px', overflow: 'hidden', height: '450px', border: isDark ? 'none' : '1px solid #e2e8f0', position: 'relative' }}>
+      <iframe title="map" width="100%" height="100%" style={{ border: 0, display: 'block' }} src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`} />
+      {/* Overlay hiển thị khi chụp ảnh (iframe không chụp được) */}
+      <div className="map-screenshot-overlay" style={{
+        display: 'none',
+        position: 'absolute', inset: 0,
+        background: isDark ? 'linear-gradient(135deg,#0f2540,#064e3b)' : 'linear-gradient(135deg,#dbeafe,#dcfce7)',
+        alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12,
+        borderRadius: '25px',
+      }}>
+        <span style={{ fontSize: 48 }}>📍</span>
+        <span style={{ fontSize: 20, fontWeight: 800, color: isDark ? '#ffffff' : '#1e293b' }}>{mapQuery}</span>
+        <span style={{ fontSize: 14, color: isDark ? '#94a3b8' : '#64748b' }}>Xem trên Google Maps</span>
+      </div>
     </div>
   </div>
 </div>
@@ -1686,30 +2147,58 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange, isDark = false })
               <FontAwesomeIcon icon={faRegularCalendar} /> Ngày {d.day}
             </div>
 
-            {/* 🌤️ Badge thời tiết ngày */}
+            {/* 🌤️ Badge thời tiết ngày — chi tiết */}
             {dayForecast && (
               <div style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                background: isDark ? 'rgba(30,58,95,0.8)' : '#dbeafe',
+                display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
+                background: isDark ? 'rgba(15,36,64,0.85)' : 'rgba(219,234,254,0.7)',
                 border: isDark ? '1px solid #1e3a5f' : '1px solid #bfdbfe',
-                padding: '6px 16px', borderRadius: '99px',
+                padding: '6px 14px', borderRadius: '16px',
+                backdropFilter: 'blur(8px)',
               }}>
+                {/* Icon + nhiệt độ */}
                 <span style={{ fontSize: '20px' }}>{dayForecast.icon}</span>
-                <span style={{ fontSize: '14px', fontWeight: '800', color: isDark ? '#93c5fd' : '#1e40af' }}>
+                <span style={{ fontSize: '14px', fontWeight: '900', color: isDark ? '#f0f9ff' : '#1e40af' }}>
                   {dayForecast.high_c !== null ? `${dayForecast.high_c}°` : '--'}
-                  {' / '}
+                  <span style={{ fontWeight: 400, opacity: 0.6 }}> / </span>
                   {dayForecast.low_c !== null ? `${dayForecast.low_c}°` : '--'}
                 </span>
-                <span style={{ fontSize: '13px', fontWeight: '600', color: isDark ? '#bfdbfe' : '#3b82f6' }}>
+                {/* Điều kiện */}
+                <span style={{
+                  fontSize: '12px', fontWeight: '700',
+                  color: isDark ? '#93c5fd' : '#2563eb',
+                  background: isDark ? 'rgba(37,99,235,0.18)' : 'rgba(219,234,254,0.8)',
+                  padding: '2px 8px', borderRadius: '8px',
+                }}>
                   {dayForecast.condition}
                 </span>
-                {dayForecast.rain_chance != null && (
+                {/* % mưa */}
+                {dayForecast.rain_chance != null && dayForecast.rain_chance > 0 && (
                   <span style={{
-                    background: isDark ? '#1e3a5f' : '#eff6ff',
-                    color: '#3b82f6', fontSize: '12px', fontWeight: '800',
-                    padding: '2px 8px', borderRadius: '99px',
+                    fontSize: '12px', fontWeight: '800',
+                    color: '#3b82f6',
+                    background: isDark ? 'rgba(59,130,246,0.18)' : '#eff6ff',
+                    padding: '2px 8px', borderRadius: '8px',
+                    display: 'flex', alignItems: 'center', gap: '3px',
                   }}>
                     💧 {dayForecast.rain_chance}%
+                  </span>
+                )}
+                {/* Giờ mưa — hiện nếu có */}
+                {dayForecast.rain_hours && dayForecast.rain_hours.length > 0 && (
+                  <span style={{
+                    fontSize: '11px', fontWeight: '700',
+                    color: isDark ? '#7dd3fc' : '#0369a1',
+                    background: isDark ? 'rgba(14,165,233,0.15)' : '#e0f2fe',
+                    padding: '2px 8px', borderRadius: '8px',
+                    display: 'flex', alignItems: 'center', gap: '3px',
+                    cursor: 'default',
+                    title: dayForecast.rain_hours.join(', '),
+                  }}
+                    title={`Mưa dự kiến: ${dayForecast.rain_hours.join(', ')}`}
+                  >
+                    🕐 {dayForecast.rain_hours.slice(0, 2).join(' · ')}
+                    {dayForecast.rain_hours.length > 2 && ` +${dayForecast.rain_hours.length - 2}`}
                   </span>
                 )}
               </div>
@@ -1749,14 +2238,248 @@ const AiSchedule = ({ data: initialData, onSave, onPlanChange, isDark = false })
         </div>
         );
       })}
+      </div>{/* end contentRef */}
 
-      {/* NÚT LƯU */}
-      <div style={{ textAlign: 'center', marginTop: '60px', paddingBottom: '40px' }}>
-        <button onClick={onSave} style={{ backgroundColor: '#10b981', color: 'white', padding: '22px 65px', borderRadius: '99px', border: 'none', fontWeight: '800', fontSize: '24px', cursor: 'pointer', boxShadow: '0 12px 35px rgba(16,129,129,0.4)' }}>
-          💾 Lưu lịch trình vào Dashboard
-        </button>
+      {/* ── ACTION PANEL ── */}
+      <style>{`
+        @keyframes apFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+        .ap-card {
+          position: relative; display: flex; flex-direction: column; align-items: flex-start;
+          gap: 6px; padding: 20px 22px; border-radius: 20px; border: none; cursor: pointer;
+          transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), box-shadow 0.22s ease, background 0.2s;
+          overflow: hidden; text-align: left;
+        }
+        .ap-card::before {
+          content: ''; position: absolute; inset: 0; opacity: 0;
+          transition: opacity 0.2s;
+          background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 60%);
+          pointer-events: none;
+        }
+        .ap-card:hover::before { opacity: 1; }
+        .ap-card:hover { transform: translateY(-5px) scale(1.025); }
+        .ap-card:active { transform: scale(0.97); }
+        .ap-icon-ring {
+          width: 44px; height: 44px; border-radius: 14px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 22px; margin-bottom: 4px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .ap-label { font-size: 15px; font-weight: 900; color: white; line-height: 1.2; }
+        .ap-sub   { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.72); }
+      `}</style>
+
+      <div style={{
+        marginTop: '64px', marginBottom: '48px',
+        padding: '32px 36px',
+        borderRadius: '32px',
+        background: isDark
+          ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
+          : 'linear-gradient(135deg, #f0fdf4 0%, #eff6ff 50%, #fdf4ff 100%)',
+        border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)',
+        boxShadow: isDark
+          ? '0 24px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)'
+          : '0 16px 48px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
+      }}>
+        {/* Title */}
+        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: 42, height: 42, borderRadius: 14,
+            background: 'linear-gradient(135deg, #10b981, #059669)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 20, boxShadow: '0 6px 18px rgba(16,185,129,0.35)',
+          }}>✨</div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: isDark ? '#f8fafc' : '#111827' }}>
+              Lưu & Chia sẻ lịch trình
+            </div>
+            <div style={{ fontSize: 12, color: isDark ? '#64748b' : '#94a3b8', fontWeight: 600 }}>
+              4 tùy chọn · Xuất ra mọi định dạng bạn cần
+            </div>
+          </div>
+        </div>
+
+        {/* 2×2 grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+
+          {/* 1. Lưu Dashboard */}
+          <button className="ap-card" onClick={onSave}
+            style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 8px 28px rgba(16,185,129,0.40)' }}>
+            <div className="ap-icon-ring" style={{ background: 'rgba(255,255,255,0.2)' }}>💾</div>
+            <div className="ap-label">Lưu vào Dashboard</div>
+            <div className="ap-sub">Truy cập lại bất cứ lúc nào</div>
+          </button>
+
+          {/* 2. iCal */}
+          <ICalButtonNew dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} />
+
+          {/* 3. Screenshot */}
+          <ScreenshotButtonNew contentRef={contentRef} location={initialData.location} isDark={isDark} />
+
+          {/* 4. Share */}
+          <ShareButtonNew dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} plan={plan} isDark={isDark} />
+
+        </div>
       </div>
     </div>
+  );
+};
+
+
+// ─────────────────────────────────────────────────────────────
+// 🎨 NEW SLIM BUTTON VARIANTS (dùng trong ActionPanel)
+// ─────────────────────────────────────────────────────────────
+const ICalButtonNew = ({ dailyPlans, initialData, currentHotel }) => {
+  const [status, setStatus] = React.useState('idle');
+  const handleClick = () => {
+    try {
+      exportICalFile({ dailyPlans, initialData, currentHotel });
+      setStatus('ok'); setTimeout(() => setStatus('idle'), 2500);
+    } catch { setStatus('err'); setTimeout(() => setStatus('idle'), 2500); }
+  };
+  return (
+    <button className="ap-card" onClick={handleClick} disabled={status !== 'idle'}
+      style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', boxShadow: '0 8px 28px rgba(37,99,235,0.40)', opacity: status !== 'idle' ? 0.85 : 1 }}>
+      <div className="ap-icon-ring" style={{ background: 'rgba(255,255,255,0.2)' }}>
+        {status === 'ok' ? '✅' : status === 'err' ? '❌' : '📅'}
+      </div>
+      <div className="ap-label">{status === 'ok' ? 'Đã tải xuống!' : status === 'err' ? 'Có lỗi xảy ra' : 'Xuất lịch .ics'}</div>
+      <div className="ap-sub">Google / Apple Calendar</div>
+    </button>
+  );
+};
+
+const ScreenshotButtonNew = ({ contentRef, location, isDark }) => {
+  const [status, setStatus] = React.useState('idle');
+  const [prog, setProg]     = React.useState('');
+  const handleClick = async () => {
+    if (status !== 'idle') return;
+    const el = contentRef?.current;
+    if (!el) return;
+    setStatus('loading');
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      setProg('Đang tải ảnh...');
+      const restore = await _preloadImages(el);
+      setProg('Đang chụp...');
+      const canvas = await html2canvas(el, {
+        scale: 2, useCORS: true, allowTaint: true,
+        backgroundColor: isDark ? '#111827' : '#ffffff', logging: false,
+        ignoreElements: (n) => n.tagName === 'IFRAME',
+        onclone: (doc) => {
+          doc.querySelectorAll('iframe').forEach(f => { f.style.display = 'none'; });
+          doc.querySelectorAll('.map-screenshot-overlay').forEach(d => { d.style.display = 'flex'; });
+          doc.querySelectorAll('button').forEach(b => { b.style.transform = 'none'; b.style.boxShadow = 'none'; });
+        },
+      });
+      restore();
+      setProg('Đang lưu...');
+      const loc = (location || 's-trip').toLowerCase().replace(/\s+/g, '-');
+      await new Promise(res => {
+        canvas.toBlob(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = Object.assign(document.createElement('a'), { href: url, download: `strip-${loc}.png` });
+          document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+          res();
+        }, 'image/png');
+      });
+      setStatus('ok');
+    } catch { setStatus('err'); }
+    finally { setProg(''); setTimeout(() => setStatus('idle'), 3000); }
+  };
+  const labels = { idle: '📸 Xuất ảnh lịch trình', loading: prog || 'Đang xử lý...', ok: '✅ Đã tải xong!', err: '❌ Thử lại' };
+  return (
+    <button className="ap-card" onClick={handleClick} disabled={status === 'loading'}
+      style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', boxShadow: '0 8px 28px rgba(124,58,237,0.40)', cursor: status === 'loading' ? 'wait' : 'pointer', opacity: status === 'loading' ? 0.85 : 1 }}>
+      <div className="ap-icon-ring" style={{ background: 'rgba(255,255,255,0.2)' }}>
+        {status === 'ok' ? '✅' : status === 'err' ? '❌' : '📸'}
+      </div>
+      <div className="ap-label">{labels[status]}</div>
+      <div className="ap-sub">Tải về ảnh PNG chất lượng cao</div>
+    </button>
+  );
+};
+
+const ShareButtonNew = ({ dailyPlans, initialData, currentHotel, plan, isDark }) => {
+  const [status,   setStatus]   = React.useState('idle');
+  const [shareUrl, setShareUrl] = React.useState('');
+  const [copied,   setCopied]   = React.useState(false);
+  const [open,     setOpen]     = React.useState(false);
+
+  const handleShare = async () => {
+    if (status === 'loading') return;
+    if (shareUrl) { setOpen(true); return; }
+    setStatus('loading');
+    try {
+      const body = { plan: plan || {}, dailyPlans: dailyPlans || [],
+        meta: { location: initialData.location, days: parseInt(String(initialData.days||'3').split(' ')[0]),
+                origin: initialData.origin||initialData.from||'', startDate: initialData.startDate||initialData.departure_date||'' } };
+      const res  = await fetch(`${BASE_URL}/api/trip/save`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error||'Lỗi server');
+      setShareUrl(data.share_url); setStatus('ok'); setOpen(true);
+    } catch { setStatus('err'); setTimeout(() => setStatus('idle'), 2500); }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(shareUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); });
+  };
+
+  const encodedUrl  = encodeURIComponent(shareUrl);
+  const encodedText = encodeURIComponent(`Xem lịch trình ${initialData.location} trên S-Trip! `);
+
+  return (
+    <>
+      <button className="ap-card" onClick={handleShare} disabled={status === 'loading'}
+        style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', boxShadow: '0 8px 28px rgba(14,165,233,0.40)', cursor: status === 'loading' ? 'wait' : 'pointer', opacity: status === 'loading' ? 0.85 : 1 }}>
+        <div className="ap-icon-ring" style={{ background: 'rgba(255,255,255,0.2)' }}>
+          {status === 'loading' ? '⏳' : status === 'err' ? '❌' : '🔗'}
+        </div>
+        <div className="ap-label">{status === 'loading' ? 'Đang tạo link...' : status === 'err' ? 'Có lỗi — thử lại' : 'Chia sẻ lịch trình'}</div>
+        <div className="ap-sub">Gửi link qua Zalo / Messenger</div>
+      </button>
+
+      {/* Share panel popup */}
+      {open && shareUrl && ReactDOM.createPortal(
+        <>
+          <style>{`@keyframes spUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+          <div onClick={() => setOpen(false)} style={{ position:'fixed',inset:0,zIndex:9999999,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
+            <div onClick={e=>e.stopPropagation()} style={{ background: isDark?'#1e293b':'white', borderRadius:24, padding:'28px 28px 24px', width:'min(480px,95vw)', boxShadow:'0 32px 80px rgba(0,0,0,0.4)', animation:'spUp 0.25s ease', border: isDark?'1px solid #334155':'1px solid #e2e8f0' }}>
+              <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20 }}>
+                <div style={{ fontSize:17,fontWeight:900,color:isDark?'#f8fafc':'#111827' }}>🔗 Chia sẻ lịch trình</div>
+                <button onClick={()=>setOpen(false)} style={{ width:34,height:34,borderRadius:'50%',border:'none',background:isDark?'#334155':'#f1f5f9',color:isDark?'#94a3b8':'#64748b',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center' }}>✕</button>
+              </div>
+              {/* URL box */}
+              <div style={{ display:'flex',gap:8,marginBottom:18 }}>
+                <input readOnly value={shareUrl} style={{ flex:1,padding:'10px 14px',borderRadius:12,border:isDark?'1px solid #475569':'1px solid #e2e8f0',background:isDark?'#0f172a':'#f8fafc',color:isDark?'#f8fafc':'#1e293b',fontSize:13,fontWeight:600,outline:'none' }} />
+                <button onClick={handleCopy} style={{ padding:'10px 18px',borderRadius:12,border:'none',background:copied?'#059669':'#10b981',color:'white',fontWeight:800,fontSize:13,cursor:'pointer',whiteSpace:'nowrap',transition:'0.2s' }}>
+                  {copied ? '✅ Đã copy' : '📋 Copy'}
+                </button>
+              </div>
+              {/* Social buttons */}
+              <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+                {[
+                  { label:'💬 Zalo',     bg:'#0068ff', href:`https://zalo.me/share/url?url=${encodedUrl}&title=${encodedText}` },
+                  { label:'📘 Messenger',bg:'#0084ff', href:`https://m.me/share?link=${encodedUrl}` },
+                  { label:'🐦 Twitter',  bg:'#1da1f2', href:`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}` },
+                  { label:'📋 Copy link',bg:'#64748b', href:null, onClick: handleCopy },
+                ].map(s => (
+                  s.href
+                    ? <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer"
+                        style={{ padding:'12px 14px',borderRadius:12,background:s.bg,color:'white',fontWeight:800,fontSize:13,textDecoration:'none',textAlign:'center',display:'flex',alignItems:'center',justifyContent:'center',gap:6 }}>
+                        {s.label}
+                      </a>
+                    : <button key={s.label} onClick={s.onClick}
+                        style={{ padding:'12px 14px',borderRadius:12,background:s.bg,color:'white',fontWeight:800,fontSize:13,border:'none',cursor:'pointer' }}>
+                        {s.label}
+                      </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+    </>
   );
 };
 

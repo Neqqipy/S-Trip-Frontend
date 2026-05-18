@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faArrowRightToBracket,
@@ -7,14 +7,89 @@ import {
   faCalendarDays,
   faCompass,
   faHouse,
+  faSignOutAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { faUser } from '@fortawesome/free-regular-svg-icons';
 
+const BASE_URL = 'http://localhost:5000';
+
 // ✅ Props mới: hasItinerary — khoá nút "Lịch trình" khi chưa tìm kiếm
 const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, onToggleTheme }) => {
-  const [showAuth, setShowAuth] = useState(false);
-  const [isLogin, setIsLogin] = useState(true);
-  const [showLockTip, setShowLockTip] = useState(false); // tooltip khi click lúc bị khoá
+  const [showAuth,   setShowAuth]   = useState(false);
+  const [isLogin,    setIsLogin]    = useState(true);
+  const [showLockTip,setShowLockTip]= useState(false);
+
+  // ── Auth state ──
+  const [user,       setUser]       = useState(null);   // null = chưa đăng nhập
+  const [email,      setEmail]      = useState('');
+  const [password,   setPassword]   = useState('');
+  const [name,       setName]       = useState('');
+  const [authError,  setAuthError]  = useState('');
+  const [authLoading,setAuthLoading]= useState(false);
+  const [menuOpen,   setMenuOpen]   = useState(false);  // dropdown avatar
+
+  // Kiểm tra session khi load trang
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/auth/me`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (d.success) setUser(d.user); })
+      .catch(() => {});
+
+    // Xử lý Google OAuth redirect ?auth_success=1
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auth_success')) {
+      fetch(`${BASE_URL}/api/auth/me`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => { if (d.success) setUser(d.user); });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const openModal = (loginMode = true) => {
+    setIsLogin(loginMode);
+    setAuthError('');
+    setEmail(''); setPassword(''); setName('');
+    setShowAuth(true);
+  };
+
+  const handleSubmit = async () => {
+    setAuthError(''); setAuthLoading(true);
+    const endpoint = isLogin
+      ? `${BASE_URL}/api/auth/login`
+      : `${BASE_URL}/api/auth/register`;
+    const body = isLogin
+      ? { email, password }
+      : { email, password, name };
+    try {
+      const res  = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUser(data.user);
+        setShowAuth(false);
+      } else {
+        setAuthError(data.error || 'Có lỗi xảy ra');
+      }
+    } catch {
+      setAuthError('Không thể kết nối server');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleGoogle = () => {
+    window.location.href = `${BASE_URL}/api/auth/google?next=${encodeURIComponent(window.location.href)}`;
+  };
+
+  const handleLogout = async () => {
+    await fetch(`${BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+    setUser(null);
+    setMenuOpen(false);
+  };
 
   // Tất cả scroll đều uỷ quyền cho App.js (onNavigate) để isScrollingRef hoạt động đúng
   const handleHomeClick = () => {
@@ -135,21 +210,21 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
       backdropFilter: 'blur(15px)',
     },
     modal: {
-      backgroundColor: 'white', width: '750px', maxWidth: '90%', maxHeight: '85vh',
+      backgroundColor: isDark ? '#0f172a' : 'white', width: '750px', maxWidth: '90%', maxHeight: '85vh',
       overflowY: 'auto', borderRadius: '50px', padding: '60px 70px',
       position: 'relative', boxShadow: '0 40px 100px rgba(0,0,0,0.5)',
     },
     closeBtn: {
       position: 'absolute', top: '35px', right: '40px',
-      background: 'none', border: 'none', fontSize: '45px', color: '#9ca3af', cursor: 'pointer',
+      background: 'none', border: 'none', fontSize: '45px', color: isDark ? '#64748b' : '#9ca3af', cursor: 'pointer',
     },
-    title: { fontSize: '50px', fontWeight: '900', color: '#111827', marginBottom: '10px', textAlign: 'center' },
-    subtitle: { color: '#6b7280', fontSize: '22px', textAlign: 'center', marginBottom: '40px' },
+    title: { fontSize: '50px', fontWeight: '900', color: isDark ? '#ffffff' : '#111827', marginBottom: '10px', textAlign: 'center' },
+    subtitle: { color: isDark ? '#94a3b8' : '#6b7280', fontSize: '22px', textAlign: 'center', marginBottom: '40px' },
     inputGroup: { marginBottom: '25px', position: 'relative' },
-    inputIcon: { position: 'absolute', left: '30px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '26px' },
-    input: { width: '100%', padding: '22px 30px 22px 80px', borderRadius: '25px', border: '3px solid #f1f5f9', fontSize: '22px', outline: 'none', boxSizing: 'border-box' },
-    submitBtn: { width: '100%', backgroundColor: '#111827', color: 'white', padding: '22px', borderRadius: '25px', fontSize: '24px', fontWeight: '800', border: 'none', cursor: 'pointer', marginTop: '10px' },
-    switchText: { textAlign: 'center', marginTop: '30px', fontSize: '20px', color: '#4b5563' },
+    inputIcon: { position: 'absolute', left: '30px', top: '50%', transform: 'translateY(-50%)', color: isDark ? '#64748b' : '#9ca3af', fontSize: '26px' },
+    input: { width: '100%', padding: '22px 30px 22px 80px', borderRadius: '25px', border: isDark ? '3px solid #1e293b' : '3px solid #f1f5f9', fontSize: '22px', outline: 'none', boxSizing: 'border-box', backgroundColor: isDark ? '#1e293b' : 'white', color: isDark ? '#ffffff' : '#111827' },
+    submitBtn: { width: '100%', backgroundColor: isDark ? '#10b981' : '#111827', color: 'white', padding: '22px', borderRadius: '25px', fontSize: '24px', fontWeight: '800', border: 'none', cursor: 'pointer', marginTop: '10px' },
+    switchText: { textAlign: 'center', marginTop: '30px', fontSize: '20px', color: isDark ? '#94a3b8' : '#4b5563' },
     switchLink: { color: '#10b981', fontWeight: '800', cursor: 'pointer', textDecoration: 'underline', marginLeft: '10px' },
   };
 
@@ -294,11 +369,98 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
               </div>
             </div>
 
-            {/* ĐĂNG NHẬP */}
-            <button style={styles.loginBtn} onClick={() => setShowAuth(true)}>
-              Đăng nhập
-              <FontAwesomeIcon icon={faArrowRightToBracket} />
-            </button>
+            {/* ĐĂNG NHẬP / AVATAR */}
+            {user ? (
+              <div style={{ position: 'relative' }}>
+                <div
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 18px 10px 10px',
+                    borderRadius: 9999, cursor: 'pointer',
+                    background: 'rgba(255,255,255,0.15)',
+                    border: '2px solid rgba(255,255,255,0.25)',
+                    transition: '0.2s',
+                  }}
+                >
+                  {user.avatar ? (
+                    <img src={user.avatar} alt={user.name}
+                      style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%',
+                      background: 'linear-gradient(135deg,#10b981,#059669)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 16, fontWeight: 900, color: 'white',
+                    }}>
+                      {(user.name || user.email || '?')[0].toUpperCase()}
+                    </div>
+                  )}
+                  <span style={{ color: 'white', fontWeight: 700, fontSize: 18, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user.name || user.email}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>▼</span>
+                </div>
+
+                {/* Dropdown */}
+                {menuOpen && (
+                  <>
+                    <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 9998 }} />
+                    <div style={{
+                      position: 'absolute', top: 'calc(100% + 10px)', right: 0,
+                      minWidth: 220,
+                      background: isDark ? '#1e293b' : 'white',
+                      border: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
+                      borderRadius: 20, overflow: 'hidden',
+                      boxShadow: '0 20px 50px rgba(0,0,0,0.25)',
+                      zIndex: 9999,
+                    }}>
+                      <div style={{ padding: '16px 20px', borderBottom: isDark ? '1px solid #334155' : '1px solid #f1f5f9' }}>
+                        <div style={{ fontWeight: 800, fontSize: 16, color: isDark ? '#f8fafc' : '#111827' }}>{user.name}</div>
+                        <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{user.email}</div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (onNavigate) onNavigate('dashboard'); // Chuyển sang trang Profile
+                          setMenuOpen(false); // Đóng menu
+                        }}
+                        style={{
+                          width: '100%', padding: '14px 20px', border: 'none',
+                          background: 'none', display: 'flex', alignItems: 'center', gap: 10,
+                          cursor: 'pointer', fontSize: 15, fontWeight: 700, 
+                          color: isDark ? '#f8fafc' : '#111827',
+                          textAlign: 'left',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = isDark ? '#334155' : '#f1f5f9'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                      >
+                        <FontAwesomeIcon icon={faUser} /> Hồ sơ cá nhân
+                      </button>
+
+                      <button
+                        onClick={handleLogout}
+                        style={{
+                          width: '100%', padding: '14px 20px', border: 'none',
+                          background: 'none', display: 'flex', alignItems: 'center', gap: 10,
+                          cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#ef4444',
+                          textAlign: 'left',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                      >
+                        <FontAwesomeIcon icon={faSignOutAlt} /> Đăng xuất
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <button style={styles.loginBtn} onClick={() => openModal(true)}>
+                Đăng nhập
+                <FontAwesomeIcon icon={faArrowRightToBracket} />
+              </button>
+            )}
           </nav>
         </div>
 
@@ -309,26 +471,88 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
               <button style={styles.closeBtn} onClick={() => setShowAuth(false)}>
                 <FontAwesomeIcon icon={faXmark} />
               </button>
+
               <h2 style={styles.title}>{isLogin ? 'Chào mừng trở lại' : 'Tạo tài khoản mới'}</h2>
               <p style={styles.subtitle}>{isLogin ? 'Đăng nhập để khám phá lịch trình' : 'Tham gia cộng đồng S-Trip'}</p>
-              <div style={styles.inputGroup}>
-                <div style={styles.inputIcon}><FontAwesomeIcon icon={faUser} /></div>
-                <input type="text" placeholder="Tên tài khoản hoặc Email" style={styles.input} />
+
+              {/* Nút Google */}
+              <button
+                onClick={handleGoogle}
+                style={{
+                  width: '100%', padding: '20px', borderRadius: 25, marginBottom: 24,
+                  border: isDark ? '3px solid #334155' : '3px solid #e2e8f0',
+                  background: isDark ? '#1e293b' : 'white',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
+                  cursor: 'pointer', fontWeight: 800, fontSize: 20,
+                  color: isDark ? '#f8fafc' : '#374151',
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Tiếp tục với Google
+              </button>
+
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+                <div style={{ flex: 1, height: 2, background: isDark ? '#1e293b' : '#f1f5f9' }} />
+                <span style={{ color: '#94a3b8', fontWeight: 700, fontSize: 16 }}>hoặc</span>
+                <div style={{ flex: 1, height: 2, background: isDark ? '#1e293b' : '#f1f5f9' }} />
               </div>
-              <div style={styles.inputGroup}>
-                <div style={styles.inputIcon}><FontAwesomeIcon icon={faLock} /></div>
-                <input type="password" placeholder="Mật khẩu" style={styles.input} />
-              </div>
+
+              {/* Tên — chỉ khi đăng ký */}
               {!isLogin && (
                 <div style={styles.inputGroup}>
-                  <div style={styles.inputIcon}><FontAwesomeIcon icon={faLock} /></div>
-                  <input type="password" placeholder="Xác nhận mật khẩu" style={styles.input} />
+                  <div style={styles.inputIcon}><FontAwesomeIcon icon={faUser} /></div>
+                  <input
+                    type="text" placeholder="Họ và tên" style={styles.input}
+                    value={name} onChange={e => setName(e.target.value)}
+                  />
                 </div>
               )}
-              <button style={styles.submitBtn}>{isLogin ? 'Đăng nhập ngay' : 'Đăng ký tài khoản'}</button>
+
+              <div style={styles.inputGroup}>
+                <div style={styles.inputIcon}><FontAwesomeIcon icon={faUser} /></div>
+                <input
+                  type="email" placeholder="Email" style={styles.input}
+                  value={email} onChange={e => setEmail(e.target.value)}
+                />
+              </div>
+
+              <div style={styles.inputGroup}>
+                <div style={styles.inputIcon}><FontAwesomeIcon icon={faLock} /></div>
+                <input
+                  type="password" placeholder="Mật khẩu" style={styles.input}
+                  value={password} onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                />
+              </div>
+
+              {/* Error */}
+              {authError && (
+                <div style={{
+                  padding: '14px 20px', borderRadius: 16, marginBottom: 16,
+                  background: '#fef2f2', border: '2px solid #fecaca',
+                  color: '#dc2626', fontSize: 18, fontWeight: 600,
+                }}>
+                  ⚠️ {authError}
+                </div>
+              )}
+
+              <button
+                style={{ ...styles.submitBtn, opacity: authLoading ? 0.7 : 1 }}
+                onClick={handleSubmit}
+                disabled={authLoading}
+              >
+                {authLoading ? '⏳ Đang xử lý...' : (isLogin ? 'Đăng nhập ngay' : 'Đăng ký tài khoản')}
+              </button>
+
               <div style={styles.switchText}>
                 {isLogin ? 'Chưa có tài khoản?' : 'Đã có tài khoản?'}
-                <span style={styles.switchLink} onClick={() => setIsLogin(!isLogin)}>
+                <span style={styles.switchLink} onClick={() => { setIsLogin(!isLogin); setAuthError(''); }}>
                   {isLogin ? 'Đăng ký' : 'Đăng nhập'}
                 </span>
               </div>
