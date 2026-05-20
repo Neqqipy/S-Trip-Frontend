@@ -210,13 +210,16 @@ function fallbackCoords(b, idx, total) {
 
 // ── Export chính ─────────────────────────────────────────────
 export async function enrichPlacesWithCoords(location, tours = [], foods = []) {
-  const b = await getProvinceBounds(location);
-  await sleep(400);
-
   const all = [
     ...tours.map(p => ({ ...p, _g: 'tours' })),
     ...foods.map(p => ({ ...p, _g: 'foods' })),
   ];
+
+  // ── Fast check: nếu mọi place đã có coords → skip getProvinceBounds hoàn toàn ──
+  const allHaveCoords = all.length > 0 && all.every(p => (p.lat || p.latitude) && (p.lng || p.longitude));
+  const b = allHaveCoords ? null : await getProvinceBounds(location);
+  if (!allHaveCoords) await sleep(400);
+
   const enrichedTours = [];
   const enrichedFoods = [];
   let fbIdx = 0;
@@ -226,7 +229,7 @@ export async function enrichPlacesWithCoords(location, tours = [], foods = []) {
     const eLng = place.lng || place.longitude;
     let result;
 
-    if (eLat && eLng && inBounds(+eLat, +eLng, b)) {
+    if (eLat && eLng && (allHaveCoords || inBounds(+eLat, +eLng, b))) {
       // Tọa độ đã có sẵn (từ SerpAPI) → dùng luôn, không geocode
       result = { ...place, lat: +eLat, lng: +eLng };
     } else {

@@ -7,6 +7,18 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { enrichPlacesWithCoords, getProvinceBounds, inBounds } from '../services/geocodeUtils';
 
+const BASE_URL = '';
+const proxyImg = (url) => {
+  if (!url) return null;
+  if (url.includes('placehold.co') || url.includes('placeholder')) return url;
+  const googleDomains = ['googleusercontent.com','ggpht.com','googleapis.com','googleapi'];
+  if (googleDomains.some(d => url.includes(d))) {
+    let u = url.includes('=') ? url.replace(/=.*$/, '=w300-h300-k-no') : url + '=w300-h300-k-no';
+    return BASE_URL + '/api/proxy-image?url=' + encodeURIComponent(u);
+  }
+  return url;
+};
+
 // ── Mock fallback ─────────────────────────────────────────────
 const mockTours = [
   { name: "Địa điểm tham quan 1", thumbnail: null },
@@ -26,22 +38,55 @@ const SESSION_META = [
 ];
 
 function buildDayPlaces(data) {
+  const numDays = parseInt(data.days?.toString().split(' ')[0]) || 3;
+
+  // ── Ưu tiên đọc daily_slots từ backend (đã chia sẵn theo ngày/buổi) ──
+  if (data.daily_slots?.length > 0) {
+    return data.daily_slots.slice(0, numDays).map((daySlot) =>
+      SESSION_META.flatMap((s) => {
+        const slotKey = s.key; // 'morning' | 'afternoon' | 'evening'
+        const slot    = daySlot[slotKey] || {};
+        const tour    = slot.tour || {};
+        const food    = slot.food || {};
+        return [
+          {
+            session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'tour',
+            name: tour.name || '', thumbnail: tour.thumbnail || null,
+            lat: tour.lat || tour.latitude || null,
+            lng: tour.lng || tour.longitude || null,
+          },
+          {
+            session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'food',
+            name: food.name || '', thumbnail: food.thumbnail || null,
+            lat: food.lat || food.latitude || null,
+            lng: food.lng || food.longitude || null,
+          },
+        ];
+      })
+    );
+  }
+
+  // ── Fallback: phân bổ từ realTours/realFoods theo thứ tự tuyến tính ──
+  // Không dùng modulo để tránh lặp địa điểm sai chỗ
   const toursPool = data.realTours?.length > 0 ? data.realTours : mockTours;
   const foodsPool = data.realFoods?.length > 0 ? data.realFoods : mockFoods;
-  const numDays   = parseInt(data.days?.toString().split(' ')[0]) || 3;
   const days = [];
+  let tourCursor = 0, foodCursor = 0;
   for (let i = 0; i < numDays; i++) {
     const places = [];
-    SESSION_META.forEach((s, si) => {
-      const idx = i * 3 + si;
-      const tour = toursPool[idx % toursPool.length];
-      const food = foodsPool[idx % foodsPool.length];
-      places.push({ session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'tour',
+    SESSION_META.forEach((s) => {
+      const tour = toursPool[tourCursor] || mockTours[0];
+      const food = foodsPool[foodCursor] || mockFoods[0];
+      tourCursor++;
+      foodCursor++;
+      places.push({
+        session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'tour',
         name: tour.name, thumbnail: tour.thumbnail || null,
         lat: tour.lat || tour.latitude || null,
         lng: tour.lng || tour.longitude || null,
       });
-      places.push({ session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'food',
+      places.push({
+        session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'food',
         name: food.name, thumbnail: food.thumbnail || null,
         lat: food.lat || food.latitude || null,
         lng: food.lng || food.longitude || null,
@@ -516,12 +561,57 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose, isDark }) => {
     setLoading(true);
     setMapHtml('');
     setActiveLeg(-1);
-    setLoadingMsg('Đang tìm tọa độ địa điểm...');
 
+    // ── Fast path: địa điểm đã có lat/lng từ backend → render ngay, xử lý hotel riêng ──
+    const allHaveCoords = dayPlaces.length > 0 && dayPlaces.every(p => p.lat && p.lng);
+
+    if (allHaveCoords) {
+      const dayMarkers = dayPlaces.map(p => ({ ...p, lat: parseFloat(p.lat), lng: parseFloat(p.lng) }));
+
+      // Hotel đã có tọa độ → dùng luôn
+      const hotelHasCoords = hotelInfo?.lat && hotelInfo?.lng;
+      if (hotelHasCoords) {
+        const hotelMarker = { ...hotelInfo, type: 'hotel', lat: parseFloat(hotelInfo.lat), lng: parseFloat(hotelInfo.lng) };
+        const results = [hotelMarker, ...dayMarkers];
+        if (!cancelled) {
+          setResolvedMarkers(results);
+          setMapHtml(buildLeafletHtml(results, isDark));
+          setLoading(false);
+        }
+        return () => { cancelled = true; };
+      }
+
+      // Hotel thiếu tọa độ → render địa điểm trước, geocode hotel song song
+      if (!cancelled) {
+        setResolvedMarkers(dayMarkers);
+        setMapHtml(buildLeafletHtml(dayMarkers, isDark));
+        setLoading(false);
+      }
+
+      // Geocode hotel bất đồng bộ — khi xong thì prepend vào markers
+      if (hotelInfo) {
+        setLoadingMsg('Đang xác định vị trí khách sạn...');
+        resolveMarkers(hotelInfo, [], data.location).then(resolved => {
+          if (cancelled) return;
+          const hotelMarker = resolved.find(m => m.type === 'hotel');
+          if (hotelMarker) {
+            const results = [hotelMarker, ...dayMarkers];
+            setResolvedMarkers(results);
+            setMapHtml(buildLeafletHtml(results, isDark));
+          }
+          setLoadingMsg('');
+        });
+      }
+
+      return () => { cancelled = true; };
+    }
+
+    // ── Slow path: địa điểm thiếu tọa độ → geocode toàn bộ như cũ ──
+    setLoadingMsg('Đang tìm tọa độ địa điểm...');
     resolveMarkers(hotelInfo, dayPlaces, data.location).then(results => {
       if (cancelled) return;
-      if (results.length > 0) setLoadingMsg('Đang vẽ tuyến đường...');
-      setResolvedMarkers(results); // lưu để directions dùng
+      if (results.length > 0) setLoadingMsg('');
+      setResolvedMarkers(results);
       setMapHtml(buildLeafletHtml(results, isDark));
       setLoading(false);
     });
@@ -643,7 +733,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose, isDark }) => {
                     >
                       <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, background: isActive ? '#059669' : '#10b981', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.15)', border:'2px solid white', transition:'0.15s' }}>
                         {hotelInfo.thumbnail
-                          ? <img src={hotelInfo.thumbnail} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
+                          ? <img src={proxyImg(hotelInfo.thumbnail)} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} onError={e => { e.target.onerror=null; e.target.style.display='none'; }} />
                           : <span style={{ fontSize:14 }}>🏨</span>}
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
@@ -689,7 +779,7 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose, isDark }) => {
                         >
                           <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, background: isActive ? session.color : typeColor(place.type), display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.15)', border:'2px solid white', transition:'0.15s' }}>
                             {place.thumbnail
-                              ? <img src={place.thumbnail} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
+                              ? <img src={proxyImg(place.thumbnail)} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} onError={e => { e.target.onerror=null; e.target.style.display='none'; }} />
                               : <FontAwesomeIcon icon={typeIcon(place.type)} style={{ color:'white', fontSize:13 }} />}
                           </div>
                           <div style={{ position:'absolute', left:34, top:8, width:14, height:14, borderRadius:'50%', backgroundColor: isDark ? '#0f172a' : 'white', border:`1.5px solid ${isActive ? session.color : typeColor(place.type)}`, fontSize:8, fontWeight:900, color: isActive ? session.color : typeColor(place.type), display:'flex', alignItems:'center', justifyContent:'center', zIndex:2, transition:'0.15s' }}>

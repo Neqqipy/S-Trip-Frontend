@@ -9,6 +9,7 @@ import {
   faBookmark as faBookmarkSolid,
   faHeart as faHeartSolid,
   faMugHot, faChevronLeft, faChevronRight,
+  faArrowUp, faRightLeft,
 } from '@fortawesome/free-solid-svg-icons';
 import { 
   faCalendar as faRegularCalendar,
@@ -940,7 +941,7 @@ const SpecialtyCard = ({ item, location, isDark }) => {
 };
 
 // 🗺️ MAP MODAL POPUP
-const MapModal = ({ placeName, query, onClose }) => {
+const MapModal = ({ placeName, query, placeId, lat, lng, onClose }) => {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -998,10 +999,30 @@ const MapModal = ({ placeName, query, onClose }) => {
             </button>
           </div>
           <div style={{ height: '450px', flexShrink: 0 }}>
-            <iframe title={`map-popup-${placeName}`} width="100%" height="100%" style={{ border: 0, display: 'block' }} src={`https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`} allowFullScreen />
+            {/* Fix 1: Ưu tiên place_id để ghim chính xác ngay lần đầu render;
+                       fallback về query-string khi không có place_id */}
+            <iframe
+              title={`map-popup-${placeName}`}
+              width="100%" height="100%"
+              style={{ border: 0, display: 'block' }}
+              src={
+                (lat && lng)
+                  ? `https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed`
+                  : `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`
+              }
+              allowFullScreen
+            />
           </div>
           <div style={{ padding: '14px 24px', borderTop: '1px solid #f1f5f9', flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
-            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`} target="_blank" rel="noopener noreferrer" style={{ padding: '10px 20px', borderRadius: '10px', backgroundColor: '#3b82f6', color: 'white', fontWeight: '700', fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '7px' }}>
+            <a
+              href={
+                placeId
+                  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}&query_place_id=${placeId}`
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+              }
+              target="_blank" rel="noopener noreferrer"
+              style={{ padding: '10px 20px', borderRadius: '10px', backgroundColor: '#3b82f6', color: 'white', fontWeight: '700', fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '7px' }}
+            >
               <FontAwesomeIcon icon={faLocationArrow} /> Mở Google Maps
             </a>
           </div>
@@ -1193,6 +1214,35 @@ const ReviewsModal = ({ placeName, placeId, onClose, locationName = '' , placeTy
   );
 };
 
+// ✈️ Airline logo helper — trả về data URI SVG tránh bị chặn hotlink
+const getAirlineLogo = (name = '', url = '') => {
+  const n = name.toLowerCase();
+  const u = (url || '').toLowerCase();
+
+  // ĐÃ SỬA: Xóa chữ 'airlines/' trong tất cả các đường dẫn
+  if (n.includes('vietnam airlines') || u.includes('vietnam-airlines') || u.includes('/vn.png') || u.includes('vna')) {
+    return '/assets/vna.png'; 
+  }
+  
+  if (n.includes('vietjet') || n.includes('viet jet') || u.includes('/vj.png') || u.includes('vietjet')) {
+    return '/assets/vj.png';
+  }
+  
+  if (n.includes('bamboo') || u.includes('bamboo') || u.includes('/qh.png')) {
+    return '/assets/bamboo.png';
+  }
+  
+  if (n.includes('pacific') || n.includes('jetstar') || u.includes('pacific') || u.includes('/bl.png')) {
+    return '/assets/pacific.png';
+  }
+  
+  if (n.includes('vietravel') || u.includes('vietravel') || u.includes('/vu.png')) {
+    return '/assets/vietravel.png'; 
+  }
+
+  return null; 
+};
+
 // 🎨 PlaceCard
 const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit, guestCount, isDark }) => {
   const [reviewsOpen, setReviewsOpen] = useState(false);
@@ -1237,7 +1287,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
   const handleLocation = () => {
     const query = `${data.name} ${locationName}`;
     if (setMapQuery) setMapQuery(query);
-    else if (onShowMap) onShowMap(query, data.name);
+    else if (onShowMap) onShowMap(query, data.name, data.place_id || '', data.lat || null, data.lng || null);
   };
 
   const handleImgError = async () => {
@@ -1252,7 +1302,11 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
     } catch (_) {}
   };
 
-  const displayImg = !imgError ? proxyImage(data.thumbnail) : (fallbackImg ? proxyImage(fallbackImg) : null);
+  const airlineName = isFlight ? (data.name || data.airline || '') : '';
+  const airlineLogo = isFlight ? getAirlineLogo(airlineName) : null;
+  const displayImg = airlineLogo
+    ? airlineLogo
+    : (!imgError ? proxyImage(data.thumbnail) : (fallbackImg ? proxyImage(fallbackImg) : null));
 
   return (
     <div
@@ -1316,7 +1370,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
       </div>}
 
       {/* Thêm điều kiện isFlight ? 'white' : ... để ép nền trắng cho logo hãng bay */}
-      <div style={{ width: '120px', height: '120px', flexShrink: 0, borderRadius: '14px', overflow: 'hidden', backgroundColor: isFlight ? 'white' : (isDark ? '#111827' : '#f8fafc'), display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ width: '120px', height: '120px', flexShrink: 0, borderRadius: '14px', overflow: 'hidden', backgroundColor: isDark ? '#111827' : '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         {(data.thumbnail || fallbackImg) && displayImg ? (
           <img src={displayImg} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover', transform: isHovered ? 'scale(1.09)' : 'scale(1)', transition: 'transform 0.4s ease', display: 'block' }} onError={imgError ? (e => { e.target.onerror = null; e.target.src = 'https://placehold.co/120x120?text=S-Trip'; }) : handleImgError} />
         ) : (
@@ -1421,23 +1475,27 @@ const TransportCard = ({ opt, isCombined, isDark }) => {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px', marginTop: opt.recommended ? '8px' : '0' }}>
-        {opt.thumbnail && (
-          <div style={{ 
-            width: '50px', height: '50px', borderRadius: '12px', flexShrink: 0, overflow: 'hidden',
-            backgroundColor: isDark ? '#2e333d' : '#f8fafc', 
-            border: `1px solid ${isDark ? '#4b5563' : '#e2e8f0'}`, 
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: opt.label.includes("Vietnam Airlines") ? '0' : '5px'
-          }}>
-            <img
-              src={opt.label.includes("Vietnam Airlines") 
-                ? "https://thuvienvector.vn/wp-content/uploads/2025/04/hoa-sen-vang-logo-vietnam-airlines.jpg" 
-                : proxyImage(opt.thumbnail)} 
-              alt="logo" 
-              style={{ width: '100%', height: '100%', objectFit: opt.label.includes("Vietnam Airlines") ? 'cover' : 'contain' }} 
-            />
-          </div>
-        )}
+        {(() => {
+          const airlineLogoUrl = getAirlineLogo(opt.label, opt.thumbnail) || 
+                       (opt.legs || []).reduce((found, l) => found || getAirlineLogo(l.label || '', opt.thumbnail), null);
+          const logoSrc = airlineLogoUrl || (opt.thumbnail ? proxyImage(opt.thumbnail) : null);
+          return logoSrc && (
+            <div style={{ 
+              width: '50px', height: '50px', borderRadius: '12px', flexShrink: 0, overflow: 'hidden',
+              backgroundColor: isDark ? '#2e333d' : '#f8fafc',
+              border: `1px solid ${isDark ? '#4b5563' : '#e2e8f0'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '0'
+            }}>
+              <img
+                src={logoSrc}
+                alt="logo" 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+            </div>
+          );
+        })()}
         <div style={{ fontSize: '20px', fontWeight: '900', color: hovered ? '#10b981' : (isDark ? '#ffffff' : '#111827'), transition: 'color 0.2s' }}>
           {opt.label}
         </div>
@@ -1692,7 +1750,7 @@ const ICalButton = ({ dailyPlans, initialData, currentHotel, isDark }) => {
 // Dùng html2canvas (npm install html2canvas)
 // ─────────────────────────────────────────────────────────────
 
-// Chuyển tất cả <img> trong el sang blob URL để html2canvas đọc được (fix ảnh trắng)
+// Chuyển tất cả <img> và background-image trong el sang blob URL để html2canvas đọc được
 const _preloadImages = async (el) => {
   const imgs = [...el.querySelectorAll('img')];
   const origSrcs = [];
@@ -1701,14 +1759,26 @@ const _preloadImages = async (el) => {
     origSrcs[i] = img.src;
     if (!img.src || img.src.startsWith('data:') || img.src.startsWith('blob:')) return;
     try {
-      const res  = await fetch(img.src, { mode: 'cors' });
+      // Thử fetch qua proxy backend trước
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(img.src)}`;
+      const res = await fetch(proxyUrl, { credentials: 'include' });
+      if (!res.ok) throw new Error('proxy fail');
       const blob = await res.blob();
       img.src = URL.createObjectURL(blob);
       await new Promise(r => { img.onload = r; img.onerror = r; });
-    } catch (_) { /* giữ nguyên nếu lỗi */ }
+    } catch (_) {
+      // fallback: thử fetch trực tiếp
+      try {
+        const res = await fetch(img.src, { mode: 'no-cors' });
+        const blob = await res.blob();
+        if (blob.size > 0) {
+          img.src = URL.createObjectURL(blob);
+          await new Promise(r => { img.onload = r; img.onerror = r; });
+        }
+      } catch (_2) { /* giữ nguyên */ }
+    }
   }));
 
-  // Trả về hàm restore để hoàn lại src gốc sau khi chụp
   return () => imgs.forEach((img, i) => { img.src = origSrcs[i]; });
 };
 
@@ -2045,12 +2115,12 @@ const ShareButton = ({ dailyPlans, initialData, currentHotel, plan, isDark }) =>
 };
 
 // ── COMPONENT CHÍNH ──────────────────────────────────────────
-const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, isDark = false }) => {
+const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, onSwap, isDark = false }) => {
   const numDays  = parseInt(initialData?.days?.toString().split(' ')[0]) || 3;
   const [dailyPlans,  setDailyPlans]  = useState([]);
-  const [mapQuery,    setMapQuery]    = useState('');
+  const [mapQuery,    setMapQuery]    = useState(() => { const h = (initialData.realHotels || [])[0]; return h ? `${h.name} ${initialData.location || ''}`.trim() : (initialData.location || ''); });
   const [modal,       setModal]       = useState({ show: false, type: '', day: null, session: '', subType: '' });
-  const [mapModal,    setMapModal]    = useState({ show: false, query: '', placeName: '' });
+  const [mapModal,    setMapModal]    = useState({ show: false, query: '', placeName: '', placeId: '', lat: null, lng: null });
   const contentRef = useRef(null);
 
   // 💾 Trạng thái lưu lịch trình — đồng bộ nút trong và ngoài action panel
@@ -2100,6 +2170,14 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, isDark = fa
   // 🍜 State nút Tham Khảo Đặc Sản
   const [specialtiesOpen, setSpecialtiesOpen] = useState(false);
 
+  // 🔝 Back to top
+  const [showBackTop, setShowBackTop] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShowBackTop(window.scrollY > 400);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   // 🚀 Prefetch đồ uống + đặc sản ngay khi mount (chạy ngầm, không block UI)
   useEffect(() => {
     const loc = initialData.location;
@@ -2135,13 +2213,28 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, isDark = fa
   const realTours = (initialData.realTours || []).map(normalizeActivity);
   const realFoods = (initialData.realFoods || []).map(normalizeActivity);
 
-  const realFlights = initialData.realFlights || initialData.flights || [];
+  const realFlights = (initialData.realFlights || initialData.flights || []).filter(f => f.airline && f.price);
 
   const hotelsPool = realHotels.length > 0 ? realHotels : mockRepo['Khách sạn'];
   const toursPool  = realTours.length  > 0 ? realTours  : mockRepo['Điểm tham quan'];
   const foodsPool  = realFoods.length  > 0 ? realFoods  : mockRepo['Địa điểm ăn uống'];
 
   const [currentHotel, setCurrentHotel] = useState(hotelsPool[0]);
+
+  // Khi realHotels load xong (async) → cập nhật currentHotel + mapQuery luôn
+  useEffect(() => {
+    if (realHotels.length > 0) {
+      setCurrentHotel(prev => {
+        // Chỉ reset nếu hotel hiện tại là mock (không có lat/lng thật)
+        const isMock = !prev?.lat && !prev?.lng;
+        if (isMock) {
+          setMapQuery(`${realHotels[0].name} ${initialData.location}`);
+          return realHotels[0];
+        }
+        return prev;
+      });
+    }
+  }, [initialData.realHotels]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const plans = [];
@@ -2177,7 +2270,7 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, isDark = fa
     });
   }, [initialData.realTours, initialData.realFoods]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleShowMap = (query, placeName) => setMapModal({ show: true, query, placeName });
+  const handleShowMap = (query, placeName, placeId = '', lat = null, lng = null) => setMapModal({ show: true, query, placeName, placeId, lat, lng });
 
   const handleUpdate = (newVal) => {
     if (modal.type === 'Khách sạn') {
@@ -2197,11 +2290,12 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, isDark = fa
   };
 
   return (
+    <>
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px' }}>
 
       {/* 🗺️ MAP MODAL */}
       {mapModal.show && (
-        <MapModal placeName={mapModal.placeName} query={mapModal.query} onClose={() => setMapModal({ show: false, query: '', placeName: '' })} />
+        <MapModal placeName={mapModal.placeName} query={mapModal.query} placeId={mapModal.placeId} lat={mapModal.lat} lng={mapModal.lng} onClose={() => setMapModal({ show: false, query: '', placeName: '', placeId: '', lat: null, lng: null })} />
       )}
 
       {/* 🧋 DRINKS PANEL */}
@@ -2258,7 +2352,7 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, isDark = fa
       )}
 
       {/* HEADER — bọc từ đây đến hết dailyPlans bằng contentRef để chụp ảnh */}
-      <div ref={contentRef}>
+      <div ref={contentRef} id="itinerary-content" data-screenshot="itinerary">
       <div style={{ textAlign: 'center', marginBottom: '60px' }}>
         <h1 style={{ fontSize: '80px', fontWeight: '900' }}>
           <FontAwesomeIcon icon={faWandMagicSparkles} style={{ color: '#10b981', marginRight: '18px' }} />
@@ -2309,9 +2403,7 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, isDark = fa
                     data={{ 
                       airline: f.airline, 
                       price: f.price?.toLocaleString() + "đ", 
-                      thumbnail: f.airline === "Vietnam Airlines" 
-                        ? "https://thuvienvector.vn/wp-content/uploads/2025/04/hoa-sen-vang-logo-vietnam-airlines.jpg" 
-                        : f.thumbnail, 
+                      thumbnail: f.thumbnail, 
                       desc: `Hãng bay: ${f.airline} • Thời gian bay: ${f.duration || 'N/A'}` 
                     }} 
                     locationName={initialData.location} 
@@ -2333,7 +2425,20 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, isDark = fa
     <PlaceCard type="Khách sạn" data={currentHotel} locationName={initialData.location} setMapQuery={setMapQuery} guestCount={passengers} onEdit={() => setModal({ show: true, type: 'Khách sạn' })} isDark={isDark} />
     
     <div style={{ borderRadius: '25px', overflow: 'hidden', height: '450px', border: isDark ? 'none' : '1px solid #e2e8f0', position: 'relative' }}>
-      <iframe title="map" width="100%" height="100%" style={{ border: 0, display: 'block' }} src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`} />
+      {/* Fix 1: Dùng place_id để ghim chính xác ngay lần render đầu tiên.
+                  Fallback về query-string nếu chưa có place_id */}
+      <iframe
+        title="map"
+        width="100%" height="100%"
+        style={{ border: 0, display: 'block' }}
+        src={
+          // Ưu tiên lat/lng → ghim chuẩn xác, không cần API key
+          // Fallback: query-string tên khách sạn
+          (currentHotel?.lat && currentHotel?.lng)
+            ? `https://maps.google.com/maps?q=${currentHotel.lat},${currentHotel.lng}&z=16&output=embed`
+            : `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`
+        }
+      />
       {/* Overlay hiển thị khi chụp ảnh (iframe không chụp được) */}
       <div className="map-screenshot-overlay" style={{
         display: 'none',
@@ -2527,101 +2632,44 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, isDark = fa
       })}
       </div>{/* end contentRef */}
 
-      {/* ── ACTION PANEL ── */}
-      <style>{`
-        @keyframes apFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-        .ap-card {
-          position: relative; display: flex; flex-direction: column; align-items: flex-start;
-          gap: 6px; padding: 20px 22px; border-radius: 20px; border: none; cursor: pointer;
-          transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), box-shadow 0.22s ease, background 0.2s;
-          overflow: hidden; text-align: left;
-        }
-        .ap-card::before {
-          content: ''; position: absolute; inset: 0; opacity: 0;
-          transition: opacity 0.2s;
-          background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 60%);
-          pointer-events: none;
-        }
-        .ap-card:hover::before { opacity: 1; }
-        .ap-card:hover { transform: translateY(-5px) scale(1.025); }
-        .ap-card:active { transform: scale(0.97); }
-        .ap-icon-ring {
-          width: 44px; height: 44px; border-radius: 14px;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 22px; margin-bottom: 4px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        .ap-label { font-size: 15px; font-weight: 900; color: white; line-height: 1.2; }
-        .ap-sub   { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.72); }
-      `}</style>
+      {/* ── ACTION SPEED DIAL ── */}
+      <ActionSpeedDial
+        isDark={isDark}
+        handleSaveSchedule={handleSaveSchedule}
+        scheduleSaveLoading={scheduleSaveLoading}
+        scheduleSaved={scheduleSaved}
+        dailyPlans={dailyPlans}
+        initialData={initialData}
+        currentHotel={currentHotel}
+        contentRef={contentRef}
+        plan={plan}
+      />
 
-      <div style={{
-        marginTop: '64px', marginBottom: '48px',
-        padding: '32px 36px',
-        borderRadius: '32px',
-        background: isDark
-          ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
-          : 'linear-gradient(135deg, #f0fdf4 0%, #eff6ff 50%, #fdf4ff 100%)',
-        border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)',
-        boxShadow: isDark
-          ? '0 24px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)'
-          : '0 16px 48px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
-      }}>
-        {/* Title */}
-        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: 42, height: 42, borderRadius: 14,
-            background: 'linear-gradient(135deg, #10b981, #059669)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 20, boxShadow: '0 6px 18px rgba(16,185,129,0.35)',
-          }}>✨</div>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: isDark ? '#f8fafc' : '#111827' }}>
-              Lưu & Chia sẻ lịch trình
-            </div>
-            <div style={{ fontSize: 12, color: isDark ? '#64748b' : '#94a3b8', fontWeight: 600 }}>
-              4 tùy chọn · Xuất ra mọi định dạng bạn cần
-            </div>
-          </div>
-        </div>
-
-        {/* 2×2 grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-
-          {/* 1. Lưu Dashboard */}
-          <button className="ap-card" onClick={handleSaveSchedule}
-            disabled={scheduleSaveLoading || scheduleSaved}
-            style={{
-              background: scheduleSaved
-                ? 'linear-gradient(135deg, #059669 0%, #047857 100%)'
-                : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              boxShadow: scheduleSaved ? '0 8px 28px rgba(5,150,105,0.35)' : '0 8px 28px rgba(16,185,129,0.40)',
-              opacity: scheduleSaveLoading ? 0.75 : 1,
-              cursor: scheduleSaved ? 'default' : scheduleSaveLoading ? 'wait' : 'pointer',
-            }}>
-            <div className="ap-icon-ring" style={{ background: 'rgba(255,255,255,0.2)' }}>
-              {scheduleSaveLoading ? '⏳' : scheduleSaved ? '✅' : '💾'}
-            </div>
-            <div className="ap-label">
-              {scheduleSaveLoading ? 'Đang lưu...' : scheduleSaved ? 'Đã lưu!' : 'Lưu vào Dashboard'}
-            </div>
-            <div className="ap-sub">
-              {scheduleSaved ? 'Xem trong tab Lịch trình đã lưu' : 'Truy cập lại bất cứ lúc nào'}
-            </div>
-          </button>
-
-          {/* 2. iCal */}
-          <ICalButtonNew dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} />
-
-          {/* 3. Screenshot */}
-          <ScreenshotButtonNew contentRef={contentRef} location={initialData.location} isDark={isDark} />
-
-          {/* 4. Share */}
-          <ShareButtonNew dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} plan={plan} isDark={isDark} />
-
-        </div>
-      </div>
     </div>
+
+    {showBackTop && (
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        style={{
+          position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)',
+          width: '44px', height: '44px', borderRadius: '50%',
+          background: isDark ? 'rgba(30,41,59,0.75)' : 'rgba(255,255,255,0.75)',
+          backdropFilter: 'blur(10px)',
+          border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          color: isDark ? '#94a3b8' : '#64748b',
+          cursor: 'pointer', zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          opacity: 0.85, transition: 'opacity 0.2s, transform 0.2s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.opacity='1'; e.currentTarget.style.transform='translateX(-50%) translateY(-2px)'; }}
+        onMouseLeave={e => { e.currentTarget.style.opacity='0.85'; e.currentTarget.style.transform='translateX(-50%) translateY(0)'; }}
+        title="Lên đầu trang"
+      >
+        <FontAwesomeIcon icon={faArrowUp} style={{ fontSize: '15px' }} />
+      </button>
+    )}
+  </>
   );
 };
 
@@ -2652,42 +2700,133 @@ const ICalButtonNew = ({ dailyPlans, initialData, currentHotel }) => {
 const ScreenshotButtonNew = ({ contentRef, location, isDark }) => {
   const [status, setStatus] = React.useState('idle');
   const [prog, setProg]     = React.useState('');
+
   const handleClick = async () => {
     if (status !== 'idle') return;
     const el = contentRef?.current;
     if (!el) return;
     setStatus('loading');
+
+    // Helper: fetch 1 ảnh → data URL (thử proxy → cors → trả null nếu lỗi)
+    const toDataUrl = async (src) => {
+      if (!src || src.startsWith('data:') || src.startsWith('blob:')) return src;
+      // Thử 1: proxy backend
+      try {
+        const r = await fetch(`/api/proxy-image?url=${encodeURIComponent(src)}`, { credentials: 'include' });
+        if (r.ok) {
+          const blob = await r.blob();
+          if (blob.size > 100) {
+            return await new Promise((res, rej) => {
+              const fr = new FileReader();
+              fr.onload = () => res(fr.result);
+              fr.onerror = rej;
+              fr.readAsDataURL(blob);
+            });
+          }
+        }
+      } catch (_) {}
+      // Thử 2: fetch trực tiếp (same-origin hoặc CORS OK)
+      try {
+        const r = await fetch(src, { mode: 'cors', credentials: 'omit' });
+        if (r.ok) {
+          const blob = await r.blob();
+          if (blob.size > 100) {
+            return await new Promise((res, rej) => {
+              const fr = new FileReader();
+              fr.onload = () => res(fr.result);
+              fr.onerror = rej;
+              fr.readAsDataURL(blob);
+            });
+          }
+        }
+      } catch (_) {}
+      return null; // để html2canvas bỏ qua, không crash
+    };
+
     try {
       const html2canvas = (await import('html2canvas')).default;
+
+      // ── BƯỚC 1: Đánh index vào từng <img> trong DOM thật ──────────────────
+      // Dùng data-ss-idx thay vì dựa vào thứ tự querySelectorAll để tránh lệch index
+      // giữa DOM thật và cloned DOM.
       setProg('Đang tải ảnh...');
-      const restore = await _preloadImages(el);
+      const imgEls = [...el.querySelectorAll('img')];
+      imgEls.forEach((img, i) => img.setAttribute('data-ss-idx', i));
+
+      const dataUrls = await Promise.all(imgEls.map(img => toDataUrl(img.src)));
+
+      // ── BƯỚC 2: Chụp canvas ────────────────────────────────────────────────
       setProg('Đang chụp...');
       const canvas = await html2canvas(el, {
-        scale: 2, useCORS: true, allowTaint: true,
-        backgroundColor: isDark ? '#111827' : '#ffffff', logging: false,
-        ignoreElements: (n) => n.tagName === 'IFRAME',
-        onclone: (doc) => {
-          doc.querySelectorAll('iframe').forEach(f => { f.style.display = 'none'; });
-          doc.querySelectorAll('.map-screenshot-overlay').forEach(d => { d.style.display = 'flex'; });
-          doc.querySelectorAll('button').forEach(b => { b.style.transform = 'none'; b.style.boxShadow = 'none'; });
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: isDark ? '#0f172a' : '#ffffff',
+        logging: false,
+        imageTimeout: 30000,
+        ignoreElements: (node) => node.tagName === 'IFRAME',
+        onclone: (_doc, cloneEl) => {
+          // Swap ảnh bằng data-ss-idx → không bị lệch dù DOM clone có thêm phần tử
+          cloneEl.querySelectorAll('img[data-ss-idx]').forEach((img) => {
+            const idx = parseInt(img.getAttribute('data-ss-idx'), 10);
+            const dataUrl = dataUrls[idx];
+            if (dataUrl && dataUrl.startsWith('data:')) {
+              img.src = dataUrl;
+              img.crossOrigin = 'anonymous';
+            }
+          });
+          // Ẩn iframe bản đồ (không render được), hiện placeholder
+          _doc.querySelectorAll('iframe').forEach(f => { f.style.display = 'none'; });
+          _doc.querySelectorAll('.map-screenshot-overlay').forEach(d => { d.style.display = 'flex'; });
+          // Bỏ transform hover để layout không bị lệch
+          _doc.querySelectorAll('button, [style*="transform"]').forEach(b => {
+            b.style.transform = 'none';
+            b.style.boxShadow = 'none';
+          });
+          // Ẩn nút Speed Dial / FAB khỏi ảnh chụp
+          _doc.querySelectorAll('.sd-fab, .sd-bubble, .sd-overlay, [class*="ap-card"]').forEach(el => {
+            el.style.display = 'none';
+          });
         },
       });
-      restore();
+
+      // ── BƯỚC 3: Dọn dẹp data-ss-idx ──────────────────────────────────────
+      imgEls.forEach(img => img.removeAttribute('data-ss-idx'));
+
+      // ── BƯỚC 4: Download ảnh PNG ───────────────────────────────────────────
       setProg('Đang lưu...');
       const loc = (location || 's-trip').toLowerCase().replace(/\s+/g, '-');
-      await new Promise(res => {
-        canvas.toBlob(blob => {
+      await new Promise((resolve) => {
+        canvas.toBlob((blob) => {
+          if (!blob) { resolve(); return; }
           const url = URL.createObjectURL(blob);
-          const a = Object.assign(document.createElement('a'), { href: url, download: `strip-${loc}.png` });
-          document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-          res();
+          const a = Object.assign(document.createElement('a'), {
+            href: url, download: `strip-${loc}.png`,
+          });
+          document.body.appendChild(a); a.click();
+          document.body.removeChild(a); URL.revokeObjectURL(url);
+          resolve();
         }, 'image/png');
       });
+
       setStatus('ok');
-    } catch { setStatus('err'); }
-    finally { setProg(''); setTimeout(() => setStatus('idle'), 3000); }
+    } catch (e) {
+      console.error('[Screenshot]', e);
+      // Dọn dẹp index nếu có lỗi giữa chừng
+      try { [...(contentRef?.current?.querySelectorAll('img[data-ss-idx]') || [])].forEach(img => img.removeAttribute('data-ss-idx')); } catch (_) {}
+      setStatus('err');
+    } finally {
+      setProg('');
+      setTimeout(() => setStatus('idle'), 3000);
+    }
   };
-  const labels = { idle: '📸 Xuất ảnh lịch trình', loading: prog || 'Đang xử lý...', ok: '✅ Đã tải xong!', err: '❌ Thử lại' };
+
+  const labels = {
+    idle:    '📸 Xuất ảnh lịch trình',
+    loading: prog || 'Đang chụp...',
+    ok:      '✅ Đã tải xong!',
+    err:     '❌ Thử lại',
+  };
   return (
     <button className="ap-card" onClick={handleClick} disabled={status === 'loading'}
       style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', boxShadow: '0 8px 28px rgba(124,58,237,0.40)', cursor: status === 'loading' ? 'wait' : 'pointer', opacity: status === 'loading' ? 0.85 : 1 }}>
@@ -2759,21 +2898,29 @@ const ShareButtonNew = ({ dailyPlans, initialData, currentHotel, plan, isDark })
               {/* Social buttons */}
               <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
                 {[
-                  { label:'💬 Zalo',     bg:'#0068ff', href:`https://zalo.me/share/url?url=${encodedUrl}&title=${encodedText}` },
-                  { label:'📘 Messenger',bg:'#0084ff', href:`https://m.me/share?link=${encodedUrl}` },
-                  { label:'🐦 Twitter',  bg:'#1da1f2', href:`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}` },
-                  { label:'📋 Copy link',bg:'#64748b', href:null, onClick: handleCopy },
-                ].map(s => (
-                  s.href
+                  { label:'Zalo',     bg:'#0068ff', logo:'https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg',      href:`https://zalo.me/share/url?url=${encodedUrl}&title=${encodedText}` },
+                  { label:'Messenger',bg:'#0084ff', logo:'https://upload.wikimedia.org/wikipedia/commons/b/be/Facebook_Messenger_logo_2020.svg', href:`https://m.me/share?link=${encodedUrl}` },
+                  { label:'X (Twitter)',bg:'#000000',logo:'https://upload.wikimedia.org/wikipedia/commons/5/53/X_logo_2023_original.svg', href:`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}` },
+                  { label:'Copy link', bg:'#64748b', logo:null, href:null, onClick: handleCopy },
+                ].map(s => {
+                  const inner = (
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                      {s.logo
+                        ? <img src={s.logo} alt={s.label} style={{ width:20, height:20, objectFit:'contain', flexShrink:0 }} />
+                        : <span>📋</span>}
+                      <span>{s.label}</span>
+                    </div>
+                  );
+                  return s.href
                     ? <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer"
-                        style={{ padding:'12px 14px',borderRadius:12,background:s.bg,color:'white',fontWeight:800,fontSize:13,textDecoration:'none',textAlign:'center',display:'flex',alignItems:'center',justifyContent:'center',gap:6 }}>
-                        {s.label}
+                        style={{ padding:'12px 14px',borderRadius:12,background:s.bg,color:'white',fontWeight:800,fontSize:13,textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                        {inner}
                       </a>
                     : <button key={s.label} onClick={s.onClick}
-                        style={{ padding:'12px 14px',borderRadius:12,background:s.bg,color:'white',fontWeight:800,fontSize:13,border:'none',cursor:'pointer' }}>
-                        {s.label}
-                      </button>
-                ))}
+                        style={{ padding:'12px 14px',borderRadius:12,background:s.bg,color:'white',fontWeight:800,fontSize:13,border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',width:'100%' }}>
+                        {inner}
+                      </button>;
+                })}
               </div>
             </div>
           </div>
@@ -2783,5 +2930,262 @@ const ShareButtonNew = ({ dailyPlans, initialData, currentHotel, plan, isDark })
     </>
   );
 };
+
+
+// ─────────────────────────────────────────────────────────────
+// ✨ ACTION SPEED DIAL — 1 nút FAB bung ra 4 nút bong bóng
+// ─────────────────────────────────────────────────────────────
+const ActionSpeedDial = ({
+  isDark, handleSaveSchedule, scheduleSaveLoading, scheduleSaved,
+  dailyPlans, initialData, currentHotel, contentRef, plan,
+}) => {
+  const [open, setOpen] = React.useState(false);
+
+  // 4 items: icon, label, sub, màu, handler
+  const items = [
+    {
+      id: 'save',
+      emoji: scheduleSaveLoading ? '⏳' : scheduleSaved ? '✅' : '💾',
+      label: scheduleSaveLoading ? 'Đang lưu...' : scheduleSaved ? 'Đã lưu!' : 'Lưu Dashboard',
+      sub: scheduleSaved ? 'Đã lưu rồi' : 'Truy cập lại bất kỳ lúc nào',
+      bg: 'linear-gradient(135deg,#10b981,#059669)',
+      shadow: 'rgba(16,185,129,0.5)',
+      onClick: handleSaveSchedule,
+      disabled: scheduleSaveLoading || scheduleSaved,
+    },
+    {
+      id: 'ical',
+      emoji: '📅',
+      label: 'Xuất lịch .ics',
+      sub: 'Google / Apple Calendar',
+      bg: 'linear-gradient(135deg,#3b82f6,#2563eb)',
+      shadow: 'rgba(59,130,246,0.5)',
+      renderCustom: (key) => <ICalButtonNew key={key} asSpeedDialItem dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} />,
+    },
+    {
+      id: 'screenshot',
+      emoji: '📸',
+      label: 'Xuất ảnh lịch trình',
+      sub: 'Tải về ảnh PNG chất lượng cao',
+      bg: 'linear-gradient(135deg,#7c3aed,#6d28d9)',
+      shadow: 'rgba(124,58,237,0.5)',
+      renderCustom: (key) => <ScreenshotButtonNew key={key} asSpeedDialItem contentRef={contentRef} location={initialData.location} isDark={isDark} />,
+    },
+    {
+      id: 'share',
+      emoji: '🔗',
+      label: 'Chia sẻ lịch trình',
+      sub: 'Gửi link qua Zalo / Messenger',
+      bg: 'linear-gradient(135deg,#0ea5e9,#0284c7)',
+      shadow: 'rgba(14,165,233,0.5)',
+      renderCustom: (key) => <ShareButtonNew key={key} asSpeedDialItem dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} plan={plan} isDark={isDark} />,
+    },
+  ];
+
+  // FAB 72×72, anchor top:0 left:0. Bubble 160×90px
+  // FAB center = x:36. Để FAB nằm giữa 4 ô:
+  // ô1+ô2 tổng width = 160+8+160=328 → bắt đầu từ 36-164=-128
+  // ô3 cách trái FAB, ô4 cách phải FAB đối xứng qua tâm FAB (x=36)
+  const positions = [
+    { x: -128, y: -160 }, // ô1 trên-trái
+    { x:   40, y: -160 }, // ô2 trên-phải
+    { x: -188, y:  -65 }, // ô3 dưới-trái  (tách trái)
+    { x:  116, y:  -65 }, // ô4 dưới-phải  (tách phải)
+  ];
+
+  const [wasOpen, setWasOpen] = React.useState(false);
+  // Track nếu đã từng mở để chạy close animation
+  React.useEffect(() => { if (open) setWasOpen(true); }, [open]);
+
+  return (
+    <>
+      <style>{`
+        @keyframes sdPulse {
+          0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.6); }
+          50%      { box-shadow: 0 0 0 12px rgba(16,185,129,0); }
+        }
+        @keyframes sdBubblePop {
+          0%   { transform: translate(var(--tx), var(--ty)) scale(0.3); opacity: 0; }
+          60%  { transform: translate(var(--tx), var(--ty)) scale(1.1); opacity: 1; }
+          100% { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 1; }
+        }
+        @keyframes sdBubbleOut {
+          0%   { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 1; }
+          100% { transform: translate(var(--tx), var(--ty)) scale(0.3); opacity: 0; }
+        }
+        .sd-bubble {
+          position: absolute;
+          top: 0; left: 0;
+          width: 160px;
+          border-radius: 20px;
+          border: none;
+          cursor: pointer;
+          padding: 14px 16px;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 3px;
+          text-align: left;
+          pointer-events: none;
+          opacity: 0;
+          transition: box-shadow 0.2s;
+        }
+        .sd-bubble.sd-open {
+          pointer-events: auto;
+          animation: sdBubblePop 0.38s cubic-bezier(.34,1.56,.64,1) forwards;
+        }
+        .sd-bubble.sd-close {
+          pointer-events: none;
+          animation: sdBubbleOut 0.22s ease forwards;
+        }
+        .sd-bubble:hover { filter: brightness(1.08); transform: translate(var(--tx), var(--ty)) translateY(-3px) scale(1.04) !important; }
+        .sd-fab {
+          width: 72px; height: 72px; border-radius: 50%;
+          border: none; cursor: pointer;
+          background: linear-gradient(135deg,#10b981,#059669);
+          color: white; font-size: 28px;
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 8px 28px rgba(16,185,129,0.5);
+          transition: transform 0.28s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s;
+          position: relative; z-index: 10;
+          animation: sdPulse 2.4s ease-in-out infinite;
+        }
+        .sd-fab:hover { transform: scale(1.12); }
+        .sd-fab.sd-fab-open {
+          transform: rotate(45deg) scale(1.05);
+          animation: none;
+          background: linear-gradient(135deg,#ef4444,#dc2626);
+          box-shadow: 0 8px 28px rgba(239,68,68,0.5);
+        }
+        .sd-overlay {
+          position: fixed; inset: 0; z-index: 99;
+        }
+        .sd-bubble-label { font-size: 13px; font-weight: 900; color: white; line-height: 1.2; }
+        .sd-bubble-sub   { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.75); }
+        .sd-bubble-icon  { font-size: 20px; margin-bottom: 4px; }
+      `}</style>
+
+      {/* Backdrop để close khi click ra ngoài */}
+      {open && (
+        <div className="sd-overlay" onClick={() => setOpen(false)} />
+      )}
+
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: '160px',
+        marginBottom: '16px',
+      }}>
+        {/* Container relative để bubble có thể absolute */}
+        <div style={{ position: 'relative', width: 72, height: 72, zIndex: 100 }}>
+
+          {/* 4 bubble buttons — chỉ render khi open hoặc đang close animation */}
+          {(open || wasOpen) && items.map((item, i) => {
+            const { x, y } = positions[i];
+            const delay = open ? i * 55 : (items.length - 1 - i) * 40;
+            const animClass = open ? 'sd-open' : 'sd-close';
+
+            const bubbleStyle = {
+              '--tx': `${x}px`,
+              '--ty': `${y}px`,
+              animationDelay: `${delay}ms`,
+              background: item.bg,
+              boxShadow: `0 8px 24px ${item.shadow}`,
+              zIndex: 101,
+            };
+
+            // Các nút có hidden trigger: click bubble → click hidden button thật
+            const hiddenIds = { ical: 'sd-ical-hidden', screenshot: 'sd-screenshot-hidden', share: 'sd-share-hidden' };
+
+            return (
+              <button
+                key={item.id}
+                className={`sd-bubble ${animClass}`}
+                style={bubbleStyle}
+                onAnimationEnd={(!open && i === items.length - 1) ? () => setWasOpen(false) : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (item.disabled) return;
+                  if (item.onClick) {
+                    item.onClick();
+                    setOpen(false);
+                  } else if (hiddenIds[item.id]) {
+                    // Trigger hidden button bên trong div ẩn
+                    const container = document.getElementById(hiddenIds[item.id]);
+                    if (container) {
+                      const btn = container.querySelector('button');
+                      if (btn) { container.style.pointerEvents = 'auto'; btn.click(); container.style.pointerEvents = 'none'; }
+                    }
+                    if (item.id !== 'share') setOpen(false);
+                  }
+                }}
+                disabled={item.disabled}
+              >
+                <div className="sd-bubble-icon">{item.emoji}</div>
+                <div className="sd-bubble-label">{item.label}</div>
+                <div className="sd-bubble-sub">{item.sub}</div>
+              </button>
+            );
+          })}
+
+          {/* Hidden trigger wrappers cho các nút có nội bộ state */}
+          <_ICalTrigger dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} />
+          <_ScreenshotTrigger contentRef={contentRef} location={initialData.location} isDark={isDark} />
+          <_ShareTrigger dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} plan={plan} isDark={isDark} />
+
+          {/* FAB chính */}
+          <button
+            className={`sd-fab${open ? ' sd-fab-open' : ''}`}
+            onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+            title="Lưu & Chia sẻ lịch trình"
+          >
+            {open ? '✕' : '✨'}
+          </button>
+        </div>
+
+        {/* Label dưới FAB */}
+        {!open && (
+          <div style={{
+            position: 'absolute',
+            marginTop: 88,
+            fontSize: 12, fontWeight: 700,
+            color: isDark ? '#94a3b8' : '#64748b',
+            letterSpacing: '0.02em',
+            pointerEvents: 'none',
+            userSelect: 'none',
+          }}>
+            Lưu & Chia sẻ
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+// ── Thin wrapper components: render nút thật nhưng ẩn, expose triggerRef ──
+// ICalButton, ScreenshotButton, ShareButton vẫn dùng nguyên để giữ logic
+// Speed dial bubble chỉ là UI proxy — khi click bubble tương ứng sẽ click hidden button
+
+const _ICalTrigger = ({ dailyPlans, initialData, currentHotel }) => {
+  // ICalButtonNew tự render, wrap trong div ẩn để tránh layout
+  return (
+    <div style={{ position:'absolute', opacity:0, pointerEvents:'none', width:0, height:0, overflow:'hidden' }} id="sd-ical-hidden">
+      <ICalButtonNew dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} />
+    </div>
+  );
+};
+
+const _ScreenshotTrigger = ({ contentRef, location, isDark }) => (
+  <div style={{ position:'absolute', opacity:0, pointerEvents:'none', width:0, height:0, overflow:'hidden' }} id="sd-screenshot-hidden">
+    <ScreenshotButtonNew contentRef={contentRef} location={location} isDark={isDark} />
+  </div>
+);
+
+const _ShareTrigger = ({ dailyPlans, initialData, currentHotel, plan, isDark }) => (
+  <div style={{ position:'absolute', opacity:0, pointerEvents:'none', width:0, height:0, overflow:'hidden' }} id="sd-share-hidden">
+    <ShareButtonNew dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} plan={plan} isDark={isDark} />
+  </div>
+);
 
 export default AiSchedule;

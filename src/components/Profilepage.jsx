@@ -129,6 +129,95 @@ const removeAccents = (str) => {
     .toLowerCase(); // Chuyển hết về chữ thường
 };
 
+// 🗺️ ẢNH ĐẠI DIỆN TỈNH THÀNH — dùng ảnh local từ /images_provinces/
+// Map tên tỉnh (viết thường) → slug file JPG
+const PROVINCE_SLUG = {
+  'hà nội':               'ha-noi',
+  'hà giang':             'ha-giang',
+  'cao bằng':             'cao-bang',
+  'bắc kạn':              'bac-kan',
+  'tuyên quang':          'tuyen-quang',
+  'lào cai':              'lao-cai',
+  'sapa':                 'lao-cai',
+  'điện biên':            'dien-bien',
+  'lai châu':             'lai-chau',
+  'sơn la':               'son-la',
+  'yên bái':              'yen-bai',
+  'hòa bình':             'hoa-binh',
+  'thái nguyên':          'thai-nguyen',
+  'lạng sơn':             'lang-son',
+  'quảng ninh':           'quang-ninh',
+  'hạ long':              'quang-ninh',
+  'bắc giang':            'bac-giang',
+  'phú thọ':              'phu-tho',
+  'vĩnh phúc':            'vinh-phuc',
+  'bắc ninh':             'bac-ninh',
+  'hải dương':            'hai-duong',
+  'hải phòng':            'hai-phong',
+  'hưng yên':             'hung-yen',
+  'thái bình':            'thai-binh',
+  'hà nam':               'ha-nam',
+  'nam định':             'nam-dinh',
+  'ninh bình':            'ninh-binh',
+  'thanh hóa':            'thanh-hoa',
+  'nghệ an':              'nghe-an',
+  'hà tĩnh':              'ha-tinh',
+  'quảng bình':           'quang-binh',
+  'quảng trị':            'quang-tri',
+  'thừa thiên huế':       'thua-thien-hue',
+  'huế':                  'thua-thien-hue',
+  'đà nẵng':              'da-nang',
+  'quảng nam':            'quang-nam',
+  'hội an':               'quang-nam',
+  'quảng ngãi':           'quang-ngai',
+  'bình định':            'binh-dinh',
+  'quy nhơn':             'binh-dinh',
+  'phú yên':              'phu-yen',
+  'khánh hòa':            'khanh-hoa',
+  'nha trang':            'khanh-hoa',
+  'ninh thuận':           'ninh-thuan',
+  'bình thuận':           'binh-thuan',
+  'phan thiết':           'binh-thuan',
+  'kon tum':              'kon-tum',
+  'gia lai':              'gia-lai',
+  'pleiku':               'gia-lai',
+  'đắk lắk':              'dak-lak',
+  'buôn ma thuột':        'dak-lak',
+  'đắk nông':             'dak-nong',
+  'lâm đồng':             'lam-dong',
+  'đà lạt':               'lam-dong',
+  'bình phước':           'binh-phuoc',
+  'tây ninh':             'tay-ninh',
+  'bình dương':           'binh-duong',
+  'đồng nai':             'dong-nai',
+  'bà rịa - vũng tàu':   'ba-ria-vung-tau',
+  'vũng tàu':             'ba-ria-vung-tau',
+  'tp. hồ chí minh':      'tp-ho-chi-minh',
+  'hồ chí minh':          'tp-ho-chi-minh',
+  'sài gòn':              'tp-ho-chi-minh',
+  'long an':              'long-an',
+  'tiền giang':           'tien-giang',
+  'bến tre':              'ben-tre',
+  'trà vinh':             'tra-vinh',
+  'vĩnh long':            'vinh-long',
+  'đồng tháp':            'dong-thap',
+  'an giang':             'an-giang',
+  'kiên giang':           'kien-giang',
+  'phú quốc':             'kien-giang',
+  'cần thơ':              'can-tho',
+  'hậu giang':            'hau-giang',
+  'sóc trăng':            'soc-trang',
+  'bạc liêu':             'bac-lieu',
+  'cà mau':               'ca-mau',
+};
+
+const getProvinceAvatar = (location) => {
+  if (!location) return null;
+  const slug = PROVINCE_SLUG[location.toLowerCase().trim()];
+  if (!slug) return null;
+  return `/images_provinces/${slug}.jpg`;
+};
+
 const standardizeLocation = (locName) => {
   if (!locName) return 'Không xác định';
   const name = locName.trim();
@@ -280,6 +369,48 @@ function Empty({ icon, text, sub }) {
       <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>{text}</div>
       <div style={{ fontSize: 13, color: '#94a3b8' }}>{sub}</div>
     </div>
+  );
+}
+
+
+// 🗑️ CONFIRM MODAL — thay thế window.confirm
+function ConfirmModal({ open, title, message, icon = '🗑️', confirmLabel = 'Xoá', confirmColor = '#ef4444', onConfirm, onCancel }) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (e.key === 'Escape') onCancel(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{`
+        @keyframes confirmIn { from{opacity:0;transform:scale(0.88) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+        @keyframes confirmBg { from{opacity:0} to{opacity:1} }
+      `}</style>
+      <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'confirmBg 0.18s ease' }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, background: 'linear-gradient(145deg, #0f1e35, #0d1a2e)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 24, padding: '32px 28px', boxShadow: '0 32px 80px rgba(0,0,0,0.6)', animation: 'confirmIn 0.22s cubic-bezier(0.34,1.4,0.64,1)' }}>
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <div style={{ width: 64, height: 64, borderRadius: 20, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 16px' }}>{icon}</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#f8fafc', marginBottom: 8 }}>{title}</div>
+            <div style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.5 }}>{message}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button onClick={onCancel} style={{ flex: 1, padding: '12px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.06)', color: '#94a3b8', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.1)'; e.currentTarget.style.color='#f8fafc'; }}
+              onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.06)'; e.currentTarget.style.color='#94a3b8'; }}>
+              Huỷ
+            </button>
+            <button onClick={onConfirm} style={{ flex: 1, padding: '12px', borderRadius: 14, border: 'none', background: `linear-gradient(135deg, ${confirmColor}, ${confirmColor}cc)`, color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s', boxShadow: `0 4px 16px ${confirmColor}44` }}
+              onMouseEnter={e => { e.currentTarget.style.opacity='0.85'; e.currentTarget.style.transform='translateY(-1px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity='1'; e.currentTarget.style.transform='translateY(0)'; }}>
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -566,7 +697,12 @@ function ScheduleModal({ schedule, onClose, onLoadToMain }) {
             </button>
 
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-              <div style={{ width: 56, height: 56, borderRadius: 18, flexShrink: 0, background: 'linear-gradient(135deg, rgba(16,185,129,0.3), rgba(5,150,105,0.15))', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>🗺️</div>
+              <div style={{ width: 56, height: 56, borderRadius: 18, flexShrink: 0, overflow: 'hidden', border: '2px solid rgba(16,185,129,0.4)', background: 'linear-gradient(135deg, rgba(16,185,129,0.3), rgba(5,150,105,0.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>
+                {getProvinceAvatar(schedule.location)
+                  ? <img src={getProvinceAvatar(schedule.location)} alt={schedule.location} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display='none'; e.target.parentNode.innerHTML = '🗺️'; }} />
+                  : '🗺️'
+                }
+              </div>
               <div style={{ flex: 1, paddingRight: 40 }}>
                 <div style={{ fontSize: 22, fontWeight: 900, color: '#f8fafc', marginBottom: 6, lineHeight: 1.2 }}>{schedule.title}</div>
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -684,9 +820,15 @@ function SavedSchedules({ T, onLoadSchedule }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleDelete = async (id, e) => {
+  const [confirmDel, setConfirmDel] = useState(null); // { id, e }
+
+  const handleDelete = (id, e) => {
     e.stopPropagation();
-    if (!window.confirm('Xoá lịch trình này?')) return;
+    setConfirmDel({ id });
+  };
+  const doDelete = async () => {
+    const { id } = confirmDel;
+    setConfirmDel(null);
     const res = await api.del(`/api/schedules/${id}`);
     if (res.success) setSchedules(s => s.filter(x => x.id !== id));
   };
@@ -740,7 +882,12 @@ function SavedSchedules({ T, onLoadSchedule }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {schedules.map((s, i) => (
           <div key={s.id} className="sp-card" onClick={() => handleOpen(s)} style={{ background: (T||{}).card || 'rgba(255,255,255,0.04)', border: `1px solid ${(T||{}).cardBorder || 'rgba(255,255,255,0.08)'}`, borderRadius: 24, padding: '22px 28px', display: 'flex', gap: 20, alignItems: 'center', cursor: 'pointer', animation: `fadeUp 0.3s ease ${i * 0.06}s both` }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, flexShrink: 0, background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1))', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🗺️</div>
+            <div style={{ width: 56, height: 56, borderRadius: 16, flexShrink: 0, overflow: 'hidden', border: '2px solid rgba(16,185,129,0.3)', background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+              {getProvinceAvatar(s.location)
+                ? <img src={getProvinceAvatar(s.location)} alt={s.location} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display='none'; e.target.parentNode.innerHTML = '🗺️'; }} />
+                : '🗺️'
+              }
+            </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: (T||{}).text || '#f8fafc' }}>{s.title}</div>
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
@@ -759,10 +906,21 @@ function SavedSchedules({ T, onLoadSchedule }) {
         ))}
       </div>
 
-      {/* Modal */}
+      {/* Modal xem chi tiết */}
       {selectedSchedule && (
         <ScheduleModal schedule={selectedSchedule} onClose={handleClose} onLoadToMain={handleLoadToMainDashboard} />
       )}
+
+      {/* Modal xác nhận xoá */}
+      <ConfirmModal
+        open={!!confirmDel}
+        icon="🗑️"
+        title="Xoá lịch trình?"
+        message="Hành động này không thể hoàn tác. Lịch trình sẽ bị xoá vĩnh viễn."
+        confirmLabel="Xoá lịch trình"
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDel(null)}
+      />
     </>
   );
 }
@@ -838,13 +996,7 @@ function LocationGroup({ locationName, items, T, accentColor, children }) {
 }
 
 function PlaceItemCard({ item, tabType, onRemove, T, removeColor, i }) {
-  const TYPE_ALIAS = {
-    'khach-san': 'hotel', 'khachsan': 'hotel', 'accommodation': 'hotel', 'lodging': 'hotel',
-    'dac-san': 'specialty', 'dacsan': 'specialty', 'local': 'specialty', 'souvenir': 'specialty', 'shop': 'specialty',
-    'an-uong': 'food', 'anuong': 'food', 'restaurant': 'food', 'cafe': 'drink', 'coffee': 'drink',
-    'tham-quan': 'tour', 'thamquan': 'tour', 'attraction': 'tour',
-  };
-  const normalizedType = TYPE_ALIAS[item.type?.toLowerCase()] || item.type;
+  const normalizedType = normalizeType(item.type);
   const config = TYPE_CONFIG[normalizedType] || TYPE_CONFIG.default;
   const crispImg = useCrispImageProfile(item, tabType, T);
 
@@ -905,12 +1057,22 @@ function SearchBar({ value, onChange, T }) {
   );
 }
 
+// Normalize type dùng chung cho FilterBar và filteredItems
+const TYPE_ALIAS_GLOBAL = {
+  'khach-san': 'hotel', 'khachsan': 'hotel', 'accommodation': 'hotel', 'lodging': 'hotel',
+  'dac-san': 'specialty', 'dacsan': 'specialty', 'local-specialty': 'specialty',
+  'an-uong': 'food', 'anuong': 'food',
+  'cafe': 'drink', 'coffee': 'drink', 'do-uong': 'drink', 'douong': 'drink',
+  'tham-quan': 'tour', 'thamquan': 'tour', 'attraction': 'tour', 'explore': 'tour',
+};
+const normalizeType = (t) => TYPE_ALIAS_GLOBAL[t?.toLowerCase()] || t;
+
 // 🗂️ THANH LỌC
 function FilterBar({ current, onChange, items = [], T }) {
   const getCount = (type) => {
     if (!items) return 0;
     if (type === 'all') return items.length;
-    return items.filter(i => i.type === type).length;
+    return items.filter(i => normalizeType(i.type) === type).length;
   };
 
   return (
@@ -979,7 +1141,7 @@ function SavedPlaces({ T }) {
     return loc.includes(q); 
   });
 
-  const filteredItems = searchedItems.filter(item => filter === 'all' || item.type === filter);
+  const filteredItems = searchedItems.filter(item => filter === 'all' || normalizeType(item.type) === filter);
 
   const grouped = filteredItems.reduce((acc, item) => {
     const loc = standardizeLocation(item.location);
@@ -1043,7 +1205,7 @@ function Favorites({ T }) {
     return loc.includes(q); 
   });
 
-  const filteredItems = searchedItems.filter(item => filter === 'all' || item.type === filter);
+  const filteredItems = searchedItems.filter(item => filter === 'all' || normalizeType(item.type) === filter);
 
   const grouped = filteredItems.reduce((acc, item) => {
     const loc = standardizeLocation(item.location);
@@ -1097,8 +1259,11 @@ function SearchHistory({ T }) {
     await api.del(`/api/search-history/${id}`);
     setHistory(h => h.filter(x => x.id !== id));
   };
-  const handleClearAll = async () => {
-    if (!window.confirm('Xoá toàn bộ lịch sử?')) return;
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  const handleClearAll = () => setConfirmClear(true);
+  const doClearAll = async () => {
+    setConfirmClear(false);
     await api.del('/api/search-history/all');
     setHistory([]);
   };
@@ -1123,6 +1288,16 @@ function SearchHistory({ T }) {
           </div>
         ))}
       </div>
+
+      <ConfirmModal
+        open={confirmClear}
+        icon="🗑️"
+        title="Xoá toàn bộ lịch sử?"
+        message="Tất cả lịch sử tìm kiếm sẽ bị xoá vĩnh viễn và không thể khôi phục."
+        confirmLabel="Xoá tất cả"
+        onConfirm={doClearAll}
+        onCancel={() => setConfirmClear(false)}
+      />
     </Section>
   );
 }

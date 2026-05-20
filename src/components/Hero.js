@@ -7,7 +7,8 @@ import {
   faCalendarDays, 
   faMoneyBillWave, 
   faPlane,
-  faUserGroup
+  faUserGroup,
+  faRightLeft
 } from '@fortawesome/free-solid-svg-icons';
 
 const Hero = ({ onSearch, isDark = false }) => {
@@ -23,6 +24,11 @@ const Hero = ({ onSearch, isDark = false }) => {
   const [hoveredTag, setHoveredTag] = useState(null);
   const [emptyFields, setEmptyFields] = useState({});
   const [shake, setShake] = useState(false); 
+
+  const handleSwap = () => {
+    setOrigin(location);
+    setLocation(origin);
+  };
 
   const provinces = ["An Giang", "Bà Rịa - Vũng Tàu", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"];
   const dayOptions = ["2 ngày 1 đêm", "3 ngày 2 đêm", "4 ngày 3 đêm", "5 ngày 4 đêm"];
@@ -186,6 +192,26 @@ const Hero = ({ onSearch, isDark = false }) => {
               ))}
             </div>
           )}
+        </div>
+
+        {/* SWAP BUTTON */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            onClick={handleSwap}
+            title="Đổi chiều"
+            style={{
+              width: '36px', height: '36px', borderRadius: '50%',
+              background: isDark ? 'rgba(16,185,129,0.15)' : 'rgba(16,185,129,0.1)',
+              border: '1.5px solid rgba(16,185,129,0.35)',
+              color: '#10b981', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.2s', flexShrink: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background='rgba(16,185,129,0.25)'; e.currentTarget.style.transform='rotate(180deg)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background=isDark?'rgba(16,185,129,0.15)':'rgba(16,185,129,0.1)'; e.currentTarget.style.transform='rotate(0deg)'; }}
+          >
+            <FontAwesomeIcon icon={faRightLeft} style={{ fontSize: '13px' }} />
+          </button>
         </div>
 
         {/* ĐỊA ĐIỂM ĐẾN */}
