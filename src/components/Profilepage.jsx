@@ -520,7 +520,7 @@ function StatsBar({ user, T }) {
   const [stats, setStats] = useState({ schedules: 0, favorites: 0, savedPlaces: 0, searches: 0 });
   useEffect(() => {
     Promise.all([ api.get('/api/schedules'), api.get('/api/favorites'), api.get('/api/saved-places'), api.get('/api/search-history') ])
-      .then(([s, f, sp, h]) => setStats({ schedules: s.schedules?.length || 0, favorites: f.favorites?.length || 0, savedPlaces: sp.savedPlaces?.length || 0, searches: h.history?.length || 0 }))
+      .then(([s, f, sp, h]) => setStats({ schedules: Array.isArray(s.schedules) ? s.schedules.length : 0, favorites: f.favorites?.length || 0, savedPlaces: sp.savedPlaces?.length || 0, searches: h.history?.length || 0 }))
       .catch(() => {});
   }, []);
   const items = [ { label: 'Lịch trình', value: stats.schedules }, { label: 'Đã lưu', value: stats.savedPlaces }, { label: 'Yêu thích', value: stats.favorites }, { label: 'Tìm kiếm', value: stats.searches } ];
@@ -815,7 +815,7 @@ function SavedSchedules({ T, onLoadSchedule }) {
 
   useEffect(() => {
     api.get('/api/schedules')
-      .then(d => setSchedules(d.schedules || d.savedPlaces || d || []))
+      .then(d => setSchedules(Array.isArray(d.schedules) ? d.schedules : []))
       .catch(() => setSchedules([]))
       .finally(() => setLoading(false));
   }, []);

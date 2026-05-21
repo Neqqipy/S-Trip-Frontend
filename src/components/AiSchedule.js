@@ -1303,8 +1303,9 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
   };
 
   const airlineName = isFlight ? (data.name || data.airline || '') : '';
-  const airlineLogo = isFlight ? getAirlineLogo(airlineName) : null;
-  const displayImg = airlineLogo
+  // Logo airline dùng ảnh local — KHÔNG proxy. Chỉ proxy cho hotel/food/tour.
+  const airlineLogo = isFlight ? (getAirlineLogo(airlineName) || data.thumbnail || null) : null;
+  const displayImg = isFlight
     ? airlineLogo
     : (!imgError ? proxyImage(data.thumbnail) : (fallbackImg ? proxyImage(fallbackImg) : null));
 
@@ -1478,7 +1479,7 @@ const TransportCard = ({ opt, isCombined, isDark }) => {
         {(() => {
           const airlineLogoUrl = getAirlineLogo(opt.label, opt.thumbnail) || 
                        (opt.legs || []).reduce((found, l) => found || getAirlineLogo(l.label || '', opt.thumbnail), null);
-          const logoSrc = airlineLogoUrl || (opt.thumbnail ? proxyImage(opt.thumbnail) : null);
+          const logoSrc = airlineLogoUrl || opt.thumbnail || null; // ảnh local, không proxy
           return logoSrc && (
             <div style={{ 
               width: '50px', height: '50px', borderRadius: '12px', flexShrink: 0, overflow: 'hidden',
@@ -2380,12 +2381,31 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, onSwap, isD
                   💡 {initialData.transport.note}
                 </div>
               )}
+
+
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '25px', marginBottom: '30px' }}>
                 {initialData.transport.options.map((opt, idx) => (
                   <TransportCard key={idx} opt={opt} isCombined={opt.type === 'combined'} isDark={isDark} />
                 ))}
               </div>
+
+              {/* ✈️ Thông báo không tìm thấy vé cho ngày đã chọn */}
+              {realFlights.length === 0 &&
+               initialData.transport?.options?.some(o => o.type === 'combined' || /bay|flight/i.test(o.label || o.type || '')) && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  marginTop: -10, marginBottom: 10, padding: '9px 14px',
+                  background: isDark ? 'rgba(239,68,68,0.08)' : '#fff1f2',
+                  border: isDark ? '1px solid rgba(239,68,68,0.25)' : '1px solid #fecdd3',
+                  borderRadius: 10,
+                }}>
+                  <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? '#fca5a5' : '#be123c' }}>
+                    Không tìm thấy vé máy bay cho ngày đã chọn. Vui lòng kiểm tra lại hoặc chọn ngày khác.
+                  </span>
+                </div>
+              )}
             </>
           )}
           
