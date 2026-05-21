@@ -147,3 +147,63 @@ export const fetchImages = async (place, placeId = '') => {
   pendingImages[cacheKey] = fetchPromise;
   return fetchPromise;
 };
+
+// ─────────────────────────────────────────────────────────────
+// 🔖 SAVED PLACES — kết nối Supabase qua Flask backend
+// ─────────────────────────────────────────────────────────────
+
+export const fetchSavedPlaces = async () => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/saved-places`, { credentials: 'include' });
+    const data = await res.json();
+    return data.success ? data.savedPlaces : [];
+  } catch (e) {
+    console.error('Lỗi fetchSavedPlaces:', e);
+    return [];
+  }
+};
+
+export const addSavedPlace = async ({ name, location = '', rating = '', thumbnail = '', type = 'default' }) => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/saved-places`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, location, rating: String(rating), thumbnail, type }),
+    });
+    const data = await res.json();
+    return data.success ? data : { success: false };
+  } catch (e) {
+    console.error('Lỗi addSavedPlace:', e);
+    return { success: false };
+  }
+};
+
+export const deleteSavedPlace = async (name, location = '') => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/saved-places/remove-by-name`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, location }),
+    });
+    const data = await res.json();
+    return data.success ? data : { success: false };
+  } catch (e) {
+    console.error('Lỗi deleteSavedPlace:', e);
+    return { success: false };
+  }
+};
+
+export const checkPlaceSavedStatus = async (name, location = '') => {
+  try {
+    const params = new URLSearchParams({ name });
+    if (location) params.append('location', location);
+    const res = await fetch(`${BASE_URL}/api/saved-places/check?${params}`, { credentials: 'include' });
+    const data = await res.json();
+    return data.success ? data.isSaved : false;
+  } catch (e) {
+    console.error('Lỗi checkPlaceSavedStatus:', e);
+    return false;
+  }
+};

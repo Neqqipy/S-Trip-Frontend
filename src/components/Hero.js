@@ -40,13 +40,17 @@ const Hero = ({ onSearch, isDark = false }) => {
     .includes(query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
   );
 
+  const provinces_set = new Set(["An Giang", "Bà Rịa - Vũng Tàu", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"]);
+  const isValidProvince = (val) => provinces_set.has(val);
+
   const handleSearchClick = () => {
     const currentEmptyFields = {};
-    if (!origin) currentEmptyFields.origin = true;
-    if (!location) currentEmptyFields.location = true;
+    if (!origin || !isValidProvince(origin)) currentEmptyFields.origin = true;
+    if (!location || !isValidProvince(location)) currentEmptyFields.location = true;
     if (!departureDate) currentEmptyFields.departureDate = true;
     if (!days) currentEmptyFields.days = true;
-    if (!budget) currentEmptyFields.budget = true;
+    const rawBudget = budget.replace(/[.đ\s]/g, '');
+    if (!budget || !/^\d+$/.test(rawBudget) || parseInt(rawBudget) <= 0) currentEmptyFields.budget = true;
 
     setEmptyFields(currentEmptyFields);
     if (Object.keys(currentEmptyFields).length > 0) {
@@ -254,6 +258,7 @@ const Hero = ({ onSearch, isDark = false }) => {
           <input 
             style={styles.input} 
             placeholder="3 ngày 2 đêm" 
+            autoComplete="off"
             value={days} 
             onChange={(e) => setDays(e.target.value)}
             onFocus={() => setActiveDropdown('days')} 
@@ -292,8 +297,24 @@ const Hero = ({ onSearch, isDark = false }) => {
             style={styles.input} 
             placeholder="Kinh phí?" 
             value={budget} 
-            onChange={(e) => setBudget(e.target.value)}
-            onFocus={() => setActiveDropdown('budget')} 
+            onChange={(e) => {
+              const val = e.target.value;
+              const filtered = val.replace(/[^0-9]/g, '');
+              if (filtered === '') { setBudget(''); return; }
+              setBudget(filtered);
+            }}
+            onFocus={(e) => {
+              setActiveDropdown('budget');
+              const raw = budget.replace(/[.đ\s]/g, '');
+              setBudget(raw);
+            }}
+            onBlur={() => {
+              const raw = budget.replace(/[.đ\s]/g, '');
+              if (raw && parseInt(raw) > 0) {
+                setBudget(parseInt(raw).toLocaleString('vi-VN') + 'đ');
+                setEmptyFields(f => ({...f, budget: false}));
+              }
+            }} 
           />
           {activeDropdown === 'budget' && (
             <div style={styles.dropdown}>
