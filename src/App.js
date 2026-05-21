@@ -11,7 +11,7 @@ import Footer from './components/Footer';
 import ProfilePage from './components/Profilepage';
 import SkeletonLoader from './components/SkeletonLoader';
 import Toast from './components/Toast';
-import { fetchTripPlan } from './services/api';
+import { fetchTripPlan, saveSearchHistory } from './services/api';
 import { enrichPlacesWithCoords } from './services/geocodeUtils';
 import './App.css';
 
@@ -228,16 +228,13 @@ function AppContent() {
       setToast({ show: true, message: 'Đã AI hóa lịch trình thực tế cho bạn!', type: 'success' });
 
       // 💾 Lưu lịch sử tìm kiếm vào DB (chạy nền, không block UI)
-      fetch(`${BASE_URL}/api/search-history`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          origin: formData.origin || '',
-          destination: formData.location || '',
-          days: parseInt(String(formData.days || '3').split(' ')[0]),
-          passengers: parseInt(formData.passengers || 1),
-        }),
+      saveSearchHistory({
+        location:       formData.location     || '',
+        origin:         formData.origin       || '',
+        budget:         parseInt(String(formData.budget || '0').replace(/\D/g, '')) || 0,
+        days:           parseInt(String(formData.days || '3').split(' ')[0]),
+        passengers:     parseInt(formData.passengers  || 1),
+        departure_date: formData.departureDate || '',
       }).catch(() => {}); // silent fail nếu chưa đăng nhập
 
       enrichPlacesWithCoords(formData.location, result.tours || [], result.foods || [])

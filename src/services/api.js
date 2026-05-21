@@ -207,3 +207,103 @@ export const checkPlaceSavedStatus = async (name, location = '') => {
     return false;
   }
 };
+
+// ─────────────────────────────────────────────────────────────
+// 🗺️ TRIPS — lịch trình theo tài khoản
+// ─────────────────────────────────────────────────────────────
+
+export const fetchMyTrips = async () => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/my-trips`, { credentials: 'include' });
+    const data = await res.json();
+    return data.success ? data.trips : [];
+  } catch (e) {
+    console.error('Lỗi fetchMyTrips:', e);
+    return [];
+  }
+};
+
+export const fetchTripById = async (tripId) => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/trip/${tripId}`, { credentials: 'include' });
+    const data = await res.json();
+    return data.success ? data : null;
+  } catch (e) {
+    console.error('Lỗi fetchTripById:', e);
+    return null;
+  }
+};
+
+export const deleteTrip = async (tripId) => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/my-trips/${tripId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const data = await res.json();
+    return data.success ? data : { success: false };
+  } catch (e) {
+    console.error('Lỗi deleteTrip:', e);
+    return { success: false };
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// 🔍 SEARCH HISTORY — lịch sử tìm kiếm theo tài khoản
+// ─────────────────────────────────────────────────────────────
+
+export const fetchSearchHistory = async () => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/search-history`, { credentials: 'include' });
+    const data = await res.json();
+    return data.success ? data.history : [];
+  } catch (e) {
+    console.error('Lỗi fetchSearchHistory:', e);
+    return [];
+  }
+};
+
+// Gọi hàm này mỗi khi user bấm nút tìm kiếm
+export const saveSearchHistory = async ({ location, origin = '', budget = 0, days = 3, passengers = 1, departure_date = '' }) => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/search-history`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ location, origin, budget, days, passengers, departure_date }),
+    });
+    const data = await res.json();
+    return data.success ? data : { success: false };
+  } catch (e) {
+    console.error('Lỗi saveSearchHistory:', e);
+    return { success: false };
+  }
+};
+
+export const deleteSearchHistory = async (historyId) => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/search-history/${historyId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const data = await res.json();
+    return data.success ? data : { success: false };
+  } catch (e) {
+    console.error('Lỗi deleteSearchHistory:', e);
+    return { success: false };
+  }
+};
+
+export const clearSearchHistory = async () => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/search-history/clear`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const data = await res.json();
+    return data.success ? data : { success: false };
+  } catch (e) {
+    console.error('Lỗi clearSearchHistory:', e);
+    return { success: false };
+  }
+};
