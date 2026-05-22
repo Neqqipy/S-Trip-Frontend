@@ -41,7 +41,16 @@ const Hero = ({ onSearch, isDark = false }) => {
   );
 
   const provinces_set = new Set(["An Giang", "Bà Rịa - Vũng Tàu", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"]);
-  const isValidProvince = (val) => provinces_set.has(val);
+  const _norm = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const isValidProvince = (val) => {
+    if (provinces_set.has(val)) return true;
+    // fuzzy: bỏ dấu, bỏ prefix "tp.", "tỉnh", "thành phố"
+    const v = _norm(val).replace(/^(tp\.?|tinh|thanh pho)\s*/,'');
+    return [...provinces_set].some(p => {
+      const pn = _norm(p).replace(/^(tp\.?|tinh|thanh pho)\s*/,'');
+      return pn === v || pn.includes(v) || v.includes(pn);
+    });
+  };
 
   const handleSearchClick = () => {
     const currentEmptyFields = {};
@@ -337,19 +346,25 @@ const Hero = ({ onSearch, isDark = false }) => {
         <span style={{ fontSize: '32px', fontWeight: '900', color: 'white' }}>
           <FontAwesomeIcon icon={faBolt} style={{color: '#fbbf24'}} /> Gợi ý:
         </span>
-        {['Đà Lạt', 'Huế', 'Đà Nẵng', 'Sapa', 'Phú Quốc'].map(city => (
+        {[
+          {label: 'Đà Lạt',   value: 'Lâm Đồng'},
+          {label: 'Huế',      value: 'Thừa Thiên Huế'},
+          {label: 'Đà Nẵng',  value: 'Đà Nẵng'},
+          {label: 'Sapa',     value: 'Lào Cai'},
+          {label: 'Phú Quốc', value: 'Kiên Giang'},
+        ].map(({label, value}) => (
           <div 
-            key={city} 
+            key={label} 
             style={{ 
-              backgroundColor: hoveredTag === city ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.2)',
+              backgroundColor: hoveredTag === label ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.2)',
               padding: '10px 40px', borderRadius: '9999px', fontSize: '24px', color: 'white', fontWeight: '700', 
               cursor: 'pointer', border: '1px solid rgba(255,255,255,0.5)', transition: '0.3s'
             }}
-            onMouseEnter={() => setHoveredTag(city)}
+            onMouseEnter={() => setHoveredTag(label)}
             onMouseLeave={() => setHoveredTag(null)}
-            onClick={() => setLocation(city)}
+            onClick={() => setLocation(value)}
           >
-            {city}
+            {label}
           </div>
         ))}
       </div>

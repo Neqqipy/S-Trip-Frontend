@@ -1522,7 +1522,43 @@ const TransportCard = ({ opt, isCombined, isDark }) => {
       </div>
 
       <div style={{ fontSize: '13px', color: isDark ? '#cbd5e1' : '#475569', lineHeight: '1.5', flex: 1 }}>
-        {opt.tips}
+        {/* Parse link trong tips thành <a> đẹp */}
+        {opt.tips ? (() => {
+          // Tách text thành các phần: text thường và "Tên (url)"
+          const parts = [];
+          const re = /([\w\sÀ-ỹ]+?)\s*\((https?:\/\/[^\s)]+)\)/g;
+          let last = 0, m;
+          const tips = opt.tips;
+          while ((m = re.exec(tips)) !== null) {
+            if (m.index > last) parts.push({ type: 'text', val: tips.slice(last, m.index) });
+            parts.push({ type: 'link', label: m[1].trim(), url: m[2] });
+            last = m.index + m[0].length;
+          }
+          if (last < tips.length) parts.push({ type: 'text', val: tips.slice(last) });
+          return parts.length > 1 ? (
+            <span>
+              {parts[0]?.type === 'text' && <span>{parts[0].val}</span>}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                {parts.filter(p => p.type === 'link').map((p, i) => (
+                  <a key={i} href={p.url} target="_blank" rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '5px',
+                      padding: '6px 14px', borderRadius: '99px',
+                      background: isDark ? 'rgba(59,130,246,0.15)' : '#eff6ff',
+                      color: '#3b82f6', fontWeight: '700', fontSize: '12px',
+                      textDecoration: 'none', border: '1px solid rgba(59,130,246,0.25)',
+                      transition: '0.2s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.color = 'white'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = isDark ? 'rgba(59,130,246,0.15)' : '#eff6ff'; e.currentTarget.style.color = '#3b82f6'; }}
+                  >
+                    ✈️ {p.label} ↗
+                  </a>
+                ))}
+              </div>
+            </span>
+          ) : <span>{tips}</span>;
+        })() : null}
       </div>
 
       {isCombined && opt.legs && (
