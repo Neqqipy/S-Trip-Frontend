@@ -18,7 +18,7 @@ const Hero = ({ onSearch, isDark = false }) => {
   const [location, setLocation] = useState(_last.location || '');
   const [departureDate, setDepartureDate] = useState(_last.departureDate || ''); 
   const [days, setDays] = useState(_last.days || '');
-  const [budget, setBudget] = useState(_last.budget || '');
+  const [budget, setBudget] = useState(String(_last.budget || ''));
   const [passengers, setPassengers] = useState(_last.passengers || 1);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [hoveredTag, setHoveredTag] = useState(null);
@@ -40,14 +40,15 @@ const Hero = ({ onSearch, isDark = false }) => {
     .includes(query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
   );
 
+  const extra_aliases = new Set(["Sapa","Sa Pa","Đà Lạt","Da Lat","Huế","Hue","Phú Quốc","Phu Quoc","Hội An","Hoi An","Nha Trang","Vũng Tàu","Vung Tau","Mũi Né","Mui Ne","Buôn Ma Thuột","Buon Ma Thuot","Cần Thơ","Can Tho","Hải Phòng","Hai Phong"]);
   const provinces_set = new Set(["An Giang", "Bà Rịa - Vũng Tàu", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"]);
   const _norm = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
   const isValidProvince = (val) => {
-    if (provinces_set.has(val)) return true;
-    // fuzzy: bỏ dấu, bỏ prefix "tp.", "tỉnh", "thành phố"
-    const v = _norm(val).replace(/^(tp\.?|tinh|thanh pho)\s*/,'');
-    return [...provinces_set].some(p => {
-      const pn = _norm(p).replace(/^(tp\.?|tinh|thanh pho)\s*/,'');
+    if (!val) return false;
+    if (provinces_set.has(val) || extra_aliases.has(val)) return true;
+    const v = _norm(val).replace(/^(tp\.?|tinh|thanh pho)\s*/, '');
+    return [...provinces_set, ...extra_aliases].some(p => {
+      const pn = _norm(p).replace(/^(tp\.?|tinh|thanh pho)\s*/, '');
       return pn === v || pn.includes(v) || v.includes(pn);
     });
   };
@@ -58,7 +59,7 @@ const Hero = ({ onSearch, isDark = false }) => {
     if (!location || !isValidProvince(location)) currentEmptyFields.location = true;
     if (!departureDate) currentEmptyFields.departureDate = true;
     if (!days) currentEmptyFields.days = true;
-    const rawBudget = budget.replace(/[.đ\s]/g, '');
+    const rawBudget = String(budget).replace(/[.đ\s]/g, '');
     if (!budget || !/^\d+$/.test(rawBudget) || parseInt(rawBudget) <= 0) currentEmptyFields.budget = true;
 
     setEmptyFields(currentEmptyFields);
@@ -314,11 +315,11 @@ const Hero = ({ onSearch, isDark = false }) => {
             }}
             onFocus={(e) => {
               setActiveDropdown('budget');
-              const raw = budget.replace(/[.đ\s]/g, '');
+              const raw = String(budget).replace(/[.đ\s]/g, '');
               setBudget(raw);
             }}
             onBlur={() => {
-              const raw = budget.replace(/[.đ\s]/g, '');
+              const raw = String(budget).replace(/[.đ\s]/g, '');
               if (raw && parseInt(raw) > 0) {
                 setBudget(parseInt(raw).toLocaleString('vi-VN') + 'đ');
                 setEmptyFields(f => ({...f, budget: false}));
@@ -346,25 +347,19 @@ const Hero = ({ onSearch, isDark = false }) => {
         <span style={{ fontSize: '32px', fontWeight: '900', color: 'white' }}>
           <FontAwesomeIcon icon={faBolt} style={{color: '#fbbf24'}} /> Gợi ý:
         </span>
-        {[
-          {label: 'Đà Lạt',   value: 'Lâm Đồng'},
-          {label: 'Huế',      value: 'Thừa Thiên Huế'},
-          {label: 'Đà Nẵng',  value: 'Đà Nẵng'},
-          {label: 'Sapa',     value: 'Lào Cai'},
-          {label: 'Phú Quốc', value: 'Kiên Giang'},
-        ].map(({label, value}) => (
+        {['Đà Lạt', 'Huế', 'Đà Nẵng', 'Sapa', 'Phú Quốc'].map(city => (
           <div 
-            key={label} 
+            key={city} 
             style={{ 
-              backgroundColor: hoveredTag === label ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.2)',
+              backgroundColor: hoveredTag === city ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.2)',
               padding: '10px 40px', borderRadius: '9999px', fontSize: '24px', color: 'white', fontWeight: '700', 
               cursor: 'pointer', border: '1px solid rgba(255,255,255,0.5)', transition: '0.3s'
             }}
-            onMouseEnter={() => setHoveredTag(label)}
+            onMouseEnter={() => setHoveredTag(city)}
             onMouseLeave={() => setHoveredTag(null)}
-            onClick={() => setLocation(value)}
+            onClick={() => setLocation(city)}
           >
-            {label}
+            {city}
           </div>
         ))}
       </div>
