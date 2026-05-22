@@ -71,11 +71,20 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
   };
 
   const handleLogout = async () => {
-    await fetch(`${BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
-    localStorage.removeItem('s_trip_last_search');
-    onUserChange(null); // ✅ Dùng callback từ App.js
-    setMenuOpen(false);
-  };
+  // 1. Gọi API đăng xuất như cũ
+  await fetch(`${BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+
+  // 2. 🔥 DỌN SẠCH TOÀN BỘ LOCAL STORAGE thay vì nhặt từng món
+  localStorage.clear(); 
+
+  // 3. Reset state của User và Menu
+  onUserChange(null); 
+  setMenuOpen(false);
+
+  // 4. 🔥 CHỐT HẠ: Đá người dùng về trang chủ (hoặc trang /login)
+  // Lệnh này sẽ ép trình duyệt tải lại toàn bộ trang web, quét sạch mọi dữ liệu thừa đang kẹt trong React!
+  window.location.href = '/'; 
+};
 
   const handleHomeClick = () => {
     if (onNavigate) onNavigate('hero-section');

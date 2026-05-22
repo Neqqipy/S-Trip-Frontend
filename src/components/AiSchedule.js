@@ -9,7 +9,7 @@ import {
   faBookmark as faBookmarkSolid,
   faHeart as faHeartSolid,
   faMugHot, faChevronLeft, faChevronRight,
-  faArrowUp, faRightLeft,
+  faArrowUp,
 } from '@fortawesome/free-solid-svg-icons';
 import { 
   faCalendar as faRegularCalendar,
@@ -1582,19 +1582,19 @@ const WeatherWidget = ({ location, isDark, externalData }) => {
     <div style={{ marginBottom: 55, borderRadius: 32, overflow: 'hidden', border, boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(59,130,246,0.10)' }}>
 
       {/* Header gradient */}
-      <div style={{ background: isDark ? 'linear-gradient(135deg, #1e3a5f 0%, #0f2540 100%)' : 'linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%)', padding: '20px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'nowrap' }}>
+      <div style={{ background: isDark ? 'linear-gradient(135deg, #1e3a5f 0%, #162032 100%)' : 'linear-gradient(135deg, #bae6fd 0%, #dbeafe 100%)', padding: '20px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'nowrap' }}>
 
         {/* Thời tiết hiện tại */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
           <div style={{ fontSize: 52, lineHeight: 1 }}>{current.icon}</div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: isDark ? '#93c5fd' : '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: isDark ? '#7dd3fc' : '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>
               🌍 Thời tiết tại {location}
             </div>
-            <div style={{ fontSize: 38, fontWeight: 900, color: isDark ? '#ffffff' : '#1e40af', lineHeight: 1, marginBottom: 2 }}>
+            <div style={{ fontSize: 38, fontWeight: 900, color: isDark ? '#ffffff' : '#1e3a8a', lineHeight: 1, marginBottom: 2 }}>
               {current.temp_c !== null ? `${current.temp_c}°C` : '--'}
             </div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#bfdbfe' : '#3b82f6' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#94a3b8' : '#1d4ed8' }}>
               {current.condition || 'Không xác định'}
             </div>
             {current.feels_like_c !== null && (
@@ -1614,8 +1614,8 @@ const WeatherWidget = ({ location, isDark, externalData }) => {
             { label: '👁️ Tầm nhìn', val: current.visibility_km != null ? `${current.visibility_km} km` : '--' },
           ].map(({ label, val }) => (
             <div key={label} style={{ background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '8px 12px', minWidth: 72, textAlign: 'center', flex: '1 1 72px', maxWidth: 110 }}>
-              <div style={{ fontSize: 10, color: isDark ? '#93c5fd' : '#2563eb', fontWeight: 700, whiteSpace: 'nowrap' }}>{label}</div>
-              <div style={{ fontSize: 14, fontWeight: 900, color: isDark ? '#ffffff' : '#1e40af', marginTop: 2 }}>{val}</div>
+              <div style={{ fontSize: 10, color: isDark ? '#7dd3fc' : '#1d4ed8', fontWeight: 700, whiteSpace: 'nowrap' }}>{label}</div>
+              <div style={{ fontSize: 14, fontWeight: 900, color: isDark ? '#e2e8f0' : '#1e3a8a', marginTop: 2 }}>{val}</div>
             </div>
           ))}
         </div>
@@ -1623,7 +1623,7 @@ const WeatherWidget = ({ location, isDark, externalData }) => {
 
       {/* Lời khuyên du lịch */}
       {travel_advice && (
-        <div style={{ padding: '10px 24px', background: isDark ? '#0f172a' : '#eff6ff', borderTop: isDark ? '1px solid #1e3a5f' : '1px solid #dbeafe', fontSize: 13, fontWeight: 700, color: isDark ? '#bfdbfe' : '#1e40af' }}>
+        <div style={{ padding: '10px 24px', background: isDark ? '#0f172a' : '#dbeafe', borderTop: isDark ? '1px solid #334155' : '1px solid #93c5fd', fontSize: 13, fontWeight: 700, color: isDark ? '#94a3b8' : '#1e3a8a' }}>
           {travel_advice}
         </div>
       )}
@@ -1636,13 +1636,13 @@ const WeatherWidget = ({ location, isDark, externalData }) => {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${forecast.length}, 1fr)`, gap: 8 }}>
             {forecast.map((day, i) => (
-              <div key={i} style={{ background: isDark ? '#0f172a' : '#f8fafc', border: isDark ? '1px solid #1e293b' : '1px solid #f1f5f9', borderRadius: 14, padding: '10px 6px', textAlign: 'center' }}>
+              <div key={i} style={{ background: isDark ? '#0f172a' : '#eff6ff', border: isDark ? '1px solid #1e293b' : '1px solid #bfdbfe', borderRadius: 14, padding: '10px 6px', textAlign: 'center' }}>
                 <div style={{ fontSize: 10, fontWeight: 800, color: textSub, marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{day.day || `N${i+1}`}</div>
                 <div style={{ fontSize: 22, marginBottom: 3 }}>{day.icon}</div>
                 <div style={{ fontSize: 13, fontWeight: 900, color: textMain }}>{day.high_c !== null ? `${day.high_c}°` : '--'}</div>
                 <div style={{ fontSize: 11, color: textSub }}>{day.low_c !== null ? `${day.low_c}°` : '--'}</div>
                 {day.rain_chance != null && (
-                  <div style={{ marginTop: 4, fontSize: 10, fontWeight: 700, color: '#3b82f6' }}>💧{day.rain_chance}%</div>
+                  <div style={{ marginTop: 4, fontSize: 10, fontWeight: 700, color: isDark ? '#7dd3fc' : '#1d4ed8' }}>💧{day.rain_chance}%</div>
                 )}
               </div>
             ))}
@@ -3150,9 +3150,9 @@ const ActionSpeedDial = ({
           })}
 
           {/* Hidden trigger wrappers cho các nút có nội bộ state */}
-          <_ICalTrigger dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} />
-          <_ScreenshotTrigger contentRef={contentRef} location={initialData.location} isDark={isDark} />
-          <_ShareTrigger dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} plan={plan} isDark={isDark} />
+          <ICalTrigger dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} />
+          <ScreenshotTrigger contentRef={contentRef} location={initialData.location} isDark={isDark} />
+          <ShareTrigger dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} plan={plan} isDark={isDark} />
 
           {/* FAB chính */}
           <button
@@ -3187,7 +3187,7 @@ const ActionSpeedDial = ({
 // ICalButton, ScreenshotButton, ShareButton vẫn dùng nguyên để giữ logic
 // Speed dial bubble chỉ là UI proxy — khi click bubble tương ứng sẽ click hidden button
 
-const _ICalTrigger = ({ dailyPlans, initialData, currentHotel }) => {
+const ICalTrigger = ({ dailyPlans, initialData, currentHotel }) => {
   // ICalButtonNew tự render, wrap trong div ẩn để tránh layout
   return (
     <div style={{ position:'absolute', opacity:0, pointerEvents:'none', width:0, height:0, overflow:'hidden' }} id="sd-ical-hidden">
@@ -3196,13 +3196,13 @@ const _ICalTrigger = ({ dailyPlans, initialData, currentHotel }) => {
   );
 };
 
-const _ScreenshotTrigger = ({ contentRef, location, isDark }) => (
+const ScreenshotTrigger = ({ contentRef, location, isDark }) => (
   <div style={{ position:'absolute', opacity:0, pointerEvents:'none', width:0, height:0, overflow:'hidden' }} id="sd-screenshot-hidden">
     <ScreenshotButtonNew contentRef={contentRef} location={location} isDark={isDark} />
   </div>
 );
 
-const _ShareTrigger = ({ dailyPlans, initialData, currentHotel, plan, isDark }) => (
+const ShareTrigger = ({ dailyPlans, initialData, currentHotel, plan, isDark }) => (
   <div style={{ position:'absolute', opacity:0, pointerEvents:'none', width:0, height:0, overflow:'hidden' }} id="sd-share-hidden">
     <ShareButtonNew dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} plan={plan} isDark={isDark} />
   </div>

@@ -96,7 +96,8 @@ const useCrispImageProfile = (item, tabType, T) => {
 
     updateHighResInDB();
     return () => { isMounted = false; };
-  }, [item?.id, item?.thumbnail]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id, item?.thumbnail, tabType]);
 
   return imgUrl;
 };
@@ -105,7 +106,7 @@ const C = { primary: '#10b981', primary2: '#059669', dark: '#0f172a', card: '#1e
 
 const THEME = {
   dark: { bg: 'linear-gradient(135deg, #0a1628 0%, #0f2040 40%, #0a1628 100%)', text: '#f8fafc', muted: '#94a3b8', card: 'rgba(255,255,255,0.04)', cardBorder: 'rgba(255,255,255,0.08)', inputBg: 'rgba(255,255,255,0.06)', inputBorder: 'rgba(255,255,255,0.12)', inputColor: '#f8fafc', headerBg: 'rgba(16,185,129,0.08)', headerBorder:'rgba(16,185,129,0.15)', btnBg: 'rgba(255,255,255,0.06)', btnBorder: 'rgba(255,255,255,0.1)', rowBorder: 'rgba(255,255,255,0.05)', scrollbar: '#334155' },
-  light: { bg: 'linear-gradient(135deg, #f0fdf8 0%, #ecfdf5 40%, #f0fdf8 100%)', text: '#0f172a', muted: '#64748b', card: 'rgba(16,185,129,0.06)', cardBorder: 'rgba(16,185,129,0.18)', inputBg: '#f8fafc', inputBorder: '#d1fae5', inputColor: '#0f172a', headerBg: 'rgba(16,185,129,0.08)', headerBorder:'rgba(16,185,129,0.2)', btnBg: 'rgba(16,185,129,0.08)', btnBorder: 'rgba(16,185,129,0.2)', rowBorder: 'rgba(16,185,129,0.1)', scrollbar: '#a7f3d0' },
+  light: { bg: 'linear-gradient(135deg, #f0fdf8 0%, #ecfdf5 40%, #f0fdf8 100%)', text: '#0f172a', muted: '#64748b', card: 'rgba(16,185,129,0.13)', cardBorder: 'rgba(5,150,105,0.35)', inputBg: '#f8fafc', inputBorder: '#6ee7b7', inputColor: '#0f172a', headerBg: 'rgba(16,185,129,0.14)', headerBorder:'rgba(5,150,105,0.35)', btnBg: 'rgba(16,185,129,0.15)', btnBorder: 'rgba(5,150,105,0.35)', rowBorder: 'rgba(16,185,129,0.2)', scrollbar: '#6ee7b7' },
 };
 
 const api = {
@@ -240,7 +241,7 @@ const standardizeLocation = (locName) => {
   return name;
 };
 
-export default function ProfilePage({ onBack, isDark = true, user: userProp = null, onUserChange, onLoadSchedule }) {
+export default function ProfilePage({ onBack, isDark = true, user: userProp = null, onUserChange, onLoadSchedule, onSearch }) {
   // Dùng user từ App.js nếu có, fallback tự fetch nếu dùng standalone
   const [user,       setUser]       = useState(userProp);
   const [tab,        setTab]        = useState('saved');
@@ -323,7 +324,7 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
           {tab === 'saved'       && <SavedSchedules T={T} onLoadSchedule={onLoadSchedule} />}
           {tab === 'savedplaces' && <SavedPlaces T={T} />}
           {tab === 'favorites'   && <Favorites T={T} />}
-          {tab === 'history'     && <SearchHistory T={T} />}
+          {tab === 'history'     && <SearchHistory T={T} onSearch={onSearch} onBack={onBack} />}
           {tab === 'settings'    && <Settings user={user} onUpdate={handleUserUpdate} T={T} />}
         </div>
       </div>
@@ -537,6 +538,7 @@ function StatsBar({ user, T }) {
 }
 
 // ── MOCK DATA (xóa khi dùng API thật) ──────────────────────
+// eslint-disable-next-line no-unused-vars
 const MOCK_SCHEDULES = [
   {
     id: 1, title: 'Khám phá Huế', location: 'Huế', days: 2,
@@ -643,6 +645,7 @@ function ScheduleModal({ schedule, onClose, onLoadToMain }) {
 
   // Chuyển editedPlans[{ day, morning, afternoon, evening }]
   // thành days[{ day, activities[] }] để modal hiển thị
+  // eslint-disable-next-line no-unused-vars
   const SLOT_TIME = { morning: '🌅 Sáng', afternoon: '☀️ Chiều', evening: '🌙 Tối' };
   const days = editedPlans.map((plan) => {
     const activities = [];
@@ -1247,7 +1250,7 @@ function Favorites({ T }) {
 }
 
 // 🔍 SEARCH HISTORY
-function SearchHistory({ T }) {
+function SearchHistory({ T, onSearch, onBack }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -1268,6 +1271,19 @@ function SearchHistory({ T }) {
     setHistory([]);
   };
 
+  const handleReSearch = (h) => {
+    if (!onSearch) return;
+    onSearch({
+      location:      h.location      || h.destination || '',
+      origin:        h.origin        || '',
+      budget:        h.budget        || '',
+      days:          h.days          ? `${h.days} ngày` : '3 ngày',
+      passengers:    h.passengers    || 1,
+      departureDate: h.departure_date || '',
+    });
+    if (onBack) onBack();
+  };
+
   return (
     <Section title="Lịch sử tìm kiếm" icon={Icon.search} count={history.length} action={history.length > 0 && ( <button onClick={handleClearAll} className="sp-btn" style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: C.danger, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}> Xoá tất cả </button> )}>
       {loading && <Skeleton />}
@@ -1283,7 +1299,7 @@ function SearchHistory({ T }) {
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>{Icon.clock} {formatDate(h.searched_at)}</span>
               </div>
             </div>
-            <button className="sp-btn" style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: 'rgba(16,185,129,0.15)', color: C.primary, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Tìm lại</button>
+            <button className="sp-btn" onClick={() => handleReSearch(h)} style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: 'rgba(16,185,129,0.15)', color: C.primary, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Tìm lại</button>
             <button className="sp-del" onClick={() => handleDelete(h.id)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: 'transparent', color: T.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s' }}>{Icon.trash}</button>
           </div>
         ))}

@@ -29,7 +29,7 @@ const HomePage = ({
       </div>
       
       <div id="itinerary-section" style={{ scrollMarginTop: '110px' }}>
-        {isLoading && <SkeletonLoader />}
+        {isLoading && <SkeletonLoader isDark={isDark} />}
         {searchData && !isLoading && (
           <AiSchedule 
             data={searchData} 
@@ -285,6 +285,7 @@ function AppContent() {
                   isDark={isDark}
                   user={user}
                   onUserChange={setUser}
+                  onSearch={handleSearch}
                   onLoadSchedule={(dataJson) => {
                     if (!dataJson) { setActiveSection('home'); return; }
                     setSearchData(dataJson.searchData);
