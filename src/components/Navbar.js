@@ -20,12 +20,14 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
   const [showLockTip,setShowLockTip]= useState(false);
 
   // ── Auth state ──
-  const [email,      setEmail]      = useState('');
-  const [password,   setPassword]   = useState('');
-  const [name,       setName]       = useState('');
-  const [authError,  setAuthError]  = useState('');
-  const [authLoading,setAuthLoading]= useState(false);
-  const [menuOpen,   setMenuOpen]   = useState(false);
+  const [username,    setUsername]    = useState('');
+  const [email,       setEmail]       = useState('');
+  const [password,    setPassword]    = useState('');
+  const [confirmPw,   setConfirmPw]   = useState('');
+  const [name,        setName]        = useState('');
+  const [authError,   setAuthError]   = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [menuOpen,    setMenuOpen]    = useState(false);
 
   // ── Forgot password state ──
   const [showForgot,     setShowForgot]     = useState(false);
@@ -34,24 +36,51 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
   const [forgotError,    setForgotError]    = useState('');
   const [forgotSuccess,  setForgotSuccess]  = useState(false);
 
+  // ── Verify email state ──
+  const [showVerify,        setShowVerify]        = useState(false);
+  const [verifyEmail,       setVerifyEmail]       = useState('');
+  const [emailSent,         setEmailSent]         = useState(true);  // false = backend báo gửi mail lỗi
+  const [resendLoading,     setResendLoading]     = useState(false);
+  const [resendSuccess,     setResendSuccess]     = useState(false);
+  const [resendError,       setResendError]       = useState('');
+
   // ✅ Bỏ useEffect fetch /api/auth/me — đã chuyển lên App.js
   // ✅ Bỏ xử lý Google OAuth redirect — đã chuyển lên App.js
 
   const openModal = (loginMode = true) => {
     setIsLogin(loginMode);
     setAuthError('');
-    setEmail(''); setPassword(''); setName('');
+    setUsername(''); setEmail(''); setPassword(''); setConfirmPw(''); setName('');
+    // Reset verify state phòng trường hợp user đóng modal verify rồi mở lại auth
+    setShowVerify(false);
+    setResendSuccess(false);
+    setResendError('');
     setShowAuth(true);
   };
 
   const handleSubmit = async () => {
-    setAuthError(''); setAuthLoading(true);
-    const endpoint = isLogin
-      ? `${BASE_URL}/api/auth/login`
-      : `${BASE_URL}/api/auth/register`;
+    setAuthError(''); 
+
+    // Validate phía client
+    if (isLogin) {
+      if (!username || !password)
+        return setAuthError('Vui lòng nhập tên đăng nhập và mật khẩu');
+    } else {
+      if (!name || !username || !email || !password || !confirmPw)
+        return setAuthError('Vui lòng điền đầy đủ thông tin');
+      if (password !== confirmPw)
+        return setAuthError('Mật khẩu nhập lại không khớp');
+      if (password.length < 6)
+        return setAuthError('Mật khẩu phải ít nhất 6 ký tự');
+      if (!email.includes('@'))
+        return setAuthError('Email không hợp lệ');
+    }
+
+    setAuthLoading(true);
+    const endpoint = isLogin ? `${BASE_URL}/api/auth/login` : `${BASE_URL}/api/auth/register`;
     const body = isLogin
-      ? { email, password }
-      : { email, password, name };
+      ? { username, password }
+      : { username, email, password, name };
     try {
       const res  = await fetch(endpoint, {
         method: 'POST',
@@ -61,10 +90,30 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
       });
       const data = await res.json();
       if (data.success) {
-        onUserChange(data.user); // ✅ Dùng callback từ App.js
-        setShowAuth(false);
+        if (data.pending_verification) {
+          // Đăng ký thành công — yêu cầu xác nhận email
+          setShowAuth(false);
+          setVerifyEmail(data.email || email);
+          setEmailSent(data.email_sent !== false); // false chỉ khi backend báo rõ lỗi gửi mail
+          setResendSuccess(false);
+          setResendError('');
+          setShowVerify(true);
+        } else {
+          onUserChange(data.user);
+          setShowAuth(false);
+        }
       } else {
-        setAuthError(data.error || 'Có lỗi xảy ra');
+        if (data.pending_verification) {
+          // Login bị chặn vì chưa xác nhận email
+          setShowAuth(false);
+          setVerifyEmail(data.email || '');
+          setEmailSent(true);
+          setResendSuccess(false);
+          setResendError('');
+          setShowVerify(true);
+        } else {
+          setAuthError(data.error || 'Có lỗi xảy ra');
+        }
       }
     } catch {
       setAuthError('Không thể kết nối server');
@@ -100,6 +149,29 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
       setForgotError('Không thể kết nối server');
     } finally {
       setForgotLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendError('');
+    setResendSuccess(false);
+    setResendLoading(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/auth/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: verifyEmail }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResendSuccess(true);
+      } else {
+        setResendError(data.error || 'Có lỗi xảy ra');
+      }
+    } catch {
+      setResendError('Không thể kết nối server');
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -233,22 +305,23 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
       backdropFilter: 'blur(15px)',
     },
     modal: {
-      backgroundColor: isDark ? '#0f172a' : 'white', width: '750px', maxWidth: '90%',
-      borderRadius: '50px', padding: '60px 70px',
+      backgroundColor: isDark ? '#0f172a' : 'white', width: '560px', maxWidth: '92%',
+      maxHeight: '90vh', overflowY: 'auto',
+      borderRadius: '32px', padding: '44px 52px',
       position: 'relative', boxShadow: '0 40px 100px rgba(0,0,0,0.5)',
     },
     closeBtn: {
-      position: 'absolute', top: '20px', right: '20px',
-      background: 'none', border: 'none', fontSize: '45px', color: isDark ? '#64748b' : '#9ca3af', cursor: 'pointer',
+      position: 'absolute', top: '18px', right: '20px',
+      background: 'none', border: 'none', fontSize: '32px', color: isDark ? '#64748b' : '#9ca3af', cursor: 'pointer',
     },
-    title: { fontSize: '50px', fontWeight: '900', color: isDark ? '#ffffff' : '#111827', marginBottom: '10px', textAlign: 'center' },
-    subtitle: { color: isDark ? '#94a3b8' : '#6b7280', fontSize: '22px', textAlign: 'center', marginBottom: '40px' },
-    inputGroup: { marginBottom: '25px', position: 'relative' },
-    inputIcon: { position: 'absolute', left: '30px', top: '50%', transform: 'translateY(-50%)', color: isDark ? '#64748b' : '#9ca3af', fontSize: '26px' },
-    input: { width: '100%', padding: '22px 30px 22px 80px', borderRadius: '25px', border: isDark ? '3px solid #1e293b' : '3px solid #f1f5f9', fontSize: '22px', outline: 'none', boxSizing: 'border-box', backgroundColor: isDark ? '#1e293b' : 'white', color: isDark ? '#ffffff' : '#111827' },
-    submitBtn: { width: '100%', backgroundColor: isDark ? '#10b981' : '#111827', color: 'white', padding: '22px', borderRadius: '25px', fontSize: '24px', fontWeight: '800', border: 'none', cursor: 'pointer', marginTop: '10px' },
-    switchText: { textAlign: 'center', marginTop: '30px', fontSize: '20px', color: isDark ? '#94a3b8' : '#4b5563' },
-    switchLink: { color: '#10b981', fontWeight: '800', cursor: 'pointer', textDecoration: 'underline', marginLeft: '10px' },
+    title: { fontSize: '34px', fontWeight: '900', color: isDark ? '#ffffff' : '#111827', marginBottom: '8px', textAlign: 'center' },
+    subtitle: { color: isDark ? '#94a3b8' : '#6b7280', fontSize: '16px', textAlign: 'center', marginBottom: '24px' },
+    inputGroup: { marginBottom: '16px', position: 'relative' },
+    inputIcon: { position: 'absolute', left: '18px', top: '50%', transform: 'translateY(-50%)', color: isDark ? '#64748b' : '#9ca3af', fontSize: '18px' },
+    input: { width: '100%', padding: '15px 18px 15px 50px', borderRadius: '16px', border: isDark ? '2px solid #1e293b' : '2px solid #f1f5f9', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: isDark ? '#1e293b' : '#f8fafc', color: isDark ? '#ffffff' : '#111827' },
+    submitBtn: { width: '100%', backgroundColor: isDark ? '#10b981' : '#111827', color: 'white', padding: '16px', borderRadius: '16px', fontSize: '17px', fontWeight: '800', border: 'none', cursor: 'pointer', marginTop: '8px' },
+    switchText: { textAlign: 'center', marginTop: '20px', fontSize: '15px', color: isDark ? '#94a3b8' : '#4b5563' },
+    switchLink: { color: '#10b981', fontWeight: '800', cursor: 'pointer', textDecoration: 'underline', marginLeft: '8px' },
   };
 
   const isScheduleActive = activeSection === 'schedule';
@@ -322,7 +395,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
           {/* LOGO */}
           <div style={styles.logoContainer} onClick={onRefresh}>
             <img 
-              src="/S.jpg"
+              src={`${window.location.protocol}//${window.location.hostname}:3000/S.jpg`}
               alt="S-Trip Logo" 
               style={styles.logoImage} 
             />
@@ -500,61 +573,63 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
               <h2 style={styles.title}>{isLogin ? 'Chào mừng trở lại' : 'Tạo tài khoản mới'}</h2>
               <p style={styles.subtitle}>{isLogin ? 'Đăng nhập để khám phá lịch trình' : 'Tham gia cộng đồng S-Trip'}</p>
 
-              {/* Nút Google */}
-              <button
-                onClick={handleGoogle}
-                style={{
-                  width: '100%', padding: '20px', borderRadius: 25, marginBottom: 24,
-                  border: isDark ? '3px solid #334155' : '3px solid #e2e8f0',
-                  background: isDark ? '#1e293b' : 'white',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
-                  cursor: 'pointer', fontWeight: 800, fontSize: 20,
-                  color: isDark ? '#f8fafc' : '#374151',
-                }}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Tiếp tục với Google
-              </button>
-
-              {/* Divider */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-                <div style={{ flex: 1, height: 2, background: isDark ? '#1e293b' : '#f1f5f9' }} />
-                <span style={{ color: '#94a3b8', fontWeight: 700, fontSize: 16 }}>hoặc</span>
-                <div style={{ flex: 1, height: 2, background: isDark ? '#1e293b' : '#f1f5f9' }} />
-              </div>
-
-              {/* Tên — chỉ khi đăng ký */}
+              {/* Tên hiển thị — chỉ khi đăng ký */}
               {!isLogin && (
                 <div style={styles.inputGroup}>
                   <div style={styles.inputIcon}><FontAwesomeIcon icon={faUser} /></div>
                   <input
-                    type="text" placeholder="Họ và tên" style={styles.input}
+                    type="text" placeholder="Tên hiển thị" style={styles.input}
+                    autoComplete="name"
                     value={name} onChange={e => setName(e.target.value)}
                   />
                 </div>
               )}
 
+              {/* Tên đăng nhập */}
               <div style={styles.inputGroup}>
                 <div style={styles.inputIcon}><FontAwesomeIcon icon={faUser} /></div>
                 <input
-                  type="email" placeholder="Email" style={styles.input}
-                  value={email} onChange={e => setEmail(e.target.value)}
+                  type="text" placeholder="Tên đăng nhập" style={styles.input}
+                  autoComplete="username"
+                  value={username} onChange={e => setUsername(e.target.value)}
                 />
               </div>
 
+              {/* Email — chỉ khi đăng ký */}
+              {!isLogin && (
+                <div style={styles.inputGroup}>
+                  <div style={styles.inputIcon}><FontAwesomeIcon icon={faUser} /></div>
+                  <input
+                    type="email" placeholder="Email" style={styles.input}
+                    autoComplete="email"
+                    value={email} onChange={e => setEmail(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Mật khẩu */}
               <div style={styles.inputGroup}>
-                <div style={styles.inputIcon}><FontAwesomeIcon icon={faUser} /></div>
+                <div style={styles.inputIcon}><FontAwesomeIcon icon={faLock} /></div>
                 <input
                   type="password" placeholder="Mật khẩu" style={styles.input}
+                  autoComplete={isLogin ? "current-password" : "new-password"}
                   value={password} onChange={e => setPassword(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                  onKeyDown={e => e.key === 'Enter' && !confirmPw && handleSubmit()}
                 />
               </div>
+
+              {/* Nhập lại mật khẩu — chỉ khi đăng ký */}
+              {!isLogin && (
+                <div style={styles.inputGroup}>
+                  <div style={styles.inputIcon}><FontAwesomeIcon icon={faLock} /></div>
+                  <input
+                    type="password" placeholder="Nhập lại mật khẩu" style={styles.input}
+                    autoComplete="new-password"
+                    value={confirmPw} onChange={e => setConfirmPw(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                  />
+                </div>
+              )}
 
               {/* Error */}
               {authError && (
@@ -618,8 +693,8 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
                 </div>
               ) : (
                 <>
-                  <h2 style={{ ...styles.title, fontSize: 40 }}>Đặt lại mật khẩu</h2>
-                  <p style={{ ...styles.subtitle, fontSize: 20 }}>Nhập email đăng ký, chúng tôi sẽ gửi link đặt lại</p>
+                  <h2 style={{ ...styles.title, fontSize: 22 }}>Đặt lại mật khẩu</h2>
+                  <p style={{ ...styles.subtitle, fontSize: 13 }}>Nhập email đăng ký, chúng tôi sẽ gửi link đặt lại</p>
 
                   <div style={styles.inputGroup}>
                     <div style={styles.inputIcon}>✉️</div>
@@ -631,7 +706,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
                   </div>
 
                   {forgotError && (
-                    <div style={{ padding: '14px 20px', borderRadius: 16, marginBottom: 16, background: '#fef2f2', border: '2px solid #fecaca', color: '#dc2626', fontSize: 18, fontWeight: 600 }}>
+                    <div style={{ padding: '10px 14px', borderRadius: 12, marginBottom: 12, background: '#fef2f2', border: '2px solid #fecaca', color: '#dc2626', fontSize: 13, fontWeight: 600 }}>
                       ⚠️ {forgotError}
                     </div>
                   )}
@@ -652,6 +727,58 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* MODAL XÁC NHẬN EMAIL */}
+        {showVerify && (
+          <div style={styles.overlay} onClick={() => setShowVerify(false)}>
+            <div style={styles.modal} onClick={e => e.stopPropagation()}>
+              <button style={styles.closeBtn} onClick={() => setShowVerify(false)}>✕</button>
+
+              <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                <div style={{ fontSize: 64, marginBottom: 16 }}>📬</div>
+                <h2 style={{ ...styles.title, fontSize: 28 }}>Xác nhận email</h2>
+                <p style={{ ...styles.subtitle, fontSize: 15, lineHeight: 1.6 }}>
+                  Chúng tôi đã gửi link xác nhận đến<br/>
+                  <strong style={{ color: '#10b981' }}>{verifyEmail}</strong><br/>
+                  Kiểm tra hộp thư (kể cả thư mục <strong>Spam</strong>), bấm link trong email để kích hoạt —
+                  bạn sẽ được <strong>đăng nhập tự động</strong>, không cần nhập lại mật khẩu.
+                </p>
+
+                {!emailSent && (
+                  <div style={{ padding: '12px 16px', borderRadius: 14, marginBottom: 16, background: '#fffbeb', border: '2px solid #fcd34d', color: '#92400e', fontSize: 14, fontWeight: 600, textAlign: 'left' }}>
+                    ⚠️ Có lỗi khi gửi email xác nhận. Hãy dùng nút bên dưới để gửi lại.
+                  </div>
+                )}
+
+                {resendSuccess && (
+                  <div style={{ padding: '12px 16px', borderRadius: 14, marginBottom: 16, background: '#f0fdf4', border: '2px solid #86efac', color: '#15803d', fontSize: 14, fontWeight: 600 }}>
+                    ✅ Đã gửi lại email xác nhận!
+                  </div>
+                )}
+                {resendError && (
+                  <div style={{ padding: '12px 16px', borderRadius: 14, marginBottom: 16, background: '#fef2f2', border: '2px solid #fecaca', color: '#dc2626', fontSize: 14, fontWeight: 600 }}>
+                    ⚠️ {resendError}
+                  </div>
+                )}
+
+                <button
+                  style={{ ...styles.submitBtn, opacity: resendLoading ? 0.7 : 1, marginBottom: 12 }}
+                  onClick={handleResendVerification}
+                  disabled={resendLoading}
+                >
+                  {resendLoading ? '⏳ Đang gửi...' : '🔄 Gửi lại email xác nhận'}
+                </button>
+
+                <div style={styles.switchText}>
+                  Đã xác nhận?{' '}
+                  <span style={styles.switchLink} onClick={() => { setShowVerify(false); openModal(true); }}>
+                    Đăng nhập ngay
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 // 1. Import Router
-import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useLocation, useSearchParams } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import FeaturedDestinations from './components/FeaturedDestinations';
@@ -17,6 +17,146 @@ import { enrichPlacesWithCoords } from './services/geocodeUtils';
 import './App.css';
 
 const BASE_URL = ''; // proxy qua React dev server
+
+// ----------------------------------------------------------------
+// ✉️ Trang xử lý xác nhận email (khi user bấm link trong mail)
+// Dùng useSearchParams để đọc ?token= đúng cách với HashRouter
+// ----------------------------------------------------------------
+const VerifyEmailPage = ({ isDark, onUserChange }) => {
+  const [searchParams]                = useSearchParams();
+  const [status,  setStatus]          = useState('loading'); // 'loading' | 'success' | 'error'
+  const [message, setMessage]         = useState('');
+  const [expired, setExpired]         = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendDone,  setResendDone]  = useState(false);
+  const [resendErr,   setResendErr]   = useState('');
+  const [resending,   setResending]   = useState(false);
+
+  useEffect(() => {
+    const token = searchParams.get('token');
+    if (!token) {
+      setStatus('error');
+      setMessage('Không tìm thấy token xác nhận. Kiểm tra lại đường link trong email.');
+      return;
+    }
+
+    fetch('/api/auth/verify-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ token }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          if (data.user) onUserChange(data.user);
+          setStatus('success');
+          setMessage(data.already_verified
+            ? 'Email của bạn đã được xác nhận trước đó. Bạn có thể đăng nhập bình thường.'
+            : 'Email đã xác nhận thành công! Bạn đã được đăng nhập tự động.');
+        } else {
+          setStatus('error');
+          setMessage(data.error || 'Xác nhận thất bại.');
+          if (data.expired) setExpired(true);
+        }
+      })
+      .catch(() => {
+        setStatus('error');
+        setMessage('Lỗi kết nối đến máy chủ. Vui lòng thử lại.');
+      });
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleResend = async () => {
+    if (!resendEmail || !resendEmail.includes('@')) {
+      setResendErr('Vui lòng nhập email hợp lệ');
+      return;
+    }
+    setResending(true); setResendErr('');
+    try {
+      const r    = await fetch('/api/auth/resend-verification', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resendEmail }),
+      });
+      const data = await r.json();
+      if (data.success) setResendDone(true);
+      else setResendErr(data.error || 'Có lỗi xảy ra');
+    } catch { setResendErr('Lỗi kết nối'); }
+    finally  { setResending(false); }
+  };
+
+  const bg   = isDark ? '#1a1a1a' : '#f9fafb';
+  const card = isDark ? '#0f172a' : 'white';
+  const text = isDark ? '#e8e8e8' : '#111827';
+  const sub  = isDark ? '#94a3b8' : '#6b7280';
+  const inp  = { width: '100%', padding: '13px 16px', borderRadius: 14, border: isDark ? '2px solid #1e293b' : '2px solid #e5e7eb', fontSize: 15, outline: 'none', boxSizing: 'border-box', backgroundColor: isDark ? '#1e293b' : '#f8fafc', color: text, marginBottom: 10 };
+
+  return (
+    <div style={{ minHeight: '100vh', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ background: card, borderRadius: 28, padding: '44px 48px', maxWidth: 480, width: '100%', textAlign: 'center', boxShadow: '0 30px 80px rgba(0,0,0,0.15)' }}>
+
+        {/* Logo nhỏ */}
+        <div style={{ marginBottom: 28 }}>
+          <span style={{ fontSize: 22, fontWeight: 900, color: '#10b981' }}>S-Trip</span>
+        </div>
+
+        {status === 'loading' && (
+          <>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
+            <h2 style={{ color: text, fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Đang xác nhận email...</h2>
+            <p style={{ color: sub, fontSize: 14 }}>Vui lòng chờ trong giây lát.</p>
+          </>
+        )}
+
+        {status === 'success' && (
+          <>
+            <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
+            <h2 style={{ color: '#10b981', fontSize: 26, fontWeight: 900, marginBottom: 8 }}>Xác nhận thành công!</h2>
+            <p style={{ color: sub, fontSize: 14, marginBottom: 28, lineHeight: 1.6 }}>{message}</p>
+            <a href="/" style={{ background: '#10b981', color: 'white', padding: '13px 36px', borderRadius: 999, textDecoration: 'none', fontWeight: 800, fontSize: 15, display: 'inline-block' }}>
+              Về trang chủ →
+            </a>
+          </>
+        )}
+
+        {status === 'error' && (
+          <>
+            <div style={{ fontSize: 64, marginBottom: 16 }}>❌</div>
+            <h2 style={{ color: '#ef4444', fontSize: 24, fontWeight: 900, marginBottom: 8 }}>Xác nhận thất bại</h2>
+            <p style={{ color: sub, fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>{message}</p>
+
+            {/* Nếu hết hạn: cho nhập email để gửi lại ngay tại đây */}
+            {expired && (
+              <div style={{ textAlign: 'left', marginBottom: 20 }}>
+                <p style={{ color: text, fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Gửi lại email xác nhận:</p>
+                {resendDone ? (
+                  <div style={{ padding: '12px 16px', borderRadius: 12, background: '#f0fdf4', border: '2px solid #86efac', color: '#15803d', fontSize: 14, fontWeight: 600 }}>
+                    ✅ Đã gửi! Kiểm tra hộp thư của bạn.
+                  </div>
+                ) : (
+                  <>
+                    <input type="email" placeholder="Nhập email đăng ký" style={inp}
+                      value={resendEmail} onChange={e => setResendEmail(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleResend()}
+                    />
+                    {resendErr && <p style={{ color: '#ef4444', fontSize: 13, margin: '0 0 8px' }}>⚠️ {resendErr}</p>}
+                    <button onClick={handleResend} disabled={resending}
+                      style={{ width: '100%', padding: '13px', borderRadius: 14, border: 'none', background: '#10b981', color: 'white', fontWeight: 800, fontSize: 15, cursor: resending ? 'not-allowed' : 'pointer', opacity: resending ? 0.7 : 1 }}>
+                      {resending ? '⏳ Đang gửi...' : '🔄 Gửi lại email xác nhận'}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
+            <a href="/" style={{ background: isDark ? '#1e293b' : '#f1f5f9', color: text, padding: '12px 32px', borderRadius: 999, textDecoration: 'none', fontWeight: 700, fontSize: 14, display: 'inline-block', border: isDark ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+              ← Về trang chủ
+            </a>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // Component bọc logic trang chủ để giữ nguyên tính năng Scroll Spy
 const HomePage = ({ 
@@ -71,23 +211,22 @@ const HomePage = ({
   );
 };
 
-function AppContent() {
+function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
   const [searchData, setSearchData] = useState(null);
   const [editedPlans, setEditedPlans] = useState(null);
   const [activeSection, setActiveSection] = useState('home'); 
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [isDark, setIsDark] = useState(() => {
-  const savedTheme = localStorage.getItem('sTripTheme');
-    return savedTheme === 'dark'; // Trả về true nếu đã lưu dark
-  });
+
+  // isDark and user are now lifted to App — use props with local aliases for readability
+  const isDark  = isDarkProp;
+  const setIsDark = setIsDarkProp;
+  const user    = userProp;
+  const setUser = setUserProp;
 
   useEffect(() => {
     localStorage.setItem('sTripTheme', isDark ? 'dark' : 'light');
   }, [isDark]);
-
-  // user state nâng lên AppContent để chia sẻ giữa Navbar và ProfilePage
-  const [user, setUser] = useState(null);
 
   // Flag để tạm dừng scroll spy khi user vừa click nav
   const isScrollingRef = useRef(false);
@@ -325,9 +464,18 @@ function AppContent() {
 }
 
 function App() {
+  // isDark cần đọc sớm để VerifyEmailPage cũng có theme đúng
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('sTripTheme') === 'dark');
+  const [user,   setUser]   = useState(null);
+
   return (
     <Router>
-      <AppContent />
+      <Routes>
+        {/* Route xác nhận email: render độc lập, không có Navbar/Footer/widgets */}
+        <Route path="/verify-email" element={<VerifyEmailPage isDark={isDark} onUserChange={setUser} />} />
+        {/* Tất cả route còn lại: layout đầy đủ */}
+        <Route path="*" element={<AppContent isDarkProp={isDark} setIsDarkProp={setIsDark} userProp={user} setUserProp={setUser} />} />
+      </Routes>
     </Router>
   );
 }

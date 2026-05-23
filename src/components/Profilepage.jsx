@@ -246,6 +246,17 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
   const [user,       setUser]       = useState(userProp);
   const [tab,        setTab]        = useState('saved');
   const [loading,    setLoading]    = useState(!userProp);
+  // Mỗi lần click tab đang active → tăng signal để child reset filter
+  const [resetSignal, setResetSignal] = useState({ savedplaces: 0, favorites: 0 });
+
+  const handleTabClick = (id) => {
+    if (id === tab) {
+      // Click lần 2 → reset filter của tab đó
+      setResetSignal(prev => ({ ...prev, [id]: prev[id] + 1 }));
+    } else {
+      setTab(id);
+    }
+  };
 
   useEffect(() => {
     if (userProp) { setUser(userProp); setLoading(false); return; }
@@ -310,7 +321,7 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
           <AvatarCard user={user} onUpdate={handleUserUpdate} isDark={isDark} T={T} />
           <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 24, overflow: 'hidden' }}>
             {tabs.map((t, i) => (
-              <button key={t.id} className="sp-tab" onClick={() => setTab(t.id)} style={{ width: '100%', padding: '14px 20px', border: 'none', borderBottom: i < tabs.length - 1 ? `1px solid ${T.rowBorder}` : 'none', background: tab === t.id ? 'rgba(16,185,129,0.15)' : 'transparent', color: tab === t.id ? C.primary : T.muted, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', fontWeight: tab === t.id ? 800 : 600, fontSize: 14, textAlign: 'left', transition: 'all 0.2s' }}>
+              <button key={t.id} className="sp-tab" onClick={() => handleTabClick(t.id)} style={{ width: '100%', padding: '14px 20px', border: 'none', borderBottom: i < tabs.length - 1 ? `1px solid ${T.rowBorder}` : 'none', background: tab === t.id ? 'rgba(16,185,129,0.15)' : 'transparent', color: tab === t.id ? C.primary : T.muted, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', fontWeight: tab === t.id ? 800 : 600, fontSize: 14, textAlign: 'left', transition: 'all 0.2s' }}>
                 <span style={{ opacity: tab === t.id ? 1 : 0.6 }}>{t.icon}</span>{t.label}
                 {tab === t.id && <div style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: C.primary }} />}
               </button>
@@ -322,10 +333,10 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
         {/* Content */}
         <div style={{ minWidth: 0 }}>
           {tab === 'saved'       && <SavedSchedules T={T} onLoadSchedule={onLoadSchedule} />}
-          {tab === 'savedplaces' && <SavedPlaces T={T} />}
-          {tab === 'favorites'   && <Favorites T={T} />}
+          {tab === 'savedplaces' && <SavedPlaces T={T} resetSignal={resetSignal.savedplaces} />}
+          {tab === 'favorites'   && <Favorites T={T} resetSignal={resetSignal.favorites} />}
           {tab === 'history'     && <SearchHistory T={T} onSearch={onSearch} onBack={onBack} />}
-          {tab === 'settings'    && <Settings user={user} onUpdate={handleUserUpdate} T={T} />}
+          {tab === 'settings'    && <Settings user={user} onUpdate={handleUserUpdate} T={T} onLogout={onBack} />}
         </div>
       </div>
     </div>
@@ -1122,11 +1133,19 @@ function FilterBar({ current, onChange, items = [], T }) {
 }
 
 // 🔖 TAB: LƯU TRỮ
-function SavedPlaces({ T }) {
+function SavedPlaces({ T, onResetFilter, resetSignal }) {
   const [items,   setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter,  setFilter]  = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Reset filter khi tab được click lần 2
+  useEffect(() => {
+    if (resetSignal > 0) {
+      setFilter('all');
+      setSearchQuery('');
+    }
+  }, [resetSignal]);
 
   useEffect(() => {
     api.get('/api/saved-places').then(d => setItems(d.savedPlaces || [])).finally(() => setLoading(false));
@@ -1186,11 +1205,19 @@ function SavedPlaces({ T }) {
 }
 
 // ❤️ TAB: YÊU THÍCH
-function Favorites({ T }) {
+function Favorites({ T, resetSignal }) {
   const [items,   setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter,  setFilter]  = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Reset filter khi tab được click lần 2
+  useEffect(() => {
+    if (resetSignal > 0) {
+      setFilter('all');
+      setSearchQuery('');
+    }
+  }, [resetSignal]);
 
   useEffect(() => {
     api.get('/api/favorites').then(d => setItems(d.favorites || [])).finally(() => setLoading(false));
@@ -1328,7 +1355,7 @@ function StatusMsg({ status, okText }) {
 }
 
 // ⚙️ SETTINGS
-function Settings({ user, onUpdate, T }) {
+function Settings({ user, onUpdate, T, onLogout }) {
   const [name,        setName]        = useState(user.name || '');
   const [currentPw,   setCurrentPw]   = useState('');
   const [newPw,       setNewPw]       = useState('');
@@ -1337,6 +1364,8 @@ function Settings({ user, onUpdate, T }) {
   const [pwStatus,    setPwStatus]    = useState('');
   const [nameLoading, setNameLoading] = useState(false);
   const [pwLoading,   setPwLoading]   = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleUpdateName = async () => {
     if (!name.trim()) return;
@@ -1355,6 +1384,26 @@ function Settings({ user, onUpdate, T }) {
     if (res.success) { setPwStatus('ok'); setCurrentPw(''); setNewPw(''); setConfirmPw(''); }
     else setPwStatus('err:' + (res.error || 'Lỗi'));
     setPwLoading(false); setTimeout(() => setPwStatus(''), 4000);
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    try {
+      const res = await api.del('/api/auth/delete-account');
+      if (res.success) {
+        // Gọi thêm logout để chắc chắn clear session cookie
+        await api.post('/api/auth/logout', {});
+        setConfirmDelete(false);
+        // Clear user state ở App.js → UI tự về trạng thái chưa đăng nhập
+        onUpdate(null);
+        if (onLogout) onLogout();
+      } else {
+        alert('Lỗi: ' + (res.error || 'Không thể xóa tài khoản'));
+      }
+    } catch (e) {
+      alert('Lỗi kết nối, vui lòng thử lại.');
+    }
+    setDeleteLoading(false);
   };
 
   const inputStyle = { width: '100%', padding: '13px 16px', border: `1.5px solid ${T.inputBorder}`, borderRadius: 12, background: T.inputBg, color: T.text, fontSize: 14, boxSizing: 'border-box', transition: '0.2s' };
@@ -1389,7 +1438,54 @@ function Settings({ user, onUpdate, T }) {
             </button>
           </div>
         )}
+
+        {/* Xóa tài khoản */}
+        <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 18, padding: '22px 24px' }}>
+          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, color: C.danger }}>
+            ⚠️ Vùng nguy hiểm
+          </div>
+          <div style={{ fontSize: 14, color: T.muted, marginBottom: 16, lineHeight: 1.6 }}>
+            Xóa tài khoản sẽ xóa vĩnh viễn toàn bộ dữ liệu của bạn bao gồm lịch trình, địa điểm đã lưu, yêu thích và lịch sử tìm kiếm. Hành động này <strong style={{ color: C.danger }}>không thể hoàn tác</strong>.
+          </div>
+          <button
+            className="sp-btn"
+            onClick={() => { setConfirmDelete(true); }}
+            style={{ padding: '11px 24px', borderRadius: 12, border: `1.5px solid rgba(239,68,68,0.5)`, background: 'rgba(239,68,68,0.1)', color: C.danger, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}
+          >
+            🗑️ Xóa tài khoản
+          </button>
+        </div>
       </div>
+
+      {/* Modal xác nhận xóa tài khoản */}
+      {confirmDelete && (
+        <div onClick={() => setConfirmDelete(false)} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, background: 'linear-gradient(145deg, #1a0a0a, #200d0d)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 24, padding: '32px 28px', boxShadow: '0 32px 80px rgba(0,0,0,0.7)' }}>
+            <div style={{ textAlign: 'center', marginBottom: 28 }}>
+              <div style={{ width: 68, height: 68, borderRadius: 20, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, margin: '0 auto 16px' }}>💀</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#f8fafc', marginBottom: 10 }}>Xóa tài khoản vĩnh viễn?</div>
+              <div style={{ fontSize: 15, color: '#94a3b8', lineHeight: 1.7 }}>
+                Toàn bộ dữ liệu của bạn — lịch trình, địa điểm đã lưu, yêu thích và lịch sử tìm kiếm — sẽ bị xóa ngay lập tức và <strong style={{ color: C.danger }}>không thể khôi phục</strong>.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.06)', color: '#94a3b8', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}
+              >
+                Huỷ
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading}
+                style={{ flex: 1, padding: '13px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', fontWeight: 800, fontSize: 15, cursor: deleteLoading ? 'not-allowed' : 'pointer', opacity: deleteLoading ? 0.7 : 1, transition: '0.2s' }}
+              >
+                {deleteLoading ? '⏳ Đang xóa...' : '🗑️ Xóa vĩnh viễn'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Section>
   );
 }
