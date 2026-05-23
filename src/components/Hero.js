@@ -16,11 +16,15 @@ const Hero = ({ onSearch, isDark = false }) => {
   const _last = (() => { try { return JSON.parse(localStorage.getItem('s_trip_last_search') || '{}'); } catch { return {}; } })();
   const [origin, setOrigin] = useState(_last.origin || '');
   const [location, setLocation] = useState(_last.location || '');
-  const [departureDate, setDepartureDate] = useState(_last.departureDate || ''); 
+  const [departureDate, setDepartureDate] = useState(_last.departureDate ? (() => {
+    // Convert stored dd/mm/yyyy back or use as-is
+    return '';
+  })() : '');
   const [days, setDays] = useState(_last.days || '');
   const [budget, setBudget] = useState(String(_last.budget || ''));
   const [passengers, setPassengers] = useState(_last.passengers || 1);
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const [dateInput, setDateInput] = useState(_last.departureDate || '');
   const [hoveredTag, setHoveredTag] = useState(null);
   const [emptyFields, setEmptyFields] = useState({});
   const [shake, setShake] = useState(false); 
@@ -31,6 +35,35 @@ const Hero = ({ onSearch, isDark = false }) => {
   };
 
   const provinces = ["An Giang", "Bà Rịa - Vũng Tàu", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"];
+  const cities = [
+    // Thành phố trực thuộc Trung ương
+    "Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Hải Phòng", "Cần Thơ",
+    // Thành phố trực thuộc tỉnh
+    "Bắc Giang", "Bắc Kạn", "Bạc Liêu", "Bắc Ninh", "Bảo Lộc",
+    "Biên Hòa", "Buôn Ma Thuột",
+    "Cà Mau", "Cam Ranh", "Cao Bằng", "Cao Lãnh",
+    "Châu Đốc", "Chí Linh",
+    "Dĩ An",
+    "Đà Lạt", "Điện Biên Phủ", "Đông Hà", "Đồng Hới",
+    "Gia Nghĩa",
+    "Hà Giang", "Hà Tĩnh", "Hạ Long", "Hải Dương",
+    "Hòa Bình", "Hội An", "Huế", "Hưng Yên",
+    "Kon Tum",
+    "Lai Châu", "Lạng Sơn", "Lào Cai", "Long Khánh", "Long Xuyên",
+    "Móng Cái", "Mỹ Tho",
+    "Nam Định", "Nha Trang", "Ninh Bình",
+    "Phan Rang - Tháp Chàm", "Phan Thiết", "Pleiku", "Phú Quốc", "Phủ Lý",
+    "Quy Nhơn",
+    "Rạch Giá",
+    "Sa Đéc", "Sa Pa", "Sầm Sơn", "Sóc Trăng", "Sơn La",
+    "Tam Kỳ", "Tân An", "Thái Bình", "Thái Nguyên",
+    "Thanh Hóa", "Thuận An", "Thủ Dầu Một", "Tuy Hòa",
+    "Uông Bí",
+    "Việt Trì", "Vinh", "Vĩnh Long", "Vĩnh Yên", "Vũng Tàu",
+    "Yên Bái"
+  ];
+  const locationsAll = [...new Set([...cities, ...provinces])]
+    .sort((a, b) => a.normalize("NFD").localeCompare(b.normalize("NFD"), 'vi'));
   const dayOptions = ["2 ngày 1 đêm", "3 ngày 2 đêm", "4 ngày 3 đêm", "5 ngày 4 đêm"];
   const budgetOptions = ["5.000.000đ", "10.000.000đ", "15.000.000đ", "20.000.000đ"];
 
@@ -70,7 +103,7 @@ const Hero = ({ onSearch, isDark = false }) => {
     }
 
     if (onSearch) {
-      onSearch({ origin, location, departureDate, budget, days, passengers });
+      onSearch({ origin, location, departureDate: dateInput, budget, days, passengers });
     }
   };
 
@@ -235,12 +268,16 @@ const Hero = ({ onSearch, isDark = false }) => {
             style={styles.input} 
             placeholder="Đi đâu?" 
             value={location} 
+            autoComplete="off"
             onChange={(e) => setLocation(e.target.value)} 
             onFocus={() => setActiveDropdown('loc')} 
           />
           {activeDropdown === 'loc' && (
             <div style={styles.dropdown}>
-              {filterList(location).map(p => (
+              {locationsAll.filter(p =>
+                p.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .includes(location.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+              ).map(p => (
                 <div key={p} style={styles.dropdownItem} onClick={() => { setLocation(p); setActiveDropdown(null); }}>
                   <FontAwesomeIcon icon={faLocationDot} style={{color: '#10b981'}} /> {p}
                 </div>
@@ -252,13 +289,34 @@ const Hero = ({ onSearch, isDark = false }) => {
         {/* NGÀY ĐI */}
         <div style={styles.searchItem(false)}>
           <div style={styles.label(activeDropdown === 'date')}>Ngày đi</div>
-          <input 
-            type="date"
-            style={{...styles.input, color: departureDate ? (isDark ? '#e8e8e8' : '#111827') : '#9ca3af'}} 
-            value={departureDate} 
-            min={new Date().toISOString().split('T')[0]}
-            onChange={(e) => setDepartureDate(e.target.value)} 
-            onFocus={() => setActiveDropdown('date')} 
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={10}
+            placeholder="dd/mm/yyyy"
+            autoComplete="off"
+            style={{...styles.input, color: dateInput ? (isDark ? '#e8e8e8' : '#111827') : '#9ca3af'}}
+            value={dateInput}
+            onChange={(e) => {
+              let raw = e.target.value.replace(/[^\d]/g, '');
+              if (raw.length > 8) raw = raw.slice(0, 8);
+              let formatted = raw;
+              if (raw.length >= 5) formatted = raw.slice(0,2) + '/' + raw.slice(2,4) + '/' + raw.slice(4);
+              else if (raw.length >= 3) formatted = raw.slice(0,2) + '/' + raw.slice(2);
+              setDateInput(formatted);
+              // Validate và lưu vào departureDate dạng yyyy-mm-dd để check logic
+              if (raw.length === 8) {
+                const dd = raw.slice(0,2), mm = raw.slice(2,4), yyyy = raw.slice(4);
+                const iso = `${yyyy}-${mm}-${dd}`;
+                const d = new Date(iso);
+                const today = new Date(); today.setHours(0,0,0,0);
+                if (!isNaN(d) && d >= today) setDepartureDate(iso);
+                else setDepartureDate('');
+              } else {
+                setDepartureDate('');
+              }
+            }}
+            onFocus={() => setActiveDropdown('date')}
           />
         </div>
 
