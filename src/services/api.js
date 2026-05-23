@@ -10,6 +10,8 @@ export const fetchAutocomplete = async (query) => {
 };
 
 export const fetchTripPlan = async (location, budget, days, origin, passengers, departureDate) => {
+  const controller = new AbortController();
+  const timeoutId  = setTimeout(() => controller.abort(), 180000); // 3 phút
   try {
     const cleanDays   = parseInt(days) || 3;
     const cleanBudget = budget.toString().replace(/\D/g, "");
@@ -18,7 +20,13 @@ export const fetchTripPlan = async (location, budget, days, origin, passengers, 
     const result = await res.json();
     return result.success ? result.plan : null;
   } catch (error) {
-    console.error("Lỗi fetchTripPlan:", error);
+    clearTimeout(timeoutId);
+    // ✅ Phân biệt lỗi timeout vs lỗi khác để báo user rõ hơn
+    if (error.name === 'AbortError') {
+      console.error("fetchTripPlan: Timeout sau 3 phút");
+    } else {
+      console.error("Lỗi fetchTripPlan:", error);
+    }
     return null;
   }
 };
