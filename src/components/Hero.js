@@ -21,6 +21,9 @@ const Hero = ({ onSearch, isDark = false }) => {
   const [budget, setBudget] = useState(String(_last.budget || ''));
   const [passengers, setPassengers] = useState(_last.passengers || 1);
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calMonth, setCalMonth] = useState(today.getMonth());
   const [hoveredTag, setHoveredTag] = useState(null);
   const [emptyFields, setEmptyFields] = useState({});
   const [shake, setShake] = useState(false); 
@@ -97,6 +100,7 @@ const Hero = ({ onSearch, isDark = false }) => {
     maxWidth: '1350px',
     marginTop: '45px',
     position: 'relative', 
+    overflow: 'visible',
     transition: '0.4s all cubic-bezier(0.175, 0.885, 0.32, 1.275)',
     boxShadow: isAnyFieldEmpty ? '0 0 30px rgba(239, 68, 68, 0.4)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
     border: isAnyFieldEmpty ? '3px solid #ef4444' : `1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`,
@@ -252,14 +256,62 @@ const Hero = ({ onSearch, isDark = false }) => {
         {/* NGÀY ĐI */}
         <div style={styles.searchItem(false)}>
           <div style={styles.label(activeDropdown === 'date')}>Ngày đi</div>
-          <input 
-            type="date"
-            style={{...styles.input, color: departureDate ? (isDark ? '#e8e8e8' : '#111827') : '#9ca3af'}} 
-            value={departureDate} 
-            min={new Date().toISOString().split('T')[0]}
-            onChange={(e) => setDepartureDate(e.target.value)} 
-            onFocus={() => setActiveDropdown('date')} 
-          />
+          <div style={{display:'flex', alignItems:'center', gap:'8px', width:'100%', cursor:'pointer'}}
+            onClick={() => setActiveDropdown(activeDropdown === 'date' ? null : 'date')}>
+            <span style={{...styles.input, color: departureDate ? (isDark?'#e8e8e8':'#111827') : '#9ca3af'}}>
+              {departureDate ? departureDate.split('-').reverse().join('/') : 'dd/mm/yyyy'}
+            </span>
+            <FontAwesomeIcon icon={faCalendarDays} style={{color:'#10b981', fontSize:'18px', flexShrink:0}} />
+          </div>
+          {activeDropdown === 'date' && (() => {
+            const sel = departureDate ? new Date(departureDate) : null;
+            const firstDay = new Date(calYear, calMonth, 1).getDay();
+            const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+            const offset = firstDay === 0 ? 6 : firstDay - 1;
+            const cells = Array(offset).fill(null).concat(Array.from({length: daysInMonth}, (_,i)=>i+1));
+            const months = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+            const prevMonth = () => { if(calMonth===0){setCalMonth(11);setCalYear(y=>y-1);}else setCalMonth(m=>m-1); };
+            const nextMonth = () => { if(calMonth===11){setCalMonth(0);setCalYear(y=>y+1);}else setCalMonth(m=>m+1); };
+            return (
+              <div style={{...styles.dropdown, maxHeight:'none', padding:'12px', overflowY:'visible'}} onClick={e=>e.stopPropagation()}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px'}}>
+                  <button onClick={prevMonth} style={{background:'none',border:'none',cursor:'pointer',color:isDark?'#e8e8e8':'#333',fontSize:'16px'}}>‹</button>
+                  <span style={{fontWeight:'700', color:isDark?'#e8e8e8':'#333'}}>{months[calMonth]} {calYear}</span>
+                  <button onClick={nextMonth} style={{background:'none',border:'none',cursor:'pointer',color:isDark?'#e8e8e8':'#333',fontSize:'16px'}}>›</button>
+                </div>
+                <div style={{display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'2px', textAlign:'center'}}>
+                  {['T2','T3','T4','T5','T6','T7','CN'].map(d=>(
+                    <div key={d} style={{fontSize:'11px', fontWeight:'700', color:'#10b981', padding:'4px 0'}}>{d}</div>
+                  ))}
+                  {cells.map((day,i) => {
+                    if(!day) return <div key={i}/>;
+                    const d = new Date(calYear, calMonth, day);
+                    const isPast = d < today;
+                    const isSel = sel && d.toDateString()===sel.toDateString();
+                    const isToday = d.toDateString()===today.toDateString();
+                    return (
+                      <div key={i} onClick={()=>{
+                        if(isPast) return;
+                        const mm=String(calMonth+1).padStart(2,'0');
+                        const dd=String(day).padStart(2,'0');
+                        setDepartureDate(`${calYear}-${mm}-${dd}`);
+                        setActiveDropdown(null);
+                      }} style={{
+                        aspectRatio: '1',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        borderRadius:'8px', cursor:isPast?'default':'pointer',
+                        fontWeight: isSel||isToday?'700':'500',
+                        fontSize:'13px',
+                        backgroundColor: isSel?'#10b981':'transparent',
+                        color: isSel?'#fff' : isPast?(isDark?'#555':'#ccc') : isToday?'#10b981' : (isDark?'#e8e8e8':'#333'),
+                        border: isToday&&!isSel?'1px solid #10b981':'1px solid transparent',
+                      }}>{day}</div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* SỐ NGÀY */}

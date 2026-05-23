@@ -1645,7 +1645,7 @@ const TransportCard = ({ opt, isCombined, isDark, noTickets }) => {
 // ─────────────────────────────────────────────────────────────
 // 🌤️ WEATHER WIDGET — hiển thị thời tiết điểm đến
 // ─────────────────────────────────────────────────────────────
-const WeatherWidget = ({ location, isDark, externalData }) => {
+const WeatherWidget = ({ location, isDark, externalData, departureDate }) => {
   const [weather, setWeather] = useState(externalData || null);
   const [loading, setLoading] = useState(!externalData);
 
@@ -1653,10 +1653,10 @@ const WeatherWidget = ({ location, isDark, externalData }) => {
     if (externalData) { setWeather(externalData); setLoading(false); return; }
     if (!location) return;
     setLoading(true);
-    fetchWeather(location)
+    fetchWeather(location, departureDate)
       .then(data => setWeather(data))
       .finally(() => setLoading(false));
-  }, [location, externalData]);
+  }, [location, externalData, departureDate]);
 
   const cardBg   = isDark ? '#1e293b' : 'white';
   const border   = isDark ? '1px solid #334155' : '1px solid #e2e8f0';
@@ -1728,7 +1728,7 @@ const WeatherWidget = ({ location, isDark, externalData }) => {
       {forecast && forecast.length > 0 && (
         <div style={{ padding: '16px 24px 20px', background: cardBg }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: textSub, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
-            📅 Dự báo {forecast.length} ngày tới
+            📅 Dự báo thời tiết {forecast[0]?.date}–{forecast[forecast.length-1]?.date}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${forecast.length}, 1fr)`, gap: 8 }}>
             {forecast.map((day, i) => (
@@ -2273,8 +2273,8 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
   const [weatherData, setWeatherData] = useState(null);
   useEffect(() => {
     if (!initialData.location) return;
-    fetchWeather(initialData.location).then(data => setWeatherData(data));
-  }, [initialData.location]); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchWeather(initialData.location, initialData.departure_date).then(data => setWeatherData(data));
+  }, [initialData.location, initialData.departure_date]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 🧋 State nút Tham Khảo Đồ Uống
   const [drinksOpen, setDrinksOpen] = useState(false);
@@ -2473,7 +2473,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       </div>
 
       {/* 🌤️ THỜI TIẾT */}
-      <WeatherWidget location={initialData.location} isDark={isDark} externalData={weatherData} />
+      <WeatherWidget location={initialData.location} isDark={isDark} externalData={weatherData} departureDate={initialData.departure_date} />
 
       {/* 1. PHƯƠNG TIỆN & CHUYẾN BAY ĐỀ XUẤT */}
       {((initialData.transport && initialData.transport.options && initialData.transport.options.length > 0) || realFlights.length > 0) && (
@@ -2674,7 +2674,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
           {/* Header ngày + badge thời tiết */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '30px' }}>
             <div style={{ fontWeight: '900', color: '#10b981', fontSize: '26px' }}>
-              <FontAwesomeIcon icon={faRegularCalendar} /> Ngày {d.day}
+              <FontAwesomeIcon icon={faRegularCalendar} /> Ngày {d.day}{dayForecast ? ` · ${dayForecast.day} ${dayForecast.date}` : ''}
             </div>
 
             {/* 🌤️ Badge thời tiết ngày — chi tiết */}

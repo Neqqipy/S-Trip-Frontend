@@ -99,14 +99,16 @@ export const fetchProvinceImages = async (place) => {
   }
 };
 
-export const fetchWeather = async (location) => {
+export const fetchWeather = async (location, departureDate = '') => {
   // Guard: không gọi nếu location rỗng hoặc không phải string
   if (!location || typeof location !== 'string' || !location.trim()) {
     console.warn('[fetchWeather] location không hợp lệ:', location);
     return null;
   }
   const cleanLocation = location.trim();
-  const url = `${BASE_URL}/api/weather?location=${encodeURIComponent(cleanLocation)}`;
+  const params = new URLSearchParams({ location: cleanLocation });
+  if (departureDate) params.append('departure_date', departureDate);
+  const url = `${BASE_URL}/api/weather?${params}`;
   console.log('[fetchWeather] Gọi:', url);
   try {
     const res  = await fetch(url);

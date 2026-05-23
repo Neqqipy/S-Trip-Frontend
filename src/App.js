@@ -217,6 +217,7 @@ function AppContent() {
     if (result) {
       const fullPlan = {
         ...formData,
+        departure_date: formData.departureDate || '',  // snake_case cho AiSchedule
         realHotels: result.hotels || [],
         realFlights: result.flights || [],
         realTours: result.tours || [],
