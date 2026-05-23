@@ -1,5 +1,5 @@
 // src/services/api.js
-const BASE_URL = ''; // proxy qua React dev server
+const BASE_URL = 'https://fluffy-space-invention-7vjxqrxppqpw344j-5000.app.github.dev/'; // proxy qua React dev server
 
 export const fetchAutocomplete = async (query) => {
   try {
@@ -10,6 +10,8 @@ export const fetchAutocomplete = async (query) => {
 };
 
 export const fetchTripPlan = async (location, budget, days, origin, passengers, departureDate) => {
+  const controller = new AbortController();
+  const timeoutId  = setTimeout(() => controller.abort(), 180000); // 3 phút
   try {
     const cleanDays   = parseInt(days) || 3;
     const cleanBudget = budget.toString().replace(/\D/g, "");
@@ -18,7 +20,13 @@ export const fetchTripPlan = async (location, budget, days, origin, passengers, 
     const result = await res.json();
     return result.success ? result.plan : null;
   } catch (error) {
-    console.error("Lỗi fetchTripPlan:", error);
+    clearTimeout(timeoutId);
+    // ✅ Phân biệt lỗi timeout vs lỗi khác để báo user rõ hơn
+    if (error.name === 'AbortError') {
+      console.error("fetchTripPlan: Timeout sau 3 phút");
+    } else {
+      console.error("Lỗi fetchTripPlan:", error);
+    }
     return null;
   }
 };
@@ -99,14 +107,15 @@ export const fetchProvinceImages = async (place) => {
   }
 };
 
-export const fetchWeather = async (location) => {
+export const fetchWeather = async (location, departureDate = '') => {
   // Guard: không gọi nếu location rỗng hoặc không phải string
   if (!location || typeof location !== 'string' || !location.trim()) {
     console.warn('[fetchWeather] location không hợp lệ:', location);
     return null;
   }
   const cleanLocation = location.trim();
-  const url = `${BASE_URL}/api/weather?location=${encodeURIComponent(cleanLocation)}`;
+  const dateParam = departureDate ? `&departure_date=${departureDate}` : '';
+  const url = `${BASE_URL}/api/weather?location=${encodeURIComponent(cleanLocation)}${dateParam}`;
   console.log('[fetchWeather] Gọi:', url);
   try {
     const res  = await fetch(url);
