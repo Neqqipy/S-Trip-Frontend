@@ -12,6 +12,7 @@ import ProfilePage from './components/Profilepage';
 import SkeletonLoader from './components/SkeletonLoader';
 import Toast from './components/Toast';
 import { fetchTripPlan, saveSearchHistory } from './services/api';
+import ResetPassword from './components/ResetPassword';
 import { enrichPlacesWithCoords } from './services/geocodeUtils';
 import './App.css';
 
@@ -301,6 +302,8 @@ function AppContent() {
               </div>
             )
           } />
+
+          <Route path="/reset-password" element={<ResetPassword isDark={isDark} />} />
 
           <Route path="/destinations" element={
             <div style={{ paddingTop: '100px' }}>

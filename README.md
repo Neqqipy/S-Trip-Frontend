@@ -1,76 +1,184 @@
-# Getting Started with Create React App
+# S-Trip: Nền Tảng Lập Kế Hoạch Du Lịch Thông Minh
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+[![React](https://img.shields.io/badge/React-19.2-blue.svg)](https://react.dev)
+[![Node.js](https://img.shields.io/badge/Node.js-16+-green.svg)]()
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)]()
+[![Status](https://img.shields.io/badge/Status-Active%20Development-blue.svg)]()
 
-## Available Scripts
+> Khám phá vẻ đẹp Việt Nam thông qua một nền tảng du lịch thông minh, tích hợp AI và công nghệ hiện đại.
 
-In the project directory, you can run:
+## 🌟 Tính Năng Chính
 
-### Install all dependencies:
-Ensure you install the specific FontAwesome packages, especially the Brands icons to avoid errors in the Footer:
+- **🤖 Trợ Lý AI Thông Minh** - Gợi ý lịch trình du lịch được cá nhân hóa bằng ChatAI
+- **🗺️ Bản Đồ Tương Tác** - Khám phá điểm đến trên bản đồ trực quan
+- **📅 Lập Kế Hoạch Linh Hoạt** - Xây dựng và quản lý lịch trình du lịch chi tiết
+- **📑 Xuất PDF** - Lưu trữ và chia sẻ lịch trình dưới dạng tài liệu PDF
+- **🌍 Định Vị Địa Điểm** - Tìm kiếm và định vị các địa điểm du lịch nhanh chóng
+- **🎨 Giao Diện Hiện Đại** - Thiết kế responsive với Tailwind CSS
+- **💾 Lưu Trữ Cloud** - Sử dụng Supabase cho đồng bộ dữ liệu
 
+## 📋 Yêu Cầu Hệ Thống
+
+- **Node.js**: v16 hoặc cao hơn
+- **npm**: v7 hoặc cao hơn
+- **Backend API**: Chạy trên `http://localhost:5000`
+- **Supabase**: Tài khoản Supabase để quản lý database
+
+## 🚀 Cài Đặt & Chạy
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/your-repo/s-trip.git
+cd s-trip
+```
+
+### 2. Cài Đặt Dependencies
+```bash
 npm install
 npm install @fortawesome/react-fontawesome @fortawesome/free-solid-svg-icons @fortawesome/free-regular-svg-icons @fortawesome/free-brands-svg-icons
+```
 
-### `npm start`
+### 3. Cấu Hình Biến Môi Trường
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Tạo file `.env.local` trong thư mục gốc:
+```env
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_SUPABASE_URL=your_supabase_url
+REACT_APP_SUPABASE_ANON_KEY=your_supabase_key
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### 4. Chạy Development Server
+```bash
+npm start
+```
 
-### `npm test`
+Ứng dụng sẽ mở tại [http://localhost:3000](http://localhost:3000)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 📦 Scripts Npm
 
-### `npm run build`
+| Script | Mô Tả |
+|--------|-------|
+| `npm start` | Chạy development server |
+| `npm build` | Build ứng dụng cho production |
+| `npm test` | Chạy bộ test |
+| `npm eject` | Eject từ Create React App (không thể hoàn tác) |
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 🏗️ Cấu Trúc Dự Án
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```
+src/
+├── components/           # React Components
+│   ├── Navbar.js         # Navigation bar
+│   ├── Hero.js           # Banner chính
+│   ├── Dashboard.js      # Trang chủ chính
+│   ├── FeaturedDestinations.js  # Điểm đến nổi bật
+│   ├── AiSchedule.js     # Lập kế hoạch bằng AI
+│   ├── ChatAI.js         # Chat bot AI
+│   ├── MapBubble.js      # Bản đồ tương tác
+│   ├── Exportpdf.js      # Xuất PDF
+│   ├── Toast.js          # Notification toast
+│   ├── SkeletonLoader.js # Loading skeleton
+│   ├── Footer.js         # Footer
+│   └── NotFound.js       # Trang 404
+├── services/             # API & Utilities
+│   ├── api.js            # API calls
+│   └── geocodeUtils.js   # Geocoding utilities
+├── App.js                # Main App component
+├── index.js              # Entry point
+└── postcss.config.js     # PostCSS config
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 🔧 Công Nghệ Sử Dụng
 
-### `npm run eject`
+### Frontend
+- **React** (v19.2) - UI library
+- **React Router DOM** (v7.15) - Routing
+- **Tailwind CSS** (v4.2) - Styling
+- **Date-fns** (v4.3) - Date manipulation
+- **React DatePicker** (v9.1) - Date picking
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Backend Integration
+- **Supabase** (v2.106) - Database & Auth
+- **Axios/Fetch** - API requests
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Utilities
+- **html2canvas** (v1.4) - HTML to image
+- **jsPDF** (v4.2) - PDF generation
+- **FontAwesome** (v7.2) - Icons
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Testing & Quality
+- **React Testing Library** - Component testing
+- **Jest** - Test runner
+- **ESLint** - Code linting
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## 🌐 API Integration
 
-## Learn More
+Ứng dụng sử dụng proxy tới backend API:
+```
+Proxy: http://127.0.0.1:5000
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Đảm bảo backend server đang chạy trước khi khởi động ứng dụng frontend.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 🔐 Bảo Mật
 
-### Code Splitting
+- Biến môi Supabase nên được lưu trong `.env.local` (không commit)
+- Sử dụng HTTPS trong production
+- Validate input ở client và server
+- Sử dụng Supabase RLS (Row Level Security) cho database
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## 📱 Browser Support
 
-### Analyzing the Bundle Size
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## 🤝 Đóng Góp
 
-### Making a Progressive Web App
+1. Fork repository
+2. Tạo feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## 📝 Commit Conventions
 
-### Advanced Configuration
+Tuân theo [Conventional Commits](https://www.conventionalcommits.org/):
+- `feat:` - Tính năng mới
+- `fix:` - Sửa lỗi
+- `docs:` - Cập nhật tài liệu
+- `style:` - Thay đổi styling
+- `refactor:` - Refactor code
+- `test:` - Thêm/cập nhật test
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## 🐛 Báo Cáo Lỗi
 
-### Deployment
+Nếu bạn phát hiện lỗi, vui lòng:
+1. Kiểm tra issue đã tồn tại chưa
+2. Cung cấp mô tả chi tiết và bước tái hiện
+3. Nêu phiên bản browser và OS
+4. Thêm screenshot nếu có liên quan
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## 📄 License
 
-### `npm run build` fails to minify
+Dự án này được cấp phép dưới giấy phép MIT. Xem [LICENSE](LICENSE) để biết chi tiết.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## 👨‍💻 Tác Giả
+
+**S-Travel Team**
+- Repository: [GitHub](https://github.com/your-repo/s-trip)
+- Email: contact@s-trip.com
+
+## 🙏 Lời Cảm Ơn
+
+Cảm ơn tất cả những người đóng góp và người dùng của S-Trip!
+
+---
+
+<div align="center">
+  
+**[Trang Web](#) • [Issues](https://github.com/your-repo/s-trip/issues) • [Discussions](https://github.com/your-repo/s-trip/discussions)**
+
+Được phát triển với ❤️ tại Việt Nam
+</div>

@@ -27,6 +27,13 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
   const [authLoading,setAuthLoading]= useState(false);
   const [menuOpen,   setMenuOpen]   = useState(false);
 
+  // ── Forgot password state ──
+  const [showForgot,     setShowForgot]     = useState(false);
+  const [forgotEmail,    setForgotEmail]    = useState('');
+  const [forgotLoading,  setForgotLoading]  = useState(false);
+  const [forgotError,    setForgotError]    = useState('');
+  const [forgotSuccess,  setForgotSuccess]  = useState(false);
+
   // ✅ Bỏ useEffect fetch /api/auth/me — đã chuyển lên App.js
   // ✅ Bỏ xử lý Google OAuth redirect — đã chuyển lên App.js
 
@@ -68,6 +75,32 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
 
   const handleGoogle = () => {
     window.location.href = `${BASE_URL}/api/auth/google?next=${encodeURIComponent(window.location.href)}`;
+  };
+
+  const handleForgotPassword = async () => {
+    setForgotError('');
+    if (!forgotEmail || !forgotEmail.includes('@')) {
+      setForgotError('Email không hợp lệ');
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setForgotSuccess(true);
+      } else {
+        setForgotError(data.error || 'Có lỗi xảy ra');
+      }
+    } catch {
+      setForgotError('Không thể kết nối server');
+    } finally {
+      setForgotLoading(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -547,11 +580,81 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
                 <span style={styles.switchLink} onClick={() => { setIsLogin(!isLogin); setAuthError(''); }}>
                   {isLogin ? 'Đăng ký' : 'Đăng nhập'}
                 </span>
+                {isLogin && (
+                  <span
+                    style={{ ...styles.switchLink, marginLeft: 16 }}
+                    onClick={() => { setShowAuth(false); setShowForgot(true); setForgotEmail(email); setForgotError(''); setForgotSuccess(false); }}
+                  >
+                    Quên mật khẩu?
+                  </span>
+                )}
               </div>
             </div>
           </div>
         )}
       </header>
+
+        {/* MODAL QUÊN MẬT KHẨU */}
+        {showForgot && (
+          <div style={styles.overlay} onClick={() => setShowForgot(false)}>
+            <div style={styles.modal} onClick={e => e.stopPropagation()}>
+              <button style={styles.closeBtn} onClick={() => setShowForgot(false)}>✕</button>
+
+              {forgotSuccess ? (
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <div style={{ fontSize: 60, marginBottom: 20 }}>📧</div>
+                  <h2 style={{ ...styles.title, fontSize: 36 }}>Kiểm tra email!</h2>
+                  <p style={{ ...styles.subtitle, fontSize: 18 }}>
+                    Chúng tôi đã gửi link đặt lại mật khẩu đến<br/>
+                    <strong style={{ color: '#10b981' }}>{forgotEmail}</strong><br/>
+                    Link có hiệu lực trong <strong>15 phút</strong>.
+                  </p>
+                  <button
+                    style={{ ...styles.submitBtn, marginTop: 30 }}
+                    onClick={() => { setShowForgot(false); setShowAuth(true); setIsLogin(true); }}
+                  >
+                    Quay lại đăng nhập
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <h2 style={{ ...styles.title, fontSize: 40 }}>Đặt lại mật khẩu</h2>
+                  <p style={{ ...styles.subtitle, fontSize: 20 }}>Nhập email đăng ký, chúng tôi sẽ gửi link đặt lại</p>
+
+                  <div style={styles.inputGroup}>
+                    <div style={styles.inputIcon}>✉️</div>
+                    <input
+                      type="email" placeholder="Email đăng ký" style={styles.input}
+                      value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleForgotPassword()}
+                    />
+                  </div>
+
+                  {forgotError && (
+                    <div style={{ padding: '14px 20px', borderRadius: 16, marginBottom: 16, background: '#fef2f2', border: '2px solid #fecaca', color: '#dc2626', fontSize: 18, fontWeight: 600 }}>
+                      ⚠️ {forgotError}
+                    </div>
+                  )}
+
+                  <button
+                    style={{ ...styles.submitBtn, opacity: forgotLoading ? 0.7 : 1 }}
+                    onClick={handleForgotPassword}
+                    disabled={forgotLoading}
+                  >
+                    {forgotLoading ? '⏳ Đang gửi...' : 'Gửi link đặt lại'}
+                  </button>
+
+                  <div style={styles.switchText}>
+                    Nhớ mật khẩu rồi?
+                    <span style={styles.switchLink} onClick={() => { setShowForgot(false); setShowAuth(true); setIsLogin(true); }}>
+                      Đăng nhập
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
     </>
   );
 };
