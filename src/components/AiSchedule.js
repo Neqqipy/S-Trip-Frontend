@@ -1736,10 +1736,6 @@ const WeatherWidget = ({ location, isDark, externalData, departureDate }) => {
           {travel_advice}
         </div>
       )}
-<<<<<<< HEAD
-
-=======
->>>>>>> ff921ad6f41b55ed698d837f36a07ae3be0ded7c
       {(!forecast || forecast.length === 0) && (
         <div style={{ 
           padding: '16px 24px', 
@@ -1751,23 +1747,14 @@ const WeatherWidget = ({ location, isDark, externalData, departureDate }) => {
           ⏳ Dự báo thời tiết sẽ hiển thị khi gần đến ngày khởi hành
         </div>
       )}
-<<<<<<< HEAD
-
-=======
->>>>>>> ff921ad6f41b55ed698d837f36a07ae3be0ded7c
       {/* Dự báo — grid tự co vừa khung, không tràn */}
       {forecast && forecast.length > 0 && (
         <div style={{ padding: '16px 24px 20px', background: cardBg }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: textSub, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
             📅 Dự báo {forecast.length} ngày tới
           </div>
-<<<<<<< HEAD
           {weather.forecast.length < 4 && (
             <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
-=======
-          {forecast.length < 4 && (
-            <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 12px 0' }}>
->>>>>>> ff921ad6f41b55ed698d837f36a07ae3be0ded7c
               ⏳ Dự báo đầy đủ sẽ hiển thị khi gần đến ngày khởi hành
             </p>
           )}
@@ -1780,6 +1767,11 @@ const WeatherWidget = ({ location, isDark, externalData, departureDate }) => {
                 <div style={{ fontSize: 11, color: textSub }}>{day.low_c !== null ? `${day.low_c}°` : '--'}</div>
                 {day.rain_chance != null && (
                   <div style={{ marginTop: 4, fontSize: 10, fontWeight: 700, color: isDark ? '#7dd3fc' : '#1d4ed8' }}>💧{day.rain_chance}%</div>
+                )}
+                {day.is_estimate && (
+                  <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>
+                    ~ước tính
+                  </div>
                 )}
               </div>
             ))}
@@ -2315,11 +2307,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
   useEffect(() => {
     if (!initialData.location) return;
     fetchWeather(initialData.location, initialData.departureDate || initialData.departure_date || '')
-<<<<<<< HEAD
       .then(data => setWeatherData(data));
-=======
-  .then(data => setWeatherData(data));
->>>>>>> ff921ad6f41b55ed698d837f36a07ae3be0ded7c
   }, [initialData.location]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 🧋 State nút Tham Khảo Đồ Uống
