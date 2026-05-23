@@ -233,12 +233,12 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
       backdropFilter: 'blur(15px)',
     },
     modal: {
-      backgroundColor: isDark ? '#0f172a' : 'white', width: '750px', maxWidth: '90%', maxHeight: '85vh',
-      overflowY: 'auto', borderRadius: '50px', padding: '60px 70px',
+      backgroundColor: isDark ? '#0f172a' : 'white', width: '750px', maxWidth: '90%',
+      borderRadius: '50px', padding: '60px 70px',
       position: 'relative', boxShadow: '0 40px 100px rgba(0,0,0,0.5)',
     },
     closeBtn: {
-      position: 'absolute', top: '35px', right: '40px',
+      position: 'absolute', top: '20px', right: '20px',
       background: 'none', border: 'none', fontSize: '45px', color: isDark ? '#64748b' : '#9ca3af', cursor: 'pointer',
     },
     title: { fontSize: '50px', fontWeight: '900', color: isDark ? '#ffffff' : '#111827', marginBottom: '10px', textAlign: 'center' },

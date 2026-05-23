@@ -72,10 +72,7 @@ const HomePage = ({
 };
 
 function AppContent() {
-  const [searchData, setSearchData] = useState(() => {
-    const savedData = localStorage.getItem('s_trip_last_search');
-    return savedData ? JSON.parse(savedData) : null;
-  });
+  const [searchData, setSearchData] = useState(null);
   const [editedPlans, setEditedPlans] = useState(null);
   const [activeSection, setActiveSection] = useState('home'); 
   const [isLoading, setIsLoading] = useState(false);
@@ -257,7 +254,10 @@ function AppContent() {
         activeSection={activeSection} 
         onNavigate={scrollToSection} 
         onRefresh={() => {
+          setSearchData(null);
+          setEditedPlans(null);
           setActiveSection('home');
+          localStorage.removeItem('s_trip_last_search');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         hasItinerary={hasItinerary}

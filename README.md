@@ -38,16 +38,7 @@ npm install
 npm install @fortawesome/react-fontawesome @fortawesome/free-solid-svg-icons @fortawesome/free-regular-svg-icons @fortawesome/free-brands-svg-icons
 ```
 
-### 3. Cấu Hình Biến Môi Trường
-
-Tạo file `.env.local` trong thư mục gốc:
-```env
-REACT_APP_API_URL=http://localhost:5000
-REACT_APP_SUPABASE_URL=your_supabase_url
-REACT_APP_SUPABASE_ANON_KEY=your_supabase_key
-```
-
-### 4. Chạy Development Server
+### 3. Chạy Development Server
 ```bash
 npm start
 ```
@@ -67,26 +58,83 @@ npm start
 
 ```
 src/
-├── components/           # React Components
-│   ├── Navbar.js         # Navigation bar
-│   ├── Hero.js           # Banner chính
-│   ├── Dashboard.js      # Trang chủ chính
-│   ├── FeaturedDestinations.js  # Điểm đến nổi bật
-│   ├── AiSchedule.js     # Lập kế hoạch bằng AI
-│   ├── ChatAI.js         # Chat bot AI
-│   ├── MapBubble.js      # Bản đồ tương tác
-│   ├── Exportpdf.js      # Xuất PDF
-│   ├── Toast.js          # Notification toast
-│   ├── SkeletonLoader.js # Loading skeleton
-│   ├── Footer.js         # Footer
-│   └── NotFound.js       # Trang 404
-├── services/             # API & Utilities
-│   ├── api.js            # API calls
-│   └── geocodeUtils.js   # Geocoding utilities
-├── App.js                # Main App component
-├── index.js              # Entry point
-└── postcss.config.js     # PostCSS config
+├── components/                   # React Components
+│   ├── Navbar.js                # Navigation bar với dark mode toggle
+│   ├── Hero.js                  # Banner tìm kiếm chính với form
+│   ├── Dashboard.js             # Trang chủ chính
+│   ├── FeaturedDestinations.js  # Hiển thị điểm đến nổi bật
+│   ├── AiSchedule.js            # Component lập kế hoạch lịch trình
+│   ├── ChatAI.js                # Chat bot AI thực time
+│   ├── MapBubble.js             # Bản đồ tương tác dấu địa điểm
+│   ├── Exportpdf.js             # Xuất lịch trình thành PDF
+│   ├── ResetPassword.js         # Form đặt lại mật khẩu
+│   ├── Toast.js                 # Notification toast (success/error)
+│   ├── SkeletonLoader.js        # Loading skeleton UI
+│   ├── Footer.js                # Footer với liên kết
+│   ├── ProfilePage.js           # Trang profile người dùng
+│   └── NotFound.js              # Trang 404
+├── services/                    # API & Utilities
+│   ├── api.js                   # Gọi API backend
+│   └── geocodeUtils.js          # Địa phương hóa tọa độ địa điểm
+├── App.js                       # Main App component + Routing
+├── App.css                      # Các style chung
+├── index.js                     # Entry point
+└── postcss.config.js            # PostCSS config
 ```
+
+### 📄 Chi Tiết Components
+
+#### **Hero.js** - Form Tìm Kiếm Chính
+- Cho phép người dùng nhập: Địa điểm đến, Nơi khởi hành, Số ngày, Ngân sách, Số hành khách, Ngày khởi hành
+- Gợi ý tự động tỉnh thành Việt Nam
+- Lưu lịch sử tìm kiếm vào localStorage
+- Hỗ trợ hoán đổi địa điểm (origin ↔ destination)
+
+#### **AiSchedule.js** - Lập Kế Hoạch Lịch Trình
+- Hiển thị chi tiết kế hoạch du lịch từ backend
+- Cho phép chỉnh sửa từng ngày, địa điểm, hoạt động
+- Hiển thị thông tin: khách sạn, chuyến bay, tour, ẩm thực, vận chuyển
+- Tính năng lưu kế hoạch vào profile người dùng
+
+#### **ChatAI.js** - Trợ Lý AI Thực Time
+- Chat bubble nổi ở góc màn hình
+- Trò chuyện về lịch trình du lịch
+- Gợi ý, trả lời câu hỏi về điểm đến
+- Hỗ trợ streaming messages
+
+#### **MapBubble.js** - Bản Đồ Tương Tác
+- Hiển thị bản đồ các địa điểm du lịch
+- Dấu vị trí cho từng hoạt động, nhà hàng
+- Tính toán tuyến đường giữa các điểm
+
+#### **ResetPassword.js** - Đặt Lại Mật Khẩu
+- Xử lý reset password qua email
+- Xác thực token từ URL: `/#/reset-password?token=xxx`
+- Kiểm tra độ mạnh mật khẩu (min 6 ký tự)
+- Xác nhận mật khẩu khớp trước khi lưu
+- Giao diện tối/sáng
+
+#### **Exportpdf.js** - Xuất PDF
+- Chuyển đổi lịch trình thành tài liệu PDF
+- Sử dụng html2canvas + jsPDF
+- In toàn bộ thông tin lịch trình
+
+#### **Toast.js** - Thông Báo
+- Hiển thị success/error notifications
+- Tự động ẩn sau 3 giây
+- Hỗ trợ multiple toasts
+
+#### **ProfilePage.js** - Hồ Sơ Người Dùng
+- Xem thông tin tài khoản
+- Lịch sử lịch trình đã lưu
+- Tải lại kế hoạch cũ
+- Quản lý setting profile
+
+#### **Navbar.js** - Navigation Bar
+- Logo + Menu điều hướng
+- Dark mode toggle
+- Đăng nhập/Đăng xuất
+- Avatar người dùng (nếu đã login)
 
 ## 🔧 Công Nghệ Sử Dụng
 
@@ -142,16 +190,6 @@ Proxy: http://127.0.0.1:5000
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open Pull Request
 
-## 📝 Commit Conventions
-
-Tuân theo [Conventional Commits](https://www.conventionalcommits.org/):
-- `feat:` - Tính năng mới
-- `fix:` - Sửa lỗi
-- `docs:` - Cập nhật tài liệu
-- `style:` - Thay đổi styling
-- `refactor:` - Refactor code
-- `test:` - Thêm/cập nhật test
-
 ## 🐛 Báo Cáo Lỗi
 
 Nếu bạn phát hiện lỗi, vui lòng:
@@ -160,15 +198,11 @@ Nếu bạn phát hiện lỗi, vui lòng:
 3. Nêu phiên bản browser và OS
 4. Thêm screenshot nếu có liên quan
 
-## 📄 License
-
-Dự án này được cấp phép dưới giấy phép MIT. Xem [LICENSE](LICENSE) để biết chi tiết.
-
 ## 👨‍💻 Tác Giả
 
 **S-Travel Team**
-- Repository: [GitHub](https://github.com/your-repo/s-trip)
-- Email: contact@s-trip.com
+- Repository: [GitHub](https://github.com/Neqqipy/S-Trip-Project-Test)
+- Email: drakhung311@gmail.com
 
 ## 🙏 Lời Cảm Ơn
 
