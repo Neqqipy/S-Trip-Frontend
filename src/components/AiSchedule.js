@@ -1214,6 +1214,23 @@ const ReviewsModal = ({ placeName, placeId, onClose, locationName = '' , placeTy
   );
 };
 
+// ✈️ Build URL đặt vé — ưu tiên booking_token của Google Flights
+const getBookingUrl = (airlineName = '', bookingToken = '') => {
+  if (bookingToken) {
+    return `https://www.google.com/travel/flights?tfs=$${encodeURIComponent(bookingToken)}`;
+  }
+  
+  // Cơ chế Fallback khi không có vé
+  const n = airlineName.toLowerCase();
+  if (n.includes('vietjet') || n.includes('vj')) return 'https://www.vietjetair.com';
+  if (n.includes('vietnam airlines') || n.includes('vna')) return 'https://www.vietnamairlines.com';
+  if (n.includes('bamboo')) return 'https://www.bambooairways.com';
+  if (n.includes('pacific')) return 'https://www.pacificairlines.com';
+  if (n.includes('vietravel') || n.includes('vu')) return 'https://www.vietravelairlines.com';
+
+  return 'https://www.google.com/travel/flights'; 
+};
+
 // ✈️ Airline logo helper — trả về data URI SVG tránh bị chặn hotlink
 const getAirlineLogo = (name = '', url = '') => {
   const n = name.toLowerCase();
@@ -1326,6 +1343,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
         zIndex: isHovered ? 10 : 1, position: 'relative',
       }}
     >
+
       {/* ❤️ Yêu thích + 🔖 Lưu địa điểm — chỉ hiện với tour/food, KHÔNG hiện cho chuyến bay */}
       {!isFlight && <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: 6, zIndex: 20 }}>
         {/* ❤️ Yêu thích → /api/favorites */}
@@ -1437,6 +1455,32 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
               <FontAwesomeIcon icon={faPenToSquare} style={{ fontSize: '10px' }} /> Đổi
             </button>
           )}
+          {isFlight && (
+            <a
+              href={getBookingUrl(data.airline || data.name || '', data.booking_token || '')}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                marginLeft: 'auto', // Tự động đẩy nút sang sát lề phải
+                padding: '8px 22px', borderRadius: '12px', border: 'none',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white', fontWeight: '800', cursor: 'pointer', fontSize: '13px',
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                textDecoration: 'none', boxShadow: '0 4px 12px rgba(16,185,129,0.25)',
+                transition: 'all 0.25s ease',
+              }}
+              onMouseEnter={e => { 
+                e.currentTarget.style.transform = 'translateY(-2px)'; 
+                e.currentTarget.style.boxShadow = '0 6px 18px rgba(16,185,129,0.4)'; 
+              }}
+              onMouseLeave={e => { 
+                e.currentTarget.style.transform = 'translateY(0)'; 
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(16,185,129,0.25)'; 
+              }}
+            >
+              Đặt vé ngay <FontAwesomeIcon icon={faPlane} style={{ fontSize: '13px' }} />
+            </a>
+          )}
         </div>
       </div>
 
@@ -1446,7 +1490,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
 };
 
 // ── TRANSPORT CARD — có hiệu ứng hover nổi lên ───────────────
-const TransportCard = ({ opt, isCombined, isDark }) => {
+const TransportCard = ({ opt, isCombined, isDark, noTickets }) => {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -1522,7 +1566,59 @@ const TransportCard = ({ opt, isCombined, isDark }) => {
       </div>
 
       <div style={{ fontSize: '13px', color: isDark ? '#cbd5e1' : '#475569', lineHeight: '1.5', flex: 1 }}>
-        {opt.tips}
+        {/* Parse link trong tips thành <a> đẹp */}
+        {opt.tips ? (() => {
+          const parts = [];
+          const re = /([\w\sÀ-ỹ]+?)\s*\((https?:\/\/[^\s)]+)\)/g;
+          let last = 0, m;
+          const tips = opt.tips;
+          while ((m = re.exec(tips)) !== null) {
+            if (m.index > last) parts.push({ type: 'text', val: tips.slice(last, m.index) });
+            
+            const label = m[1].trim();
+            const lblLower = label.toLowerCase();
+            let finalUrl = m[2]; // Mặc định giữ nguyên link chi tiết gốc từ API mang về
+            
+            // CHỈ ÉP URL VỀ TRANG CHỦ KHI KHÔNG CÓ VÉ THỰC TẾ (noTickets === true)
+            if (noTickets) {
+              if (lblLower.includes('vietjet') || lblLower.includes('vj')) finalUrl = 'https://www.vietjetair.com';
+              else if (lblLower.includes('vna') || lblLower.includes('vietnam airlines')) finalUrl = 'https://www.vietnamairlines.com';
+              else if (lblLower.includes('bamboo')) finalUrl = 'https://www.bambooairways.com';
+              else if (lblLower.includes('pacific')) finalUrl = 'https://www.pacificairlines.com';
+              else if (lblLower.includes('vietravel')) finalUrl = 'https://www.vietravelairlines.com';
+              else finalUrl = 'https://www.google.com/travel/flights';
+            }
+
+            parts.push({ type: 'link', label: label, url: finalUrl });
+            last = m.index + m[0].length;
+          }
+          if (last < tips.length) parts.push({ type: 'text', val: tips.slice(last) });
+          
+          return parts.length > 1 ? (
+            <span>
+              {parts[0]?.type === 'text' && <span>{parts[0].val}</span>}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px', width: '100%' }}>
+                {parts.filter(p => p.type === 'link').map((p, i) => (
+                  <a key={i} href={p.url} target="_blank" rel="noopener noreferrer"
+                    style={{
+                      flex: 1, 
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                      padding: '8px 10px', borderRadius: '12px',
+                      background: isDark ? 'rgba(59,130,246,0.15)' : '#eff6ff',
+                      color: '#3b82f6', fontWeight: '700', fontSize: '13px',
+                      textDecoration: 'none', border: '1px solid rgba(59,130,246,0.25)',
+                      transition: '0.2s', whiteSpace: 'nowrap'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.color = 'white'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = isDark ? 'rgba(59,130,246,0.15)' : '#eff6ff'; e.currentTarget.style.color = '#3b82f6'; }}
+                  >
+                    ✈️ {p.label}
+                  </a>
+                ))}
+              </div>
+            </span>
+          ) : <span>{tips}</span>;
+        })() : null}
       </div>
 
       {isCombined && opt.legs && (
@@ -2144,8 +2240,22 @@ const ShareButton = ({ dailyPlans, initialData, currentHotel, plan, isDark }) =>
 };
 
 // ── COMPONENT CHÍNH ──────────────────────────────────────────
-const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, onSwap, isDark = false }) => {
-  const numDays  = parseInt(initialData?.days?.toString().split(' ')[0]) || 3;
+const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark = false }) => {
+  // Normalize tất cả các field string để tránh lỗi ".replace is not a function"
+  // khi component cha truyền vào number/object thay vì string.
+  // Dùng useMemo để object không bị tạo mới mỗi render → tránh warning exhaustive-deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const initialData = React.useMemo(() => ({
+    ...(rawData || {}),
+    location:       String(rawData?.location       || ''),
+    days:           String(rawData?.days           || '3'),
+    origin:         String(rawData?.origin         || ''),
+    from:           String(rawData?.from           || ''),
+    startDate:      String(rawData?.startDate      || ''),
+    departure_date: String(rawData?.departure_date || ''),
+    budget:         String(rawData?.budget         || ''),
+  }), [rawData]); // eslint-disable-line react-hooks/exhaustive-deps
+  const numDays  = parseInt(initialData.days.split(' ')[0]) || 3;
   const [dailyPlans,  setDailyPlans]  = useState([]);
   const [mapQuery,    setMapQuery]    = useState(() => { const h = (initialData.realHotels || [])[0]; return h ? `${h.name} ${initialData.location || ''}`.trim() : (initialData.location || ''); });
   const [modal,       setModal]       = useState({ show: false, type: '', day: null, session: '', subType: '' });
@@ -2234,7 +2344,7 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, onSwap, isD
 
   const realHotels = (initialData.realHotels || []).map(h => ({
     name: h.name, rating: h.rating,
-    price: h.price_per_night?.toLocaleString() + "đ/đêm" || "Liên hệ",
+    price: h.price_per_night != null ? h.price_per_night.toLocaleString() + "đ/đêm" : "Liên hệ",
     thumbnail: h.thumbnail,
     desc: h.desc || "Lựa chọn tốt nhất dựa trên ngân sách.",
     lat: h.lat, lng: h.lng, place_id: h.place_id || "", room_type: h.room_type,
@@ -2420,7 +2530,13 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, onSwap, isD
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '25px', marginBottom: '30px' }}>
                 {initialData.transport.options.map((opt, idx) => (
-                  <TransportCard key={idx} opt={opt} isCombined={opt.type === 'combined'} isDark={isDark} />
+                  <TransportCard 
+                    key={idx} 
+                    opt={opt} 
+                    isCombined={opt.type === 'combined'} 
+                    isDark={isDark} 
+                    noTickets={realFlights.length === 0} // <-- THÊM DÒNG NÀY ĐỂ BÁO TRẠNG THÁI KHÔNG CÓ VÉ
+                  />
                 ))}
               </div>
 
@@ -2455,10 +2571,12 @@ const AiSchedule = ({ data: initialData, plan, onSave, onPlanChange, onSwap, isD
                     key={i} 
                     type="Chuyến bay" 
                     data={{ 
-                      airline: f.airline, 
-                      price: f.price?.toLocaleString() + "đ", 
-                      thumbnail: f.thumbnail, 
-                      desc: `Hãng bay: ${f.airline} • Thời gian bay: ${f.duration || 'N/A'}` 
+                      airline:       f.airline, 
+                      price:         f.price?.toLocaleString() + "đ", 
+                      thumbnail:     f.thumbnail, 
+                      desc:          `Hãng bay: ${f.airline} • Thời gian bay: ${f.duration || 'N/A'}`,
+                      booking_token: f.booking_token || '',
+                      ticket_class:  f.ticket_class,
                     }} 
                     locationName={initialData.location} 
                     onShowMap={handleShowMap} 
