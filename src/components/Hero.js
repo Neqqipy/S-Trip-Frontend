@@ -33,7 +33,7 @@ const Hero = ({ onSearch, isDark = false }) => {
     setLocation(origin);
   };
 
-  const provinces = ["An Giang", "Bà Rịa - Vũng Tàu", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"];
+  const provinces = ["An Giang", "Bà Rịa - Vũng Tàu", "Bạc Liêu", "Bắc Giang", "Bắc Kạn", "Bắc Ninh", "Bến Tre", "Biên Hòa", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Buôn Ma Thuột", "Cà Mau", "Cam Ranh", "Cần Thơ", "Cao Bằng", "Cửa Lò", "Đà Lạt", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Hới", "Đồng Nai", "Đồng Tháp", "Đông Hà", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hạ Long", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hoa Lư", "Hòa Bình", "Hội An", "Huế", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Long Xuyên", "Móng Cái", "Mỹ Tho", "Nam Định", "Nghệ An", "Nha Trang", "Ninh Bình", "Ninh Thuận", "Phan Rang - Tháp Chàm", "Phan Thiết", "Phú Quốc", "Phú Thọ", "Phú Yên", "Pleiku", "Quy Nhơn", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Rạch Giá", "Sa Pa", "Sóc Trăng", "Sơn La", "Tam Kỳ", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuy Hòa", "Tuyên Quang", "Uông Bí", "Vinh", "Vĩnh Long", "Vĩnh Phúc", "Vũng Tàu", "Yên Bái"];
   const dayOptions = ["2 ngày 1 đêm", "3 ngày 2 đêm", "4 ngày 3 đêm", "5 ngày 4 đêm"];
   const budgetOptions = ["5.000.000đ", "10.000.000đ", "15.000.000đ", "20.000.000đ"];
 
@@ -44,7 +44,7 @@ const Hero = ({ onSearch, isDark = false }) => {
   );
 
   const extra_aliases = new Set(["Sapa","Sa Pa","Đà Lạt","Da Lat","Huế","Hue","Phú Quốc","Phu Quoc","Hội An","Hoi An","Nha Trang","Vũng Tàu","Vung Tau","Mũi Né","Mui Ne","Buôn Ma Thuột","Buon Ma Thuot","Cần Thơ","Can Tho","Hải Phòng","Hai Phong"]);
-  const provinces_set = new Set(["An Giang", "Bà Rịa - Vũng Tàu", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"]);
+  const provinces_set = new Set(["An Giang", "Bà Rịa - Vũng Tàu", "Bạc Liêu", "Bắc Giang", "Bắc Kạn", "Bắc Ninh", "Bến Tre", "Biên Hòa", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Buôn Ma Thuột", "Cà Mau", "Cam Ranh", "Cần Thơ", "Cao Bằng", "Cửa Lò", "Đà Lạt", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Hới", "Đồng Nai", "Đồng Tháp", "Đông Hà", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hạ Long", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hoa Lư", "Hòa Bình", "Hội An", "Huế", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Long Xuyên", "Móng Cái", "Mỹ Tho", "Nam Định", "Nghệ An", "Nha Trang", "Ninh Bình", "Ninh Thuận", "Phan Rang - Tháp Chàm", "Phan Thiết", "Phú Quốc", "Phú Thọ", "Phú Yên", "Pleiku", "Quy Nhơn", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Rạch Giá", "Sa Pa", "Sóc Trăng", "Sơn La", "Tam Kỳ", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuy Hòa", "Tuyên Quang", "Uông Bí", "Vinh", "Vĩnh Long", "Vĩnh Phúc", "Vũng Tàu", "Yên Bái"]);
   const _norm = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
   const isValidProvince = (val) => {
     if (!val) return false;
@@ -400,11 +400,11 @@ const Hero = ({ onSearch, isDark = false }) => {
           <FontAwesomeIcon icon={faBolt} style={{color: '#fbbf24'}} /> Gợi ý:
         </span>
         {['Đà Lạt', 'Huế', 'Đà Nẵng', 'Sapa', 'Phú Quốc'].map(city => (
-          <div 
-            key={city} 
-            style={{ 
+          <div
+            key={city}
+            style={{
               backgroundColor: hoveredTag === city ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.2)',
-              padding: '10px 40px', borderRadius: '9999px', fontSize: '24px', color: 'white', fontWeight: '700', 
+              padding: '10px 40px', borderRadius: '9999px', fontSize: '24px', color: 'white', fontWeight: '700',
               cursor: 'pointer', border: '1px solid rgba(255,255,255,0.5)', transition: '0.3s'
             }}
             onMouseEnter={() => setHoveredTag(city)}
