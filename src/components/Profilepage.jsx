@@ -1320,7 +1320,7 @@ function SearchHistory({ T, onSearch, onBack }) {
           <div key={h.id} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, animation: `fadeUp 0.3s ease ${i * 0.05}s both` }}>
             <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🔍</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{h.origin} → <span style={{ color: C.primary }}>{h.destination}</span></div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{h.origin} → <span style={{ color: C.primary }}>{h.location || h.destination}</span></div>
               <div style={{ fontSize: 12, color: T.muted, marginTop: 3, display: 'flex', gap: 12 }}>
                 <span>{h.days} ngày · {h.passengers} người</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>{Icon.clock} {formatDate(h.searched_at)}</span>
@@ -1424,20 +1424,29 @@ function Settings({ user, onUpdate, T, onLogout }) {
         </div>
 
         {/* Đổi mật khẩu */}
-        {!user.google_id && (
-          <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 18, padding: '22px 24px' }}>
-            <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8, color: T.text }}>🔒 Đổi mật khẩu</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div><label style={labelStyle}>Mật khẩu hiện tại</label><input className="sp-input" type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} style={inputStyle} placeholder="••••••••" /></div>
-              <div><label style={labelStyle}>Mật khẩu mới</label><input className="sp-input" type="password" value={newPw} onChange={e => setNewPw(e.target.value)} style={inputStyle} placeholder="••••••••" /></div>
-              <div><label style={labelStyle}>Xác nhận mật khẩu mới</label><input className="sp-input" type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} style={inputStyle} placeholder="••••••••" /></div>
+        <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 18, padding: '22px 24px', opacity: user.google_id ? 0.45 : 1, pointerEvents: user.google_id ? 'none' : 'auto', position: 'relative' }}>
+          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8, color: T.text }}>🔒 Đổi mật khẩu</div>
+          {user.google_id && (
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#065f46', background: 'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(5,150,105,0.12))', border: '1.5px solid rgba(16,185,129,0.55)', borderRadius: 12, padding: '13px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 2px 8px rgba(16,185,129,0.12)' }}>
+              <span style={{ fontSize: 20, flexShrink: 0 }}>🔗</span>
+              <span style={{ lineHeight: 1.5 }}>Tài khoản đăng nhập qua Google — đổi mật khẩu tại{' '}
+                <a href="https://myaccount.google.com" target="_blank" rel="noreferrer"
+                  style={{ color: '#059669', fontWeight: 800, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                  myaccount.google.com
+                </a>
+              </span>
             </div>
-            {pwStatus && <StatusMsg status={pwStatus} okText="✅ Đổi mật khẩu thành công!" />}
-            <button className="sp-btn" onClick={handleUpdatePassword} disabled={pwLoading || !currentPw || !newPw || !confirmPw} style={{ marginTop: 14, padding: '11px 24px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: 800, fontSize: 14, cursor: pwLoading ? 'not-allowed' : 'pointer', opacity: (pwLoading || !currentPw || !newPw || !confirmPw) ? 0.5 : 1 }}>
-              {pwLoading ? '⏳ Đang lưu...' : 'Cập nhật mật khẩu'}
-            </button>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div><label style={labelStyle}>Mật khẩu hiện tại</label><input className="sp-input" type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} style={inputStyle} placeholder="••••••••" /></div>
+            <div><label style={labelStyle}>Mật khẩu mới</label><input className="sp-input" type="password" value={newPw} onChange={e => setNewPw(e.target.value)} style={inputStyle} placeholder="••••••••" /></div>
+            <div><label style={labelStyle}>Xác nhận mật khẩu mới</label><input className="sp-input" type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} style={inputStyle} placeholder="••••••••" /></div>
           </div>
-        )}
+          {pwStatus && <StatusMsg status={pwStatus} okText="✅ Đổi mật khẩu thành công!" />}
+          <button className="sp-btn" onClick={handleUpdatePassword} disabled={pwLoading || !currentPw || !newPw || !confirmPw} style={{ marginTop: 14, padding: '11px 24px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: 800, fontSize: 14, cursor: pwLoading ? 'not-allowed' : 'pointer', opacity: (pwLoading || !currentPw || !newPw || !confirmPw) ? 0.5 : 1 }}>
+            {pwLoading ? '⏳ Đang lưu...' : 'Cập nhật mật khẩu'}
+          </button>
+        </div>
 
         {/* Xóa tài khoản */}
         <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 18, padding: '22px 24px' }}>
