@@ -17,6 +17,7 @@ import {
   faHeart as faHeartRegular
  } from '@fortawesome/free-regular-svg-icons';
 import { fetchReviews, fetchImages, fetchWeather } from '../services/api';
+import { BASE_URL } from '../config';
 
 // ═════════════════════════════════════════════════════════════
 // 🗂️ GLOBAL STATE CACHE — favorites & saved-places
@@ -145,7 +146,6 @@ const useSavedPlace = ({ name, location = '', rating = '', thumbnail = '', type 
 };
 
 // 🖼️ Proxy ảnh Google qua backend để tránh bị chặn hotlink
-const BASE_URL = ''; // proxy qua React dev server
 const GOOGLE_IMG_DOMAINS = ['googleusercontent.com', 'ggpht.com', 'googleapis.com', 'googleapi'];
 const proxyImage = (url) => {
   if (!url) return null;

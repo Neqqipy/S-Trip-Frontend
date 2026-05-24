@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-const BASE_URL = '';
+import { BASE_URL } from '../config';
 
 const ResetPassword = ({ isDark }) => {
   const [token, setToken]       = useState('');

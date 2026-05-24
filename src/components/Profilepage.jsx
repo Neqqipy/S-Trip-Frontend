@@ -4,8 +4,7 @@
 // ================================================================
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-
-const BASE_URL = ''; // proxy qua React dev server
+import { BASE_URL } from '../config';
 
 // ── Icons SVG inline ──────────────────
 const Icon = {
@@ -248,6 +247,12 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
   const [loading,    setLoading]    = useState(!userProp);
   // Mỗi lần click tab đang active → tăng signal để child reset filter
   const [resetSignal, setResetSignal] = useState({ savedplaces: 0, favorites: 0 });
+  // Stats dùng chung — StatsBar fetch ban đầu, các tab báo lên khi thay đổi
+  const [stats, setStats] = useState({ schedules: 0, savedPlaces: 0, favorites: 0, searches: 0 });
+
+  const handleStatsChange = (key, delta) => {
+    setStats(prev => ({ ...prev, [key]: Math.max(0, prev[key] + delta) }));
+  };
 
   const handleTabClick = (id) => {
     if (id === tab) {
@@ -327,14 +332,14 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
               </button>
             ))}
           </div>
-          <StatsBar user={user} T={T} />
+          <StatsBar stats={stats} setStats={setStats} T={T} />
         </div>
 
         {/* Content */}
         <div style={{ minWidth: 0 }}>
           {tab === 'saved'       && <SavedSchedules T={T} onLoadSchedule={onLoadSchedule} />}
-          {tab === 'savedplaces' && <SavedPlaces T={T} resetSignal={resetSignal.savedplaces} />}
-          {tab === 'favorites'   && <Favorites T={T} resetSignal={resetSignal.favorites} />}
+          {tab === 'savedplaces' && <SavedPlaces T={T} resetSignal={resetSignal.savedplaces} onCountChange={(delta) => handleStatsChange('savedPlaces', delta)} />}
+          {tab === 'favorites'   && <Favorites T={T} resetSignal={resetSignal.favorites} onCountChange={(delta) => handleStatsChange('favorites', delta)} />}
           {tab === 'history'     && <SearchHistory T={T} onSearch={onSearch} onBack={onBack} />}
           {tab === 'settings'    && <Settings user={user} onUpdate={handleUserUpdate} T={T} onLogout={onBack} />}
         </div>
@@ -528,12 +533,12 @@ function AvatarCard({ user, onUpdate, isDark, T }) {
   );
 }
 
-function StatsBar({ user, T }) {
-  const [stats, setStats] = useState({ schedules: 0, favorites: 0, savedPlaces: 0, searches: 0 });
+function StatsBar({ stats, setStats, T }) {
   useEffect(() => {
     Promise.all([ api.get('/api/schedules'), api.get('/api/favorites'), api.get('/api/saved-places'), api.get('/api/search-history') ])
       .then(([s, f, sp, h]) => setStats({ schedules: Array.isArray(s.schedules) ? s.schedules.length : 0, favorites: f.favorites?.length || 0, savedPlaces: sp.savedPlaces?.length || 0, searches: h.history?.length || 0 }))
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const items = [ { label: 'Lịch trình', value: stats.schedules }, { label: 'Đã lưu', value: stats.savedPlaces }, { label: 'Yêu thích', value: stats.favorites }, { label: 'Tìm kiếm', value: stats.searches } ];
   return (
@@ -1133,7 +1138,7 @@ function FilterBar({ current, onChange, items = [], T }) {
 }
 
 // 🔖 TAB: LƯU TRỮ
-function SavedPlaces({ T, onResetFilter, resetSignal }) {
+function SavedPlaces({ T, onResetFilter, resetSignal, onCountChange }) {
   const [items,   setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter,  setFilter]  = useState('all');
@@ -1154,6 +1159,7 @@ function SavedPlaces({ T, onResetFilter, resetSignal }) {
   const handleRemove = async (id) => {
     await api.del(`/api/saved-places/${id}`);
     setItems(f => f.filter(x => x.id !== id));
+    onCountChange?.(-1);
   };
 
   const searchedItems = items.filter(item => {
@@ -1205,7 +1211,7 @@ function SavedPlaces({ T, onResetFilter, resetSignal }) {
 }
 
 // ❤️ TAB: YÊU THÍCH
-function Favorites({ T, resetSignal }) {
+function Favorites({ T, resetSignal, onCountChange }) {
   const [items,   setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter,  setFilter]  = useState('all');
@@ -1226,6 +1232,7 @@ function Favorites({ T, resetSignal }) {
   const handleRemove = async (id) => {
     await api.del(`/api/favorites/${id}`);
     setItems(f => f.filter(x => x.id !== id));
+    onCountChange?.(-1);
   };
 
   const searchedItems = items.filter(item => {
@@ -1320,7 +1327,7 @@ function SearchHistory({ T, onSearch, onBack }) {
           <div key={h.id} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, animation: `fadeUp 0.3s ease ${i * 0.05}s both` }}>
             <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🔍</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{h.origin} → <span style={{ color: C.primary }}>{h.destination}</span></div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{h.origin} → <span style={{ color: C.primary }}>{h.location || h.destination}</span></div>
               <div style={{ fontSize: 12, color: T.muted, marginTop: 3, display: 'flex', gap: 12 }}>
                 <span>{h.days} ngày · {h.passengers} người</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>{Icon.clock} {formatDate(h.searched_at)}</span>

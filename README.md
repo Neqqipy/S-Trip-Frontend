@@ -38,7 +38,36 @@ npm install
 npm install @fortawesome/react-fontawesome @fortawesome/free-solid-svg-icons @fortawesome/free-regular-svg-icons @fortawesome/free-brands-svg-icons
 ```
 
-### 3. Chạy Development Server
+### 3. Tạo file `.env` (hoặc `.env.local`)
+Tạo file `.env.local` ở root của dự án để cấu hình môi trường local:
+
+**Cách nhanh nhất:**
+```bash
+# Copy file mẫu .env.example thành .env.local
+cp .env.example .env.local
+```
+
+Sau đó sửa giá trị trong `.env.local` theo môi trường của bạn:
+
+```env
+# Base URL cho tất cả API calls (APIs + OAuth Google)
+REACT_APP_BASE_URL=http://localhost:5000
+```
+
+**Cấu hình theo môi trường:**
+
+- **Development**: `REACT_APP_BASE_URL=http://localhost:5000`
+- **Froxy/Custom**: `REACT_APP_BASE_URL=https://your-froxy-url.com`
+- **Production**: Thêm biến môi trường vào dashboard của host (Vercel, Netlify, v.v.)
+  ```
+  REACT_APP_BASE_URL=https://your-backend.com
+  ```
+
+> Lưu ý: file `.env.local` nên được thêm vào `.gitignore` để tránh commit thông tin nhạy cảm.
+> 
+> **Để thay đổi backend URL**: Chỉ cần cập nhật giá trị `REACT_APP_BASE_URL`
+
+### 4. Chạy Development Server
 ```bash
 npm start
 ```

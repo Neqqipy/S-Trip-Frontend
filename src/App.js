@@ -14,9 +14,8 @@ import Toast from './components/Toast';
 import { fetchTripPlan, saveSearchHistory } from './services/api';
 import ResetPassword from './components/ResetPassword';
 import { enrichPlacesWithCoords } from './services/geocodeUtils';
+import { BASE_URL } from './config';
 import './App.css';
-
-const BASE_URL = ''; // proxy qua React dev server
 
 // ----------------------------------------------------------------
 // ✉️ Trang xử lý xác nhận email (khi user bấm link trong mail)

@@ -10,8 +10,7 @@ import {
   faSignOutAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { faUser } from '@fortawesome/free-regular-svg-icons';
-
-const BASE_URL = ''; // proxy qua React dev server
+import { BASE_URL } from '../config';
 
 // ✅ Nhận thêm props: user, onUserChange (quản lý user ở App.js, không tự quản lý nữa)
 const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, onToggleTheme, user, onUserChange }) => {
@@ -125,8 +124,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
   const handleGoogle = () => {
     // PHẢI redirect thẳng tới Flask backend (không qua proxy)
     // vì Google sẽ callback về Flask set cookie ở domain/port của Flask
-    const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-    window.location.href = `${backendUrl}/api/auth/google`;
+    window.location.href = `${BASE_URL}/api/auth/google`;
   };
 
   const handleForgotPassword = async () => {

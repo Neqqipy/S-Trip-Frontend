@@ -1,5 +1,5 @@
 // src/services/api.js
-const BASE_URL = ''; // proxy qua React dev server
+import { BASE_URL } from '../config';
 
 export const fetchAutocomplete = async (query) => {
   try {

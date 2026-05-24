@@ -6,8 +6,7 @@ import {
   faSun, faCloudSun, faMoon, faSpinner
 } from '@fortawesome/free-solid-svg-icons';
 import { enrichPlacesWithCoords, getProvinceBounds, inBounds } from '../services/geocodeUtils';
-
-const BASE_URL = '';
+import { BASE_URL } from '../config';
 const proxyImg = (url) => {
   if (!url) return null;
   if (url.includes('placehold.co') || url.includes('placeholder')) return url;
