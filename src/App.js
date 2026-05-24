@@ -239,21 +239,44 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
   useEffect(() => { searchDataRef.current = searchData; }, [searchData]);
   useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
 
-  // ✅ [THÊM MỚI] Kiểm tra session khi app load (chuyển từ Navbar sang đây)
+  // Kiểm tra session khi app load
   useEffect(() => {
-    fetch(`${BASE_URL}/api/auth/me`, { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => { if (d.success) setUser(d.user); })
-      .catch(() => {});
+    // Google OAuth redirect về /#/?auth_success=1 (HashRouter format)
+    const rawHash    = window.location.hash || '';
+    const hashSearch = rawHash.includes('?') ? rawHash.slice(rawHash.indexOf('?')) : '';
+    const rawSearch  = window.location.search || '';
+    const params     = new URLSearchParams(hashSearch || rawSearch);
 
-    // Xử lý Google OAuth redirect ?auth_success=1
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('auth_success')) {
+    if (params.get('auth_success') === '1') {
+      window.history.replaceState({}, '', '/#/');
+      // User data được Flask nhúng thẳng vào URL — không cần fetch lại
+      // => hoàn toàn không phụ thuộc cookie cross-port
+      try {
+        const userRaw = params.get('user');
+        if (userRaw) {
+          const userData = JSON.parse(decodeURIComponent(userRaw));
+          setUser(userData);
+          return;
+        }
+      } catch (_) {}
+      // Fallback: nếu không có user param thì fetch qua proxy như bình thường
       fetch(`${BASE_URL}/api/auth/me`, { credentials: 'include' })
         .then(r => r.json())
-        .then(d => { if (d.success) setUser(d.user); });
-      window.history.replaceState({}, '', window.location.pathname);
+        .then(d => { if (d.success && d.user) setUser(d.user); })
+        .catch(() => {});
+      return;
     }
+
+    if (params.get('auth_error')) {
+      window.history.replaceState({}, '', '/#/');
+      return;
+    }
+
+    // Load bình thường — fetch qua proxy OK vì đây không phải cross-origin redirect
+    fetch(`${BASE_URL}/api/auth/me`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (d.success && d.user) setUser(d.user); })
+      .catch(() => {});
   }, []);
 
   const location = useLocation();

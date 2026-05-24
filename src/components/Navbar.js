@@ -123,7 +123,10 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
   };
 
   const handleGoogle = () => {
-    window.location.href = `${BASE_URL}/api/auth/google?next=${encodeURIComponent(window.location.href)}`;
+    // PHẢI redirect thẳng tới Flask backend (không qua proxy)
+    // vì Google sẽ callback về Flask set cookie ở domain/port của Flask
+    const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    window.location.href = `${backendUrl}/api/auth/google`;
   };
 
   const handleForgotPassword = async () => {
@@ -395,7 +398,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
           {/* LOGO */}
           <div style={styles.logoContainer} onClick={onRefresh}>
             <img 
-              src={`${window.location.protocol}//${window.location.hostname}:3000/S.jpg`}
+              src='/S.jpg'
               alt="S-Trip Logo" 
               style={styles.logoImage} 
             />
@@ -648,6 +651,35 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
                 disabled={authLoading}
               >
                 {authLoading ? '⏳ Đang xử lý...' : (isLogin ? 'Đăng nhập ngay' : 'Đăng ký tài khoản')}
+              </button>
+
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
+                <div style={{ flex: 1, height: 1, background: isDark ? '#334155' : '#e5e7eb' }} />
+                <span style={{ color: isDark ? '#64748b' : '#9ca3af', fontSize: 13, fontWeight: 600 }}>hoặc</span>
+                <div style={{ flex: 1, height: 1, background: isDark ? '#334155' : '#e5e7eb' }} />
+              </div>
+
+              {/* Nút Google */}
+              <button
+                onClick={handleGoogle}
+                style={{
+                  width: '100%', padding: '14px', borderRadius: 16,
+                  border: isDark ? '2px solid #334155' : '2px solid #e5e7eb',
+                  background: isDark ? '#1e293b' : 'white',
+                  color: isDark ? '#f8fafc' : '#111827',
+                  fontSize: 16, fontWeight: 700, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  marginBottom: 8, transition: '0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = isDark ? '#334155' : '#f8fafc'}
+                onMouseLeave={e => e.currentTarget.style.background = isDark ? '#1e293b' : 'white'}
+              >
+                <img
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                  alt="Google" style={{ width: 22, height: 22 }}
+                />
+                Tiếp tục với Google
               </button>
 
               <div style={styles.switchText}>
