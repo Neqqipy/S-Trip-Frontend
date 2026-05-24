@@ -896,7 +896,7 @@ function SavedSchedules({ T, onLoadSchedule }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {schedules.map((s, i) => (
           <div key={s.id} className="sp-card" onClick={() => handleOpen(s)} style={{ background: (T||{}).card || 'rgba(255,255,255,0.04)', border: `1px solid ${(T||{}).cardBorder || 'rgba(255,255,255,0.08)'}`, borderRadius: 24, padding: '22px 28px', display: 'flex', gap: 20, alignItems: 'center', cursor: 'pointer', animation: `fadeUp 0.3s ease ${i * 0.06}s both` }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, flexShrink: 0, overflow: 'hidden', border: '2px solid rgba(16,185,129,0.3)', background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+            <div style={{ width: 80, height: 80, borderRadius: 18, flexShrink: 0, overflow: 'hidden', border: '2px solid rgba(16,185,129,0.3)', background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>
               {getProvinceAvatar(s.location)
                 ? <img src={getProvinceAvatar(s.location)} alt={s.location} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display='none'; e.target.parentNode.innerHTML = '🗺️'; }} />
                 : '🗺️'
@@ -1320,7 +1320,7 @@ function SearchHistory({ T, onSearch, onBack }) {
           <div key={h.id} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, animation: `fadeUp 0.3s ease ${i * 0.05}s both` }}>
             <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🔍</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{h.origin} → <span style={{ color: C.primary }}>{h.location || h.destination}</span></div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{h.origin} → <span style={{ color: C.primary }}>{h.destination}</span></div>
               <div style={{ fontSize: 12, color: T.muted, marginTop: 3, display: 'flex', gap: 12 }}>
                 <span>{h.days} ngày · {h.passengers} người</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>{Icon.clock} {formatDate(h.searched_at)}</span>

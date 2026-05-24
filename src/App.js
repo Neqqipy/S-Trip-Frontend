@@ -277,7 +277,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
       .then(r => r.json())
       .then(d => { if (d.success && d.user) setUser(d.user); })
       .catch(() => {});
-  }, []);
+  }, [setUser]);
 
   const location = useLocation();
 
