@@ -13,6 +13,7 @@ import SkeletonLoader from './components/SkeletonLoader';
 import Toast from './components/Toast';
 import { fetchTripPlan, saveSearchHistory } from './services/api';
 import ResetPassword from './components/ResetPassword';
+import SplashScreen from './components/SplashScreen';
 import { enrichPlacesWithCoords } from './services/geocodeUtils';
 import { BASE_URL } from './config';
 import './App.css';
@@ -496,15 +497,32 @@ function App() {
   const [isDark, setIsDark] = useState(() => localStorage.getItem('sTripTheme') === 'dark');
   const [user,   setUser]   = useState(null);
 
+  // ── SPLASH SCREEN: chỉ hiện 1 lần mỗi phiên (sessionStorage) ──
+  const [showSplash, setShowSplash] = useState(() => {
+    // Nếu đã xem trong phiên này → không hiện lại
+    if (sessionStorage.getItem('s_trip_splash_shown')) return false;
+    return true;
+  });
+
+  const handleSplashFinish = () => {
+    sessionStorage.setItem('s_trip_splash_shown', '1');
+    setShowSplash(false);
+  };
+
   return (
-    <Router>
-      <Routes>
-        {/* Route xác nhận email: render độc lập, không có Navbar/Footer/widgets */}
-        <Route path="/verify-email" element={<VerifyEmailPage isDark={isDark} onUserChange={setUser} />} />
-        {/* Tất cả route còn lại: layout đầy đủ */}
-        <Route path="*" element={<AppContent isDarkProp={isDark} setIsDarkProp={setIsDark} userProp={user} setUserProp={setUser} />} />
-      </Routes>
-    </Router>
+    <>
+      {/* Splash Screen — lớp phủ toàn màn hình, chỉ hiện lần đầu trong phiên */}
+      {showSplash && <SplashScreen onFinish={handleSplashFinish} />}
+
+      <Router>
+        <Routes>
+          {/* Route xác nhận email: render độc lập, không có Navbar/Footer/widgets */}
+          <Route path="/verify-email" element={<VerifyEmailPage isDark={isDark} onUserChange={setUser} />} />
+          {/* Tất cả route còn lại: layout đầy đủ */}
+          <Route path="*" element={<AppContent isDarkProp={isDark} setIsDarkProp={setIsDark} userProp={user} setUserProp={setUser} />} />
+        </Routes>
+      </Router>
+    </>
   );
 }
 

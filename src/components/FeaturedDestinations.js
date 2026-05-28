@@ -585,8 +585,8 @@ const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const CARDS_VISIBLE = windowWidth <= 480 ? 1 : windowWidth <= 768 ? 2 : windowWidth <= 1280 ? 3 : 4;
-  const CARD_PCT = windowWidth <= 480 ? 100 : windowWidth <= 768 ? 50 : windowWidth <= 1280 ? 33.333 : 25;
+  const CARDS_VISIBLE = windowWidth <= 480 ? 1 : windowWidth <= 768 ? 2 : 4;
+  const CARD_PCT = windowWidth <= 480 ? 100 : windowWidth <= 768 ? 50 : 25;
   const CARD_GAP = windowWidth <= 768 ? 16 : 32;
   const MAX_PREVIEW = 8;
 
@@ -1125,8 +1125,8 @@ const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
       ) : (
         // ── DESKTOP LAYOUT (Slider thông thường) ──
         <div style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
+            <div style={{ marginTop: '138px' }}>
               <ArrowBtn dir="left" disabled={!canPrev} onClick={() => setStartIndex(i => i - 1)} />
             </div>
             <div style={{
@@ -1154,7 +1154,7 @@ const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
                 </div>
               )}
             </div>
-            <div>
+            <div style={{ marginTop: '138px' }}>
               <ArrowBtn dir="right" disabled={!canNext} onClick={() => setStartIndex(i => i + 1)} />
             </div>
           </div>
