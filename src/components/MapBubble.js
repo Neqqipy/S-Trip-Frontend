@@ -637,8 +637,41 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose, isDark }) => {
         .mb-spin { animation: mbSpin 1s linear infinite; display:inline-block; }
         .mb-drag:hover .mb-drag-bar { background: linear-gradient(to bottom, transparent, #10b981, transparent) !important; }
         .mb-drag:hover .mb-grip     { border-color: #10b981 !important; }
-        .mb-drag:hover .mb-dot      { background-color: #10b981 !important; }        .mb-scroll-x { scrollbar-width: none; }
+        .mb-drag:hover .mb-dot      { background-color: #10b981 !important; }
+        .mb-scroll-x { scrollbar-width: none; }
         .mb-scroll-x::-webkit-scrollbar { display: none; }
+
+        /* ═══════════════════════════════════════
+           📱 MapBubble — Mobile responsive
+        ═══════════════════════════════════════ */
+        @media (max-width: 768px) {
+          /* Panel → centered modal */
+          .mb-panel {
+            top: 50% !important;
+            right: auto !important;
+            left: 50% !important;
+            bottom: auto !important;
+            transform: translate(-50%, -50%) !important;
+            width: 85% !important;
+            height: 85dvh !important;
+            border-radius: 24px !important;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4) !important;
+          }
+          /* Drag handle → hidden on centered modal */
+          .mb-drag { display: none !important; }
+          .mb-drag-bar {
+            width: 40px !important;
+            height: 4px !important;
+            border-radius: 2px !important;
+            background: #cbd5e1 !important;
+          }
+          .mb-grip { display: none !important; }
+        }
+        @media (max-width: 480px) {
+          .mb-panel {
+            height: 80dvh !important;
+          }
+        }
       `}</style>
 
       <div className="mb-overlay" onClick={onClose} style={{ position:'fixed', inset:0, backgroundColor:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', zIndex:999998 }} />
@@ -1010,14 +1043,30 @@ const MapBubble = ({ targetOffset = 450, data, editedPlans, isDark }) => {
           0%,100% { box-shadow: 0 10px 25px rgba(0,0,0,0.3), 0 0 0 0   rgba(16,185,129,0.6); }
           50%      { box-shadow: 0 10px 25px rgba(0,0,0,0.3), 0 0 0 16px rgba(16,185,129,0); }
         }
+        @media (max-width: 768px) {
+          .mb-bubble-btn {
+            width: 60px !important;
+            height: 60px !important;
+            right: 20px !important;
+            bottom: 100px !important;
+            border: 2.5px solid white !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .mb-bubble-btn {
+            right: 16px !important;
+            bottom: 96px !important;
+          }
+        }
       `}</style>
       <div
         onClick={() => { if (data) setOpen(true); else window.scrollTo({ top: targetOffset, behavior: 'smooth' }); }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        className="mb-bubble-btn"
         style={{
-          position:'fixed', right:'50px', bottom:'165px',
-          width:'100px', height:'100px', borderRadius:'50%',
+          position:'fixed', right:'50px', bottom:'150px',
+          width:'80px', height:'80px', borderRadius:'50%',
           cursor:'pointer', zIndex:1999, border:'3px solid white',
           display:'flex', justifyContent:'center', alignItems:'center', overflow:'hidden',
           boxShadow: isHovered ? '0 15px 35px rgba(0,0,0,0.4)' : '0 10px 25px rgba(0,0,0,0.3)',

@@ -305,6 +305,55 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${T.scrollbar}; border-radius: 10px; }
+        /* ═══════════════════════════════════════
+           🖥️ Desktop layout — sidebar 2 cột
+        ═══════════════════════════════════════ */
+        .sp-desktop { display: block; }
+        .sp-mobile  { display: none; }
+        .sp-main-grid {
+          display: grid;
+          grid-template-columns: 280px 1fr;
+          gap: 28px;
+          max-width: 1300px;
+          margin: 0 auto;
+          padding: 32px 24px;
+        }
+        /* ═══════════════════════════════════════
+           📱 Mobile — Banner + Tabs ngang
+        ═══════════════════════════════════════ */
+        @media (max-width: 900px) {
+          .sp-desktop { display: none !important; }
+          .sp-mobile  { display: block !important; }
+        }
+        /* Mobile banner layout */
+        .sp-mobile-container {
+          max-width: 100%;
+          padding-bottom: 60px;
+        }
+        .sp-banner {
+          height: 200px;
+          border-radius: 0 0 24px 24px;
+        }
+        .sp-mob-header-info {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          padding: 0 20px;
+          margin-top: 32px;
+          position: relative;
+          z-index: 10;
+        }
+        .sp-horizontal-tabs {
+          display: flex;
+          gap: 10px;
+          padding: 0 16px;
+          margin-bottom: 24px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .sp-horizontal-tabs::-webkit-scrollbar { display: none; }
       `}</style>
 
       {/* Header */}
@@ -320,28 +369,63 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
         </div>
       </div>
 
-      <div style={{ maxWidth: 1300, margin: '0 auto', padding: '32px 24px', display: 'grid', gridTemplateColumns: '280px 1fr', gap: 28 }}>
-        {/* Sidebar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <AvatarCard user={user} onUpdate={handleUserUpdate} isDark={isDark} T={T} />
-          <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 24, overflow: 'hidden' }}>
-            {tabs.map((t, i) => (
-              <button key={t.id} className="sp-tab" onClick={() => handleTabClick(t.id)} style={{ width: '100%', padding: '14px 20px', border: 'none', borderBottom: i < tabs.length - 1 ? `1px solid ${T.rowBorder}` : 'none', background: tab === t.id ? 'rgba(16,185,129,0.15)' : 'transparent', color: tab === t.id ? C.primary : T.muted, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', fontWeight: tab === t.id ? 800 : 600, fontSize: 14, textAlign: 'left', transition: 'all 0.2s' }}>
-                <span style={{ opacity: tab === t.id ? 1 : 0.6 }}>{t.icon}</span>{t.label}
-                {tab === t.id && <div style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: C.primary }} />}
+      {/* ═══ DESKTOP: Sidebar layout cũ ═══ */}
+      <div className="sp-desktop">
+        <div className="sp-main-grid">
+          {/* Sidebar */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <AvatarCardDesktop user={user} onUpdate={handleUserUpdate} isDark={isDark} T={T} />
+            <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 24, overflow: 'hidden' }}>
+              {tabs.map((t, i) => (
+                <button key={t.id} className="sp-tab" onClick={() => handleTabClick(t.id)} style={{ width: '100%', padding: '14px 20px', border: 'none', borderBottom: i < tabs.length - 1 ? `1px solid ${T.rowBorder}` : 'none', background: tab === t.id ? 'rgba(16,185,129,0.15)' : 'transparent', color: tab === t.id ? C.primary : T.muted, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', fontWeight: tab === t.id ? 800 : 600, fontSize: 14, textAlign: 'left', transition: 'all 0.2s' }}>
+                  <span style={{ opacity: tab === t.id ? 1 : 0.6 }}>{t.icon}</span>{t.label}
+                  {tab === t.id && <div style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: C.primary }} />}
+                </button>
+              ))}
+            </div>
+            <StatsBarDesktop stats={stats} setStats={setStats} T={T} />
+          </div>
+          {/* Content */}
+          <div style={{ minWidth: 0 }}>
+            {tab === 'saved'       && <SavedSchedules T={T} onLoadSchedule={onLoadSchedule} />}
+            {tab === 'savedplaces' && <SavedPlaces T={T} resetSignal={resetSignal.savedplaces} onCountChange={(delta) => handleStatsChange('savedPlaces', delta)} />}
+            {tab === 'favorites'   && <Favorites T={T} resetSignal={resetSignal.favorites} onCountChange={(delta) => handleStatsChange('favorites', delta)} />}
+            {tab === 'history'     && <SearchHistory T={T} onSearch={onSearch} onBack={onBack} />}
+            {tab === 'settings'    && <Settings user={user} onUpdate={handleUserUpdate} T={T} onLogout={onBack} />}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ MOBILE: Banner + Tabs ngang ═══ */}
+      <div className="sp-mobile">
+        <div className="sp-mobile-container">
+          {/* Avatar + Info nổi lên */}
+          <div className="sp-mob-header-info">
+            <AvatarCard user={user} onUpdate={handleUserUpdate} isDark={isDark} T={T} />
+            <div style={{ marginTop: 20, width: '100%' }}>
+              <StatsBar stats={stats} setStats={setStats} T={T} />
+            </div>
+          </div>
+
+          {/* Horizontal Tabs */}
+          <div className="sp-horizontal-tabs" style={{ marginTop: 24 }}>
+            {tabs.map((t) => (
+              <button key={t.id} className="sp-btn" onClick={() => handleTabClick(t.id)} style={{ flexShrink: 0, padding: '12px 20px', borderRadius: 99, border: tab === t.id ? `1px solid ${C.primary}` : `1px solid ${T.btnBorder}`, background: tab === t.id ? 'rgba(16,185,129,0.15)' : T.card, color: tab === t.id ? C.primary : T.muted, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: tab === t.id ? 800 : 700, fontSize: 14, transition: 'all 0.25s', boxShadow: tab === t.id ? '0 6px 18px rgba(16,185,129,0.2)' : 'none' }}>
+                <span style={{ opacity: tab === t.id ? 1 : 0.7 }}>{t.icon}</span>{t.label}
               </button>
             ))}
           </div>
-          <StatsBar stats={stats} setStats={setStats} T={T} />
-        </div>
 
-        {/* Content */}
-        <div style={{ minWidth: 0 }}>
-          {tab === 'saved'       && <SavedSchedules T={T} onLoadSchedule={onLoadSchedule} />}
-          {tab === 'savedplaces' && <SavedPlaces T={T} resetSignal={resetSignal.savedplaces} onCountChange={(delta) => handleStatsChange('savedPlaces', delta)} />}
-          {tab === 'favorites'   && <Favorites T={T} resetSignal={resetSignal.favorites} onCountChange={(delta) => handleStatsChange('favorites', delta)} />}
-          {tab === 'history'     && <SearchHistory T={T} onSearch={onSearch} onBack={onBack} />}
-          {tab === 'settings'    && <Settings user={user} onUpdate={handleUserUpdate} T={T} onLogout={onBack} />}
+          {/* Content */}
+          <div style={{ padding: '0 16px' }}>
+            <div style={{ animation: 'fadeUp 0.3s ease' }}>
+              {tab === 'saved'       && <SavedSchedules T={T} onLoadSchedule={onLoadSchedule} />}
+              {tab === 'savedplaces' && <SavedPlaces T={T} resetSignal={resetSignal.savedplaces} onCountChange={(delta) => handleStatsChange('savedPlaces', delta)} />}
+              {tab === 'favorites'   && <Favorites T={T} resetSignal={resetSignal.favorites} onCountChange={(delta) => handleStatsChange('favorites', delta)} />}
+              {tab === 'history'     && <SearchHistory T={T} onSearch={onSearch} onBack={onBack} />}
+              {tab === 'settings'    && <Settings user={user} onUpdate={handleUserUpdate} T={T} onLogout={onBack} />}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -498,8 +582,9 @@ function AvatarCard({ user, onUpdate, isDark, T }) {
 
   const initials = (user.name || user.email || '?')[0].toUpperCase();
 
+  // Mobile avatar: hiển thị trong banner layout
   return (
-    <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.08) 100%)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 24, padding: '28px 20px', textAlign: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
       {/* Lightbox */}
       {lightboxOpen && preview && (
         <>
@@ -512,6 +597,82 @@ function AvatarCard({ user, onUpdate, isDark, T }) {
         </>
       )}
 
+      <div style={{ position: 'relative', display: 'inline-block' }}>
+        <div onClick={() => preview && setLightboxOpen(true)} style={{ width: 110, height: 110, borderRadius: '50%', border: `5px solid ${isDark ? '#0a1628' : '#f0fdf8'}`, overflow: 'hidden', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, fontWeight: 900, color: 'white', boxShadow: '0 8px 24px rgba(0,0,0,0.35)', cursor: preview ? 'zoom-in' : 'default', transition: 'box-shadow 0.2s, transform 0.2s' }}
+          onMouseEnter={e => { if (preview) { e.currentTarget.style.boxShadow='0 8px 30px rgba(16,185,129,0.5)'; e.currentTarget.style.transform='scale(1.04)'; }}}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.35)'; e.currentTarget.style.transform='scale(1)'; }}
+        >
+          {preview ? <img src={preview} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
+        </div>
+        <button onClick={() => fileRef.current?.click()} disabled={uploading} className="sp-btn" style={{ position: 'absolute', bottom: 4, right: 4, width: 26, height: 26, borderRadius: '50%', border: `2px solid ${isDark ? '#0a1628' : '#f0fdf8'}`, background: C.primary, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12 }}>
+          {uploading ? '⏳' : Icon.camera}
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+      </div>
+
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 4, color: T.text }}>{user.name}</div>
+        <div style={{ fontSize: 13, color: T.muted, marginBottom: 12 }}>{user.email}</div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, background: 'linear-gradient(135deg, #10b981, #059669)', border: '1px solid rgba(255,255,255,0.2)', fontSize: 12, fontWeight: 800, color: 'white', boxShadow: '0 3px 10px rgba(16,185,129,0.3)' }}>✈️ Traveler</div>
+        {uploadMsg && <div style={{ marginTop: 10, padding: '7px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: uploadMsg === 'ok' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.12)', border: `1px solid ${uploadMsg === 'ok' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, color: uploadMsg === 'ok' ? C.primary : C.danger }}>{uploadMsg === 'ok' ? '✅ Cập nhật ảnh thành công!' : uploadMsg.replace(/^err:/, '❌ ')}</div>}
+      </div>
+    </div>
+  );
+}
+
+// AvatarCard cho Desktop (layout cũ — card căn giữa)
+function AvatarCardDesktop({ user, onUpdate, isDark, T }) {
+  const fileRef  = useRef();
+  const [uploading,    setUploading]    = useState(false);
+  const [preview,      setPreview]      = useState(user.avatar || '');
+  const [uploadMsg,    setUploadMsg]    = useState('');
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  useEffect(() => { if (user.avatar) setPreview(user.avatar); }, [user.avatar]);
+
+  const handleFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { setUploadMsg('err:Ảnh tối đa 10MB'); return; }
+    if (!file.type.startsWith('image/')) { setUploadMsg('err:Chỉ chấp nhận file ảnh'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => setPreview(ev.target.result);
+    reader.readAsDataURL(file);
+    e.target.value = '';
+    setUploading(true); setUploadMsg('');
+    const form = new FormData();
+    form.append('avatar', file);
+    try {
+      const res  = await fetch(`${BASE_URL}/api/auth/update-avatar`, { method: 'POST', credentials: 'include', body: form });
+      const data = await res.json();
+      if (data.success) {
+        onUpdate(data.user);
+        if (data.user?.avatar) setPreview(data.user.avatar);
+        setUploadMsg('ok'); setTimeout(() => setUploadMsg(''), 3000);
+      } else {
+        setUploadMsg('err:' + (data.error || 'Upload thất bại'));
+        setPreview(user.avatar || '');
+      }
+    } catch (err) {
+      setUploadMsg('err:Lỗi kết nối server');
+      setPreview(user.avatar || '');
+    } finally { setUploading(false); }
+  };
+
+  const initials = (user.name || user.email || '?')[0].toUpperCase();
+
+  return (
+    <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.08) 100%)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 24, padding: '28px 20px', textAlign: 'center' }}>
+      {lightboxOpen && preview && (
+        <>
+          <style>{`@keyframes lb-in { from{opacity:0;transform:scale(0.82)} to{opacity:1;transform:scale(1)} } @keyframes lb-bg { from{opacity:0} to{opacity:1} } .lb-close:hover { background:rgba(255,255,255,0.25) !important; transform:scale(1.1); }`}</style>
+          <div onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 20, animation: 'lb-bg 0.2s ease', cursor: 'zoom-out' }}>
+            <img src={preview} alt={user.name} onClick={e => e.stopPropagation()} style={{ maxWidth: '80vw', maxHeight: '80vh', borderRadius: 20, objectFit: 'contain', boxShadow: '0 40px 100px rgba(0,0,0,0.8), 0 0 0 2px rgba(16,185,129,0.4)', animation: 'lb-in 0.28s cubic-bezier(0.34,1.4,0.64,1)', cursor: 'default', userSelect: 'none' }} />
+            <div style={{ color: 'white', fontWeight: 800, fontSize: 18, textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>{user.name}</div>
+            <button className="lb-close" onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', top: 24, right: 28, width: 44, height: 44, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.12)', color: 'white', fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', backdropFilter: 'blur(8px)' }}>✕</button>
+          </div>
+        </>
+      )}
       <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
         <div onClick={() => preview && setLightboxOpen(true)} style={{ width: 100, height: 100, borderRadius: '50%', border: '3px solid rgba(16,185,129,0.5)', overflow: 'hidden', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 900, color: 'white', boxShadow: '0 0 30px rgba(16,185,129,0.3)', cursor: preview ? 'zoom-in' : 'default', transition: 'box-shadow 0.2s, transform 0.2s' }}
           onMouseEnter={e => { if (preview) { e.currentTarget.style.boxShadow='0 0 44px rgba(16,185,129,0.6)'; e.currentTarget.style.transform='scale(1.05)'; }}}
@@ -519,12 +680,11 @@ function AvatarCard({ user, onUpdate, isDark, T }) {
         >
           {preview ? <img src={preview} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
         </div>
-        <button onClick={() => fileRef.current?.click()} disabled={uploading} className="sp-btn" style={{ position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: '50%', border: `2px solid ${isDark ? '#0f172a' : '#ffffff'}`, background: C.primary, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14 }}>
+        <button onClick={() => fileRef.current?.click()} disabled={uploading} className="sp-btn" style={{ position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: '50%', border: `2px solid ${isDark ? '#0f172a' : '#ffffff'}`, background: C.primary, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12 }}>
           {uploading ? '⏳' : Icon.camera}
         </button>
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
       </div>
-
       <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 4, color: T.text }}>{user.name}</div>
       <div style={{ fontSize: 13, color: T.muted, marginBottom: 14 }}>{user.email}</div>
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', fontSize: 12, fontWeight: 700, color: C.primary }}>✈️ Traveler</div>
@@ -534,6 +694,28 @@ function AvatarCard({ user, onUpdate, isDark, T }) {
 }
 
 function StatsBar({ stats, setStats, T }) {
+  useEffect(() => {
+    Promise.all([ api.get('/api/schedules'), api.get('/api/favorites'), api.get('/api/saved-places'), api.get('/api/search-history') ])
+      .then(([s, f, sp, h]) => setStats({ schedules: Array.isArray(s.schedules) ? s.schedules.length : 0, favorites: f.favorites?.length || 0, savedPlaces: sp.savedPlaces?.length || 0, searches: h.history?.length || 0 }))
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const items = [ { label: 'Lịch trình', value: stats.schedules }, { label: 'Đã lưu', value: stats.savedPlaces }, { label: 'Yêu thích', value: stats.favorites }, { label: 'Tìm kiếm', value: stats.searches } ];
+  // Mobile stats — hiển thị dạng flex
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+      {items.map(item => (
+        <div key={item.label} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: '14px 8px', textAlign: 'center' }}>
+          <div style={{ fontSize: 22, fontWeight: 900, color: C.primary }}>{item.value}</div>
+          <div style={{ fontSize: 11, color: T.muted, fontWeight: 700, marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{item.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// StatsBar cho Desktop (layout sidebar cũ)
+function StatsBarDesktop({ stats, setStats, T }) {
   useEffect(() => {
     Promise.all([ api.get('/api/schedules'), api.get('/api/favorites'), api.get('/api/saved-places'), api.get('/api/search-history') ])
       .then(([s, f, sp, h]) => setStats({ schedules: Array.isArray(s.schedules) ? s.schedules.length : 0, favorites: f.favorites?.length || 0, savedPlaces: sp.savedPlaces?.length || 0, searches: h.history?.length || 0 }))
@@ -1003,8 +1185,8 @@ function LocationGroup({ locationName, items, T, accentColor, children }) {
         <div style={{ padding: '24px' }}>
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(3, 1fr)', 
-            gap: '20px' 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', 
+            gap: '16px' 
           }}>
             {children}
           </div>
@@ -1020,20 +1202,20 @@ function PlaceItemCard({ item, tabType, onRemove, T, removeColor, i }) {
   const crispImg = useCrispImageProfile(item, tabType, T);
 
   return (
-    <div className="sp-card" style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 24, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
-      <div style={{ height: 180, position: 'relative', overflow: 'hidden', background: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 54 }}>
+    <div className="sp-card" style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
+      <div className="sp-place-img" style={{ aspectRatio: '4/3', position: 'relative', overflow: 'hidden', background: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44 }}>
         {crispImg ? (
           <img src={proxyImage(crispImg)} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} onError={e => { e.target.style.display = 'none'; }} />
         ) : config.emoji}
         
-        <div style={{ position: 'absolute', top: 12, left: 12, padding: '4px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', fontSize: 12, fontWeight: 800, color: 'white' }}>
+        <div style={{ position: 'absolute', top: 8, left: 8, padding: '4px 10px', borderRadius: 8, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', fontSize: 11, fontWeight: 800, color: 'white' }}>
           {config.emoji} {config.label}
         </div>
-        <button onClick={() => onRemove(item.id)} style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 10, border: 'none', background: 'rgba(0,0,0,0.6)', color: removeColor, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 'bold' }}>✕</button>
+        <button onClick={() => onRemove(item.id)} style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: 8, border: 'none', background: 'rgba(0,0,0,0.6)', color: removeColor, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 'bold' }}>✕</button>
       </div>
-      <div style={{ padding: '18px 20px' }}>
-        <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
-        {item.rating && <span style={{ fontSize: 14, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>{Icon.star} {item.rating}</span>}
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 6, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+        {item.rating && <span style={{ fontSize: 13, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>{Icon.star} {item.rating}</span>}
       </div>
     </div>
   );

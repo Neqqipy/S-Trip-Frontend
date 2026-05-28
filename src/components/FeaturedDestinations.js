@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faStar, faStarHalfAlt, faSearch, faChevronLeft, faChevronRight,
   faTimes, faMapMarkerAlt, faSpinner, faQuoteLeft,
-  faWallet, faImages,
+  faWallet, faImages, faBookmark,
 } from '@fortawesome/free-solid-svg-icons';
 import { fetchProvinceImages } from '../services/api';
 
@@ -79,7 +79,6 @@ const DestinationCard = ({ item, compact = false, onClick }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    // Wrapper thêm padding để bóng đổ không bị cắt bởi overflow:hidden của slider
     <div style={{ padding: '8px 4px 12px', boxSizing: 'border-box', width: '100%' }}>
       <div
         onClick={() => onClick && onClick(item)}
@@ -100,6 +99,7 @@ const DestinationCard = ({ item, compact = false, onClick }) => {
         <div style={{ height: compact ? '180px' : '300px', position: 'relative', overflow: 'hidden' }}>
           <img
             src={item.img} alt={item.name}
+            data-fixed-h="true"
             style={{ width: '100%', height: '100%', objectFit: 'cover', transition: '0.8s ease', transform: isHovered ? 'scale(1.12)' : 'scale(1)' }}
             onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1504457047772-27faf1c00561?q=80&w=800'; }}
           />
@@ -314,7 +314,7 @@ const DEFAULT_REVIEWS = {
   'Cà Mau': 'Cà Mau – mũi đất tận cùng của Tổ quốc – có một vẻ đẹp hoang sơ và hào phóng của thiên nhiên nhiệt đới. Vườn quốc gia Cà Mau với hệ sinh thái rừng đước ngập mặn rộng lớn nhất Đông Nam Á, nơi con người và tự nhiên cùng tồn tại hài hòa. Đặt chân tới mốc toạ độ quốc gia cực Nam – cảm giác đứng ở điểm cuối đất nước thiêng liêng không thể diễn tả. Ba Khía, tôm tích và cua Năm Căn là đặc sản ngon nức tiếng của vùng đất này.',
   'Cần Thơ': 'Cần Thơ – "Tây Đô" của miền sông nước – mang trong mình nhịp đập hào sảng của miệt vườn Nam Bộ. Chợ nổi Cái Răng họp từ 4–5 giờ sáng; ngồi thuyền len lỏi giữa trăm thứ trái cây, hít hương cà phê vợt thơm nức mới thấy trọn vẹn hồn Tây Nam Bộ. Vườn trái cây Mỹ Khánh sum xuê cho phép tự tay hái và thưởng thức tại chỗ. Bún riêu cua đồng, bánh cống Cần Thơ và lẩu mắm miền Tây là những món bắt buộc phải thử.',
   'Cao Bằng': 'Cao Bằng chứa đựng những kỳ quan thiên nhiên hoành tráng bậc nhất Đông Bắc. Thác Bản Giốc đổ ầm ầm xuống ghềnh đá trắng xóa, bên cạnh là màu xanh ngọc bích của sông Quây Sơn – khung cảnh hùng vĩ như tranh vẽ. Hang Pác Bó lịch sử nơi Bác Hồ từng sống và làm việc mang giá trị tâm linh sâu sắc. Đường đến Cao Bằng quanh co uốn lượn qua bát ngát ruộng bậc thang – hành trình tự lái xe đủ mãn nhãn cả chuyến đi.',
-  'Đà Nẵng': 'Đà Nẵng là thành phố hội đủ mọi yếu tố của một điểm đến lý tưởng: biển Mỹ Khê trải dài mịn màng, Bán đảo Sơn Trà nguyên sinh ngay sát đô thị, phố cổ Hội An chỉ 30 phút xe. Cầu Rồng thổi lửa và phun nước mỗi cuối tuần là show diễn miễn phí không nơi nào có. Lên cáp treo Bà Nà Hills – nơi có Cầu Vàng biểu tượng – để thoát khỏi cái nóng và lạc vào xứ sở thần tiên Pháp giữa mây mù.',
+  'Đà Nẵng': 'Đà Nẵng là thành phố hội đủ mọi yếu tố của một điểm đến lý tưởng: biển Mỹ Khê trải dài mịn màng, Bán đảo Sơn Trà nguyên sinh ngay sát đô thị, phố cổ Hội An chỉ 30 phút xe. Cầu Rồng thổi lửa và phun nước mỗi cuối tuần là show diễn miễn phí không nơi nào có. Làng cáp treo Bà Nà Hills – nơi có Cầu Vàng biểu tượng – để thoát khỏi cái nóng và lạc vào xứ sở thần tiên Pháp giữa mây mù.',
   'Đắk Lắk': 'Đắk Lắk là thủ phủ cà phê của Việt Nam và cũng là vùng đất của những huyền thoại voi nhà. Hồ Lắk trong xanh êm ả bao quanh bởi những buôn làng Ê Đê truyền thống – buổi sáng sương mù phủ mặt hồ đẹp như cổ tích. Vườn quốc gia Yók Đôn là nơi duy nhất ở Việt Nam có thể gặp voi hoang dã. Cà phê Ban Mê rang xay tươi, thịt nướng và rượu cần bên nhà sàn là trải nghiệm văn hóa Tây Nguyên không thể thay thế.',
   'Đắk Nông': 'Đắk Nông được UNESCO công nhận là Công viên địa chất toàn cầu nhờ hệ thống hang động núi lửa kỳ diệu kéo dài hàng chục km dưới lòng đất – dài nhất Đông Nam Á. Thác Trinh Nữ, Thác Đray Sáp hùng tráng và Hồ Tây giữa đại ngàn là những góc check-in ấn tượng. Người MNông hiền lành, mến khách với nghề dệt thổ cẩm và những lễ hội cồng chiêng đặc sắc. Đây là điểm đến còn nguyên vẻ hoang sơ, phù hợp cho những ai thích khám phá.',
   'Điện Biên': 'Điện Biên Phủ không chỉ là địa danh lịch sử – đây là cả một cuốn sách sống động về cuộc kháng chiến hào hùng. Đồi A1, Hầm De Castries, Nghĩa trang liệt sĩ… mỗi nơi đều khiến lòng người dâng lên niềm tự hào và xúc cảm sâu lắng. Thung lũng Mường Thanh tháng 5 lúa chín vàng rực là một trong những bức tranh đồng quê đẹp nhất miền núi phía Bắc. Ẩm thực Thái với cơm lam, pa pỉnh tộp và rượu cần là phần không thể thiếu.',
@@ -467,16 +467,127 @@ const ReviewModal = ({ item, onClose }) => {
 };
 
 // ─────────────────────────────────────────────
+// MOBILE CARD – kiểu "truyện hay" TruyenQQ
+// Ảnh dọc 2:3 + tên + rating, cuộn ngang tự nhiên
+// ─────────────────────────────────────────────
+const MobileDestCard = ({ item, onClick }) => {
+  const isDark = useContext(ThemeContext);
+  const [pressed, setPressed] = useState(false);
+
+  return (
+    <div
+      onClick={() => onClick && onClick(item)}
+      onTouchStart={() => setPressed(true)}
+      onTouchEnd={() => setPressed(false)}
+      style={{
+        flexShrink: 0,
+        width: '140px',
+        cursor: 'pointer',
+        transform: pressed ? 'scale(0.96)' : 'scale(1)',
+        transition: 'transform 0.12s ease',
+      }}
+    >
+      <div style={{
+        borderRadius: '18px',
+        overflow: 'hidden',
+        background: '#0f172a',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 10px 18px rgba(0,0,0,0.18)',
+      }}>
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          height: '140px',
+          overflow: 'hidden',
+          background: '#0f172a',
+        }}>
+          <img
+            src={item.img}
+            alt={item.name}
+            data-fixed-h="true"
+            style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block' }}
+            onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1504457047772-27faf1c00561?q=80&w=400'; }}
+          />
+
+          <div style={{
+            position: 'absolute', top: '10px', left: '10px',
+            background: '#0f766e',
+            borderRadius: '999px',
+            padding: '4px 10px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '11px',
+            fontWeight: 700,
+            color: '#ecfdf5',
+            boxShadow: '0 10px 20px rgba(15,23,42,0.18)',
+          }}>
+            <FontAwesomeIcon icon={faStar} style={{ fontSize: '10px', color: '#a7f3d0' }} />
+            {item.rating}
+          </div>
+        </div>
+
+        <div style={{ padding: '8px 10px 10px', textAlign: 'center' }}>
+          <div style={{
+            fontSize: '14px',
+            fontWeight: 800,
+            color: '#f8fafc',
+            lineHeight: '1.2',
+            marginBottom: '4px',
+            minHeight: '28px',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}>
+            {item.name}
+          </div>
+          <div style={{
+            fontSize: '12px',
+            fontWeight: 800,
+            color: '#10b981',
+            marginBottom: '4px',
+          }}>
+            {item.budget}
+          </div>
+          <div style={{
+            fontSize: '11px',
+            color: '#cbd5e1',
+            lineHeight: '1.35',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            minHeight: '20px',
+          }}>
+            {item.desc}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+// ─────────────────────────────────────────────
 // COMPONENT CHÍNH
 // ─────────────────────────────────────────────
 const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
-  const [searchTerm, setSearchTerm] = useState('');
   const [startIndex, setStartIndex] = useState(0);
   const [showAll, setShowAll] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
 
-  const CARDS_VISIBLE = 4;
+  const [windowWidth, setWindowWidth] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  React.useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const CARDS_VISIBLE = windowWidth <= 480 ? 1 : windowWidth <= 768 ? 2 : windowWidth <= 1280 ? 3 : 4;
+  const CARD_PCT = windowWidth <= 480 ? 100 : windowWidth <= 768 ? 50 : windowWidth <= 1280 ? 33.333 : 25;
+  const CARD_GAP = windowWidth <= 768 ? 16 : 32;
   const MAX_PREVIEW = 8;
 
   const generateFileName = (name) => {
@@ -811,18 +922,36 @@ const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
   }));
 
   const sortedProvinces = [...allProvinces].sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
-  
-  // ─────────────────────────────────────────────
-  // LỌC DỮ LIỆU ĐÃ CHUẨN HÓA KHÔNG DẤU (Màn hình chính)
-  // ─────────────────────────────────────────────
-  const normalizedSearchTerm = normalizeForSearch(searchTerm);
-  const filteredData = searchTerm
-    ? sortedProvinces.filter(p => normalizeForSearch(p.name).includes(normalizedSearchTerm))
-    : sortedProvinces;
 
-  const handleSearch = (val) => { setSearchTerm(val); setStartIndex(0); };
-
+  // ─────────────────────────────────────────────
+  // DỮ LIỆU THEO TAB
+  // ─────────────────────────────────────────────
+  // Hiển thị top rated, tự xoay vòng carousel
+  const filteredData = sortedProvinces.slice(0, MAX_PREVIEW);
   const maxStartIndex = Math.min(filteredData.length - CARDS_VISIBLE, MAX_PREVIEW - CARDS_VISIBLE);
+
+  // Auto-slide mỗi 3 giây (hỗ trợ cả Desktop & Mobile)
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      // Logic Desktop
+      setStartIndex(prev => {
+        const max = maxStartIndex < 0 ? 0 : maxStartIndex;
+        return prev >= max ? 0 : prev + 1;
+      });
+      
+      // Logic Mobile
+      if (window.innerWidth <= 768 && mobileScrollRef.current) {
+        const el = mobileScrollRef.current;
+        // Nếu cuộn đến cuối, quay lại đầu. Nếu chưa, cuộn sang 1 thẻ (~150px)
+        if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 10) {
+          el.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          el.scrollBy({ left: 150, behavior: 'smooth' });
+        }
+      }
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [maxStartIndex]);
   const safeStart = Math.max(0, Math.min(startIndex, maxStartIndex < 0 ? 0 : maxStartIndex));
   const canPrev = safeStart > 0;
   const canNext = safeStart < maxStartIndex;
@@ -835,25 +964,37 @@ const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
   
   const handleBackdropClick = (e) => { if (e.target === e.currentTarget) setShowAll(false); };
 
-  const ArrowBtn = ({ dir, onClick, visible }) => {
+  const ArrowBtn = ({ dir, onClick, disabled }) => {
     const [hov, setHov] = useState(false);
+    const isActive = !disabled;
     return (
-      <button onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{
-        width: '52px', height: '52px', borderRadius: '50%', border: `2px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`,
-        backgroundColor: hov ? '#10b981' : (isDark ? '#2a2a2a' : '#fff'), color: hov ? '#fff' : (isDark ? '#e8e8e8' : '#374151'),
-        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
-        boxShadow: hov ? '0 8px 24px rgba(16,185,129,0.3)' : '0 4px 12px rgba(0,0,0,0.06)',
-        transition: '0.25s all ease', opacity: visible ? 1 : 0, pointerEvents: visible ? 'auto' : 'none',
-        transform: hov ? 'scale(1.08)' : 'scale(1)', flexShrink: 0,
+      <button onClick={isActive ? onClick : undefined} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{
+        width: isMobile ? '38px' : '56px', height: isMobile ? '38px' : '56px', borderRadius: isMobile ? '18px' : '28px', border: '1px solid rgba(255,255,255,0.36)',
+        backgroundColor: isActive ? (hov ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.48)') : 'rgba(255,255,255,0.24)',
+        color: isActive ? '#111827' : 'rgba(17,24,39,0.52)',
+        cursor: isActive ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isMobile ? '13px' : '24px',
+        boxShadow: isActive && hov ? '0 10px 24px rgba(0,0,0,0.18)' : '0 6px 14px rgba(0,0,0,0.08)',
+        transition: '0.25s all ease', opacity: 0.95, pointerEvents: 'auto',
+        transform: isActive && hov ? 'scale(1.05)' : 'scale(1)', flexShrink: 0,
       }}>
         <FontAwesomeIcon icon={dir === 'left' ? faChevronLeft : faChevronRight} />
       </button>
     );
   };
 
+  const isMobile = windowWidth <= 768;
+  const mobileScrollRef = useRef(null);
+
+  const scrollMobile = (direction) => {
+    const el = mobileScrollRef.current;
+    if (!el) return;
+    const offset = 150; // 1 thẻ (140px) + khoảng cách (10px)
+    el.scrollBy({ left: direction === 'left' ? -offset : offset, behavior: 'smooth' });
+  };
+
   return (
     <ThemeContext.Provider value={isDark}>
-    <section style={{ padding: '80px 40px', maxWidth: '1600px', margin: '0 auto' }}>
+    <section style={{ padding: isMobile ? '20px 12px 32px' : '80px 40px', maxWidth: '1600px', margin: '0 auto' }}>
       <style>{`
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(40px) scale(0.97) } to { opacity: 1; transform: translateY(0) scale(1) } }
@@ -865,81 +1006,175 @@ const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
         .modal-body { flex: 1; overflow-y: auto; padding: 24px 40px 32px; background: ${isDark ? '#2a2a2a' : '#fff'}; }
         .modal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
         @media (max-width: 900px) { .modal-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 500px) { .modal-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 500px) { .modal-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; } }
+        .fd-search-box { width: 380px; }
+        @media (max-width: 768px) {
+          .fd-search-box { width: 100% !important; }
+          .fd-header-h2 { font-size: 22px !important; }
+          .fd-dots-row { flex-direction: column !important; gap: 12px !important; }
+          .modal-header { padding: 16px 16px 12px !important; }
+          .modal-body { padding: 12px 10px 16px !important; }
+          .modal-box { border-radius: 20px !important; }
+        }
         .see-all-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 50px; background: #f0fdf4; border: 2px solid #10b981; color: #10b981; font-weight: 800; font-size: 15px; cursor: pointer; transition: 0.25s all ease; }
         .see-all-btn:hover { background: #10b981; color: #fff; box-shadow: 0 8px 24px rgba(16,185,129,0.3); transform: translateY(-2px); }
         .dot { width: 8px; height: 8px; border-radius: 50%; transition: 0.25s all ease; cursor: pointer; border: none; }
+        .mob-scroll::-webkit-scrollbar { display: none; }
       `}</style>
 
       {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '50px', flexWrap: 'wrap', gap: '30px' }}>
-        <div>
-          <h2 style={{ fontSize: '48px', fontWeight: '900', color: isDark ? '#e8e8e8' : '#111827', margin: 0 }}>Khám phá Việt Nam</h2>
-          <p style={{ color: isDark ? '#9ca3af' : '#6b7280', marginTop: '12px', fontSize: '18px' }}>Từ miền núi cao hùng vĩ đến những bãi biển xanh ngọc bích.</p>
-        </div>
-        <div style={{ position: 'relative', width: '380px' }}>
-          <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-          <input type="text" placeholder="Tìm kiếm tỉnh thành..." value={searchTerm} onChange={(e) => handleSearch(e.target.value)}
-            style={{ width: '100%', padding: '16px 20px 16px 50px', borderRadius: '50px', border: `1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`, fontSize: '16px', outline: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', boxSizing: 'border-box', backgroundColor: isDark ? '#333' : '#fff', color: isDark ? '#e8e8e8' : '#111827' }} />
+      <div style={{
+        marginBottom: isMobile ? '16px' : '32px',
+        padding: isMobile ? '0 16px' : '0',
+      }}>
+        {/* Tiêu đề + mô tả giới thiệu VN */}
+        <div style={{ marginBottom: '0' }}>
+          <h2 className="fd-header-h2" style={{ fontSize: isMobile ? '22px' : '48px', fontWeight: '900', color: isDark ? '#e8e8e8' : '#111827', margin: '0 0 8px 0' }}>Khám phá Việt Nam</h2>
+          {/* Đã xóa điều kiện {!isMobile} để hiển thị dòng mô tả ở cả Mobile/Desktop */}
+          <p style={{ color: isDark ? '#9ca3af' : '#6b7280', marginTop: '12px', fontSize: isMobile ? '14px' : '18px' }}>Từ miền núi cao hùng vĩ đến những bãi biển xanh ngọc bích.</p>
         </div>
       </div>
 
-      {/* SLIDER – Fix: overflow:visible + padding để hover không bị cắt */}
-      <div style={{ position: 'relative' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <ArrowBtn dir="left" visible={canPrev} onClick={() => setStartIndex(i => i - 1)} />
-
-          {/* Wrapper clip chỉ theo chiều ngang, không clip chiều dọc */}
-          <div style={{
-            flex: 1,
-            // Dùng clip-path thay vì overflow:hidden để chỉ cắt ngang
-            // mà không cắt bóng đổ phía trên khi card hover lên
-            overflow: 'hidden',
-            // Thêm padding-top và margin-top âm để bù cho translateY(-8px)
-            paddingTop: '12px',
-            marginTop: '-12px',
-            paddingBottom: '16px',
-            marginBottom: '-16px',
-            borderRadius: '8px',
-          }}>
-            {filteredData.length > 0 ? (
-              <div style={{
-                display: 'flex', gap: '32px',
-                transform: `translateX(calc(-${safeStart} * (25% + 8px)))`,
-                transition: 'transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                willChange: 'transform',
-              }}>
-                {filteredData.slice(0, MAX_PREVIEW).map((item) => (
-                  <div key={item.name} style={{ minWidth: 'calc(25% - 24px)', maxWidth: 'calc(25% - 24px)', flexShrink: 0 }}>
-                    <DestinationCard item={item} onClick={setSelectedItem} />
-                  </div>
-                ))}
+      {/* ══════════════════════════════════════
+          SLIDER LAYOUT – Tách riêng Mobile và Desktop
+          ══════════════════════════════════════ */}
+      {isMobile ? (
+        // ── MOBILE LAYOUT (Kiểu TruyenQQ) ──
+        <div style={{ position: 'relative', minHeight: '260px' }}>
+          <div
+            ref={mobileScrollRef}
+            className="mob-scroll"
+            style={{
+              display: 'flex',
+              gap: '10px',
+              overflowX: 'auto',
+              paddingBottom: '16px',
+              scrollSnapType: 'x mandatory',
+              WebkitOverflowScrolling: 'touch',
+              paddingLeft: '16px',
+              paddingRight: '16px',
+            }}
+          >
+            {filteredData.map((item) => (
+              <div key={item.name} style={{ scrollSnapAlign: 'start', flexShrink: 0 }}>
+                <MobileDestCard item={item} onClick={setSelectedItem} />
               </div>
-            ) : (
-              <div style={{ padding: '60px 40px', fontSize: '18px', color: '#9ca3af', textAlign: 'center' }}>
-                Không tìm thấy địa điểm nào khớp với từ khóa &ldquo;{searchTerm}&rdquo;.
-              </div>
-            )}
+            ))}
           </div>
 
-          <ArrowBtn dir="right" visible={canNext} onClick={() => setStartIndex(i => i + 1)} />
-        </div>
+          <button
+            onClick={() => scrollMobile('left')}
+            style={{
+              position: 'absolute',
+              top: '100px',
+              left: '10px',
+              transform: 'translateY(-50%)',
+              width: '38px',
+              height: '50px',
+              borderRadius: '18px',
+              border: '1px solid rgba(255,255,255,0.22)',
+              background: 'rgba(255,255,255,0.16)',
+              color: 'rgba(17,24,39,0.82)',
+              boxShadow: '0 10px 24px rgba(0,0,0,0.12)',
+              backdropFilter: 'blur(18px)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10,
+              opacity: 0.68,
+            }}
+          >
+            <FontAwesomeIcon icon={faChevronLeft} style={{ fontSize: '18px' }} />
+          </button>
+          <button
+            onClick={() => scrollMobile('right')}
+            style={{
+              position: 'absolute',
+              top: '100px',
+              right: '10px',
+              transform: 'translateY(-50%)',
+              width: '38px',
+              height: '50px',
+              borderRadius: '18px',
+              border: '1px solid rgba(255,255,255,0.22)',
+              background: 'rgba(255,255,255,0.16)',
+              color: 'rgba(17,24,39,0.82)',
+              boxShadow: '0 10px 24px rgba(0,0,0,0.12)',
+              backdropFilter: 'blur(18px)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10,
+              opacity: 0.68,
+            }}
+          >
+            <FontAwesomeIcon icon={faChevronRight} style={{ fontSize: '18px' }} />
+          </button>
 
-        {filteredData.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', marginTop: '36px' }}>
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-              {Array.from({ length: maxStartIndex + 1 }).map((_, i) => (
-                <button key={i} className="dot" onClick={() => setStartIndex(i)}
-                  style={{ background: i === safeStart ? '#10b981' : '#d1fae5', width: i === safeStart ? '20px' : '8px', borderRadius: '4px' }} />
-              ))}
-            </div>
-            <button className="see-all-btn" onClick={() => { setShowAll(true); setModalSearch(''); }}>
+          <div className="fd-dots-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px' }}>
+            {/* Đã bỏ các ô dots trên mobile, chỉ giữ lại nút bấm */}
+            <button className="see-all-btn" onClick={() => { setShowAll(true); setModalSearch(''); }}
+              style={{ fontSize: '13px', padding: '10px 18px' }}>
               <FontAwesomeIcon icon={faMapMarkerAlt} />
               Xem tất cả {allProvinces.length} tỉnh thành
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        // ── DESKTOP LAYOUT (Slider thông thường) ──
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div>
+              <ArrowBtn dir="left" disabled={!canPrev} onClick={() => setStartIndex(i => i - 1)} />
+            </div>
+            <div style={{
+              flex: 1, overflow: 'hidden',
+              paddingTop: '12px', marginTop: '-12px',
+              paddingBottom: '16px', marginBottom: '-16px',
+              borderRadius: '8px',
+            }}>
+              {filteredData.length > 0 ? (
+                <div style={{
+                  display: 'flex', gap: `${CARD_GAP}px`,
+                  transform: `translateX(calc(-${safeStart} * (${CARD_PCT}% + ${CARD_GAP / CARDS_VISIBLE}px)))`,
+                  transition: 'transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                  willChange: 'transform',
+                }}>
+                  {filteredData.slice(0, MAX_PREVIEW).map((item) => (
+                    <div key={item.name} style={{ minWidth: `calc(${CARD_PCT}% - ${CARD_GAP * (CARDS_VISIBLE-1)/CARDS_VISIBLE}px)`, maxWidth: `calc(${CARD_PCT}% - ${CARD_GAP * (CARDS_VISIBLE-1)/CARDS_VISIBLE}px)`, flexShrink: 0 }}>
+                      <DestinationCard item={item} compact={false} onClick={setSelectedItem} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '60px 40px', fontSize: '18px', color: '#9ca3af', textAlign: 'center' }}>
+                  Không có địa điểm nào trong mục này.
+                </div>
+              )}
+            </div>
+            <div>
+              <ArrowBtn dir="right" disabled={!canNext} onClick={() => setStartIndex(i => i + 1)} />
+            </div>
+          </div>
+
+          {filteredData.length > 0 && (
+            <div className="fd-dots-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', marginTop: '36px' }}>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                {Array.from({ length: maxStartIndex + 1 }).map((_, i) => (
+                  <button key={i} className="dot" onClick={() => setStartIndex(i)}
+                    style={{ background: i === safeStart ? '#10b981' : '#d1fae5', width: i === safeStart ? '20px' : '8px', borderRadius: '4px' }} />
+                ))}
+              </div>
+              <button className="see-all-btn" onClick={() => { setShowAll(true); setModalSearch(''); }}>
+                <FontAwesomeIcon icon={faMapMarkerAlt} />
+                Xem tất cả {allProvinces.length} tỉnh thành
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* MODAL XEM TẤT CẢ */}
       {showAll && (
@@ -947,18 +1182,18 @@ const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             {/* Header cố định — không scroll */}
             <div className="modal-header">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: isMobile ? '10px' : '16px' }}>
                 <div>
-                  <h3 style={{ fontSize: '32px', fontWeight: '900', color: isDark ? '#e8e8e8' : '#111827', margin: 0 }}>Tất cả tỉnh thành</h3>
-                  <p style={{ color: isDark ? '#9ca3af' : '#6b7280', marginTop: '6px', fontSize: '15px' }}>{modalFiltered.length} / {allProvinces.length} địa điểm</p>
+                  <h3 style={{ fontSize: isMobile ? '18px' : '32px', fontWeight: '900', color: isDark ? '#e8e8e8' : '#111827', margin: 0 }}>Tất cả tỉnh thành</h3>
+                  <p style={{ color: isDark ? '#9ca3af' : '#6b7280', marginTop: '4px', fontSize: isMobile ? '12px' : '15px' }}>{modalFiltered.length} / {allProvinces.length} địa điểm</p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <div style={{ position: 'relative' }}>
-                    <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '14px' }} />
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flex: isMobile ? 1 : 'unset' }}>
+                  <div style={{ position: 'relative', flex: isMobile ? 1 : 'unset' }}>
+                    <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '13px' }} />
                     <input type="text" placeholder="Tìm kiếm..." value={modalSearch} onChange={(e) => setModalSearch(e.target.value)}
-                      style={{ padding: '12px 16px 12px 42px', borderRadius: '40px', border: `1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`, fontSize: '15px', outline: 'none', width: '240px', backgroundColor: isDark ? '#333' : '#fff', color: isDark ? '#e8e8e8' : '#111827' }} />
+                      style={{ padding: isMobile ? '10px 12px 10px 36px' : '12px 16px 12px 42px', borderRadius: '40px', border: `1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`, fontSize: '15px', outline: 'none', width: isMobile ? '100%' : '240px', backgroundColor: isDark ? '#333' : '#fff', color: isDark ? '#e8e8e8' : '#111827', boxSizing: 'border-box' }} />
                   </div>
-                  <button onClick={() => setShowAll(false)} style={{ width: '44px', height: '44px', borderRadius: '50%', border: `1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`, background: isDark ? '#333' : '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#9ca3af' : '#64748b', fontSize: '16px' }}>
+                  <button onClick={() => setShowAll(false)} style={{ width: '40px', height: '40px', flexShrink: 0, borderRadius: '50%', border: `1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`, background: isDark ? '#333' : '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#9ca3af' : '#64748b', fontSize: '15px' }}>
                     <FontAwesomeIcon icon={faTimes} />
                   </button>
                 </div>

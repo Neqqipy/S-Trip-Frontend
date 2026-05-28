@@ -1,55 +1,92 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEnvelope, faPhone } from '@fortawesome/free-solid-svg-icons'; // Đã xóa faEarthAmericas vì dùng ảnh
-import { faFacebook, faInstagram, faGithub, faGoogle } from '@fortawesome/free-brands-svg-icons'; // Thêm faGoogle
+import { faEnvelope, faPhone } from '@fortawesome/free-solid-svg-icons';
+import { faFacebook, faInstagram, faGithub, faGoogle } from '@fortawesome/free-brands-svg-icons';
 
-const Footer = ({ onNavigate }) => { // Nhận hàm điều hướng từ App
+const Footer = ({ onNavigate }) => {
   const styles = {
-    footer: { backgroundColor: '#111827', color: 'white', padding: '80px 0 40px 0', marginTop: '100px', width: '100%' },
-    container: { width: '90%', maxWidth: '1600px', margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr', gap: '60px', marginBottom: '60px' },
-    logo: { fontSize: '36px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' },
-    heading: { fontSize: '22px', fontWeight: '700', marginBottom: '25px', color: '#10b981' },
-    linkList: { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' },
-    link: { color: '#9ca3af', textDecoration: 'none', fontSize: '18px', transition: '0.3s', cursor: 'pointer' },
-    socialIcon: { fontSize: '28px', color: 'white', cursor: 'pointer', transition: '0.3s', textDecoration: 'none', display: 'flex', alignItems: 'center' },
-    bottomBar: { borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '40px', textAlign: 'center', color: '#6b7280', fontSize: '16px' }
+    footer: { backgroundColor: '#111827', color: 'white', paddingTop: '60px', paddingBottom: '40px', marginTop: '100px', width: '100%' },
+    logo: { fontSize: '28px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' },
+    heading: { fontSize: '18px', fontWeight: '700', marginBottom: '20px', color: '#10b981' },
+    linkList: { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' },
+    link: { color: '#9ca3af', textDecoration: 'none', fontSize: '16px', transition: '0.3s', cursor: 'pointer' },
+    socialIcon: { fontSize: '24px', color: 'white', cursor: 'pointer', transition: '0.3s', textDecoration: 'none', display: 'flex', alignItems: 'center' },
   };
 
   return (
     <footer style={styles.footer}>
-      <div style={styles.container}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Nhấn Logo quay về đầu trang */}
+      <style>{`
+        .footer-grid {
+          width: 90%;
+          max-width: 1400px;
+          margin: 0 auto 50px;
+          display: grid;
+          grid-template-columns: 2fr 1fr 1fr 1.5fr;
+          gap: 50px;
+        }
+        .footer-bottom {
+          border-top: 1px solid rgba(255,255,255,0.1);
+          padding-top: 32px;
+          text-align: center;
+          color: #6b7280;
+          font-size: 14px;
+          width: 90%;
+          max-width: 1400px;
+          margin: 0 auto;
+          line-height: 1.6;
+        }
+
+        /* ══════════════════════════════════════
+           📱  Footer — Mobile responsive
+        ══════════════════════════════════════ */
+        @media (max-width: 1024px) {
+          .footer-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+          }
+          /* Brand column spans full width */
+          .footer-brand { grid-column: 1 / -1; }
+        }
+
+        @media (max-width: 640px) {
+          .footer-grid {
+            grid-template-columns: 1fr;
+            gap: 28px;
+            width: calc(100% - 40px);
+          }
+          .footer-brand { grid-column: 1; }
+          .footer-bottom {
+            width: calc(100% - 40px);
+            font-size: 12px;
+            padding-top: 24px;
+          }
+          /* Reduce top margin on small screens */
+          footer { margin-top: 48px !important; }
+        }
+      `}</style>
+
+      <div className="footer-grid">
+        {/* Brand */}
+        <div className="footer-brand" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <div style={styles.logo} onClick={() => onNavigate('hero-section')}>
-            <img 
-              src="S.jpg" 
-              alt="S-Trip Logo" 
-              style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} 
-            />
+            <img src="S.jpg" alt="S-Trip Logo" style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} />
             S-Trip
           </div>
-          <p style={{ color: '#9ca3af', fontSize: '18px', lineHeight: '1.6' }}>Hệ thống lên lịch trình du lịch thông minh bằng AI.</p>
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            {/* Các liên kết mạng xã hội thực tế */}
+          <p style={{ color: '#9ca3af', fontSize: '16px', lineHeight: '1.6', margin: 0 }}>
+            Hệ thống lên lịch trình du lịch thông minh bằng AI.
+          </p>
+          <div style={{ display: 'flex', gap: '18px', alignItems: 'center', flexWrap: 'wrap' }}>
             <a href="https://facebook.com" target="_blank" rel="noreferrer" style={styles.socialIcon}><FontAwesomeIcon icon={faFacebook} /></a>
             <a href="https://instagram.com" target="_blank" rel="noreferrer" style={styles.socialIcon}><FontAwesomeIcon icon={faInstagram} /></a>
             <a href="https://github.com" target="_blank" rel="noreferrer" style={styles.socialIcon}><FontAwesomeIcon icon={faGithub} /></a>
-            
-            {/* Logo SerpApi (Sử dụng thẻ img) */}
             <a href="https://serpapi.com" target="_blank" rel="noreferrer" style={styles.socialIcon}>
-              <img 
-                src="https://serpapi.com/favicon.ico" 
-                alt="SerpApi" 
-                style={{ width: '28px', height: '28px', borderRadius: '4px' }} 
-              />
+              <img src="https://serpapi.com/favicon.ico" alt="SerpApi" style={{ width: '24px', height: '24px', borderRadius: '4px' }} />
             </a>
-
-            {/* Logo Google (Sử dụng FontAwesome) */}
             <a href="https://google.com" target="_blank" rel="noreferrer" style={styles.socialIcon}><FontAwesomeIcon icon={faGoogle} /></a>
           </div>
         </div>
 
-        {/* LIÊN KẾT: Sử dụng onNavigate để cuộn trang mượt mà */}
+        {/* Liên kết */}
         <div>
           <h3 style={styles.heading}>Liên kết</h3>
           <ul style={styles.linkList}>
@@ -59,6 +96,7 @@ const Footer = ({ onNavigate }) => { // Nhận hàm điều hướng từ App
           </ul>
         </div>
 
+        {/* Hỗ trợ */}
         <div>
           <h3 style={styles.heading}>Hỗ trợ</h3>
           <ul style={styles.linkList}>
@@ -67,18 +105,18 @@ const Footer = ({ onNavigate }) => { // Nhận hàm điều hướng từ App
           </ul>
         </div>
 
+        {/* Liên hệ */}
         <div>
           <h3 style={styles.heading}>Liên hệ</h3>
           <ul style={styles.linkList}>
-            {/* Click vào Email/SĐT sẽ tự mở app tương ứng */}
-            <li><a href="mailto:contact@s-trip.vn" style={styles.link}><FontAwesomeIcon icon={faEnvelope} /> contact@s-trip.vn</a></li>
-            <li><a href="tel:+84789441629" style={styles.link}><FontAwesomeIcon icon={faPhone} /> +84 7894 41629</a></li>
+            <li><a href="mailto:contact@s-trip.vn" style={{ ...styles.link, display: 'flex', alignItems: 'center', gap: '8px' }}><FontAwesomeIcon icon={faEnvelope} /> contact@s-trip.vn</a></li>
+            <li><a href="tel:+84789441629" style={{ ...styles.link, display: 'flex', alignItems: 'center', gap: '8px' }}><FontAwesomeIcon icon={faPhone} /> +84 7894 41629</a></li>
           </ul>
         </div>
       </div>
 
-      <div style={styles.bottomBar}>
-            © 2026 S-Trip Project. Được thiết kế bởi Trịnh Nguyễn Huỳnh Nhi - 24120404, Đào Ngọc Hưng - 24120319, Đặng Thuyền Ngọc - 24120391
+      <div className="footer-bottom">
+        © 2026 S-Trip Project. Được thiết kế bởi Trịnh Nguyễn Huỳnh Nhi - 24120404, Đào Ngọc Hưng - 24120319, Đặng Thuyền Ngọc - 24120391
       </div>
     </footer>
   );

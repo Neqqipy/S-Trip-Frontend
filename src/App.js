@@ -160,7 +160,7 @@ const VerifyEmailPage = ({ isDark, onUserChange }) => {
 // Component bọc logic trang chủ để giữ nguyên tính năng Scroll Spy
 const HomePage = ({ 
   handleSearch, isLoading, searchData, editedPlans, setEditedPlans, 
-  setActiveSection, setToast, scrollToSection, isDark
+  setActiveSection, setToast, scrollToSection, isDark, user
 }) => {
   return (
     <>
@@ -176,6 +176,12 @@ const HomePage = ({
             onPlanChange={setEditedPlans}
             isDark={isDark}
             onSave={async () => {
+              if (!user) {
+                if (window.confirm("Hãy đăng nhập để thực hiện hành động này. Bạn có muốn đăng nhập ngay?")) {
+                  window.dispatchEvent(new Event('openAuthModal'));
+                }
+                throw new Error("Not authenticated");
+              }
               try {
                 const res = await fetch('/api/schedules/save', {
                   method: 'POST',
@@ -438,7 +444,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
                 searchData={searchData} editedPlans={editedPlans} 
                 setEditedPlans={setEditedPlans} setActiveSection={setActiveSection}
                 setToast={setToast} scrollToSection={scrollToSection}
-                isDark={isDark}
+                isDark={isDark} user={user}
               />
             ) : (
               <div style={{ paddingTop: '110px' }}>

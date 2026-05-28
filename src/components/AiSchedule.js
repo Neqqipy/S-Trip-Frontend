@@ -90,14 +90,25 @@ const useFavorite = ({ name, location = '', rating = '', thumbnail = '', type = 
           body: JSON.stringify({ name, location, rating: String(rating), thumbnail, type }),
         });
         const d = await res.json();
-        if (!d.success) { _favCache.set.delete(key); _notify(_favCache); }
+        if (!d.success) {
+          _favCache.set.delete(key);
+          _notify(_favCache);
+          if (res.status === 401 || (d.error && d.error.toLowerCase().includes('đăng nhập'))) {
+            if (window.confirm("Hãy đăng nhập để thực hiện hành động này. Bạn có muốn đăng nhập ngay?")) {
+              window.dispatchEvent(new Event('openAuthModal'));
+            }
+          }
+        }
       } else {
         const res = await fetch(`${BASE_URL}/api/favorites/remove-by-name`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ name, location }),
         });
         const d = await res.json();
-        if (!d.success) { _favCache.set.add(key); _notify(_favCache); }
+        if (!d.success) {
+          _favCache.set.add(key);
+          _notify(_favCache);
+        }
       }
     } catch (_) {}
     finally { setLoading(false); }
@@ -129,14 +140,25 @@ const useSavedPlace = ({ name, location = '', rating = '', thumbnail = '', type 
           body: JSON.stringify({ name, location, rating: String(rating), thumbnail, type }),
         });
         const d = await res.json();
-        if (!d.success) { _spCache.set.delete(key); _notify(_spCache); }
+        if (!d.success) {
+          _spCache.set.delete(key);
+          _notify(_spCache);
+          if (res.status === 401 || (d.error && d.error.toLowerCase().includes('đăng nhập'))) {
+            if (window.confirm("Hãy đăng nhập để thực hiện hành động này. Bạn có muốn đăng nhập ngay?")) {
+              window.dispatchEvent(new Event('openAuthModal'));
+            }
+          }
+        }
       } else {
         const res = await fetch(`${BASE_URL}/api/saved-places/remove-by-name`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ name, location }),
         });
         const d = await res.json();
-        if (!d.success) { _spCache.set.add(key); _notify(_spCache); }
+        if (!d.success) {
+          _spCache.set.add(key);
+          _notify(_spCache);
+        }
       }
     } catch (_) {}
     finally { setLoading(false); }
@@ -1328,6 +1350,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
 
   return (
     <div
+      className="ais-place-card"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{
@@ -1389,7 +1412,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
       </div>}
 
       {/* Thêm điều kiện isFlight ? 'white' : ... để ép nền trắng cho logo hãng bay */}
-      <div style={{ width: '120px', height: '120px', flexShrink: 0, borderRadius: '14px', overflow: 'hidden', backgroundColor: isDark ? '#111827' : '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div className="ais-place-card-img" style={{ width: '120px', height: '120px', flexShrink: 0, borderRadius: '14px', overflow: 'hidden', backgroundColor: isDark ? '#111827' : '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         {(data.thumbnail || fallbackImg) && displayImg ? (
           <img src={displayImg} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover', transform: isHovered ? 'scale(1.09)' : 'scale(1)', transition: 'transform 0.4s ease', display: 'block' }} onError={imgError ? (e => { e.target.onerror = null; e.target.src = 'https://placehold.co/120x120?text=S-Trip'; }) : handleImgError} />
         ) : (
@@ -1397,7 +1420,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
         )}
       </div>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="ais-place-card-content" style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '11px', fontWeight: '800', color: mainColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{sessionLabel ? `${sessionLabel} · ${type}` : type}</div>
         
         {/* Ép chữ tên địa điểm hoặc tên hãng máy bay (Vietjet/Vietnam Airlines) sang màu trắng */}
@@ -1436,7 +1459,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+        <div className="ais-place-card-actions" style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
           {!isFlight && !isHotel && (
             <button onClick={handleLocation} style={{ padding: '7px 14px', borderRadius: '10px', border: 'none', backgroundColor: '#3b82f6', color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <FontAwesomeIcon icon={faLocationArrow} style={{ fontSize: '10px' }} /> Vị trí
@@ -1492,6 +1515,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
 // ── TRANSPORT CARD — có hiệu ứng hover nổi lên ───────────────
 const TransportCard = ({ opt, isCombined, isDark, noTickets }) => {
   const [hovered, setHovered] = useState(false);
+  const isFlight = /bay|flight/i.test(opt.label || opt.type || '');
 
   return (
     <div
@@ -1499,9 +1523,11 @@ const TransportCard = ({ opt, isCombined, isDark, noTickets }) => {
       onMouseLeave={() => setHovered(false)}
       style={{
         backgroundColor: isDark ? '#22252a' : 'white', borderRadius: '24px', padding: '24px',
-        border: opt.recommended
-          ? '2.5px solid #10b981'
-          : hovered ? '2px solid #cbd5e1' : '2px solid #f1f5f9',
+        border: (noTickets && isFlight)
+          ? '2px solid #ef4444'
+          : opt.recommended
+            ? '2.5px solid #10b981'
+            : hovered ? '2px solid #cbd5e1' : '2px solid #f1f5f9',
         boxShadow: hovered
           ? '0 32px 64px rgba(0,0,0,0.18)'
           : opt.recommended
@@ -1638,6 +1664,21 @@ const TransportCard = ({ opt, isCombined, isDark, noTickets }) => {
           ))}
         </div>
       )}
+
+      {(noTickets && isFlight) && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          marginTop: '16px', padding: '9px 14px',
+          background: isDark ? 'rgba(239,68,68,0.08)' : '#fff1f2',
+          border: isDark ? '1px solid rgba(239,68,68,0.25)' : '1px solid #fecdd3',
+          borderRadius: 10,
+        }}>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? '#fca5a5' : '#be123c', lineHeight: '1.4' }}>
+            Không tìm thấy vé máy bay cho ngày đã chọn. Vui lòng kiểm tra lại hoặc chọn ngày khác.
+          </span>
+        </div>
+      )}
     </div>
   );
 };
@@ -1678,7 +1719,7 @@ const WeatherWidget = ({ location, isDark, externalData, departureDate }) => {
     <div style={{ marginBottom: 55, borderRadius: 32, overflow: 'hidden', border, boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(59,130,246,0.10)' }}>
 
       {/* Header gradient */}
-      <div style={{ background: isDark ? 'linear-gradient(135deg, #1e3a5f 0%, #162032 100%)' : 'linear-gradient(135deg, #bae6fd 0%, #dbeafe 100%)', padding: '20px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'nowrap' }}>
+      <div style={{ background: isDark ? 'linear-gradient(135deg, #1e3a5f 0%, #162032 100%)' : 'linear-gradient(135deg, #bae6fd 0%, #dbeafe 100%)', padding: '20px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
 
         {/* Thời tiết hiện tại */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
@@ -1730,9 +1771,9 @@ const WeatherWidget = ({ location, isDark, externalData, departureDate }) => {
           <div style={{ fontSize: 12, fontWeight: 800, color: textSub, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
             📅 Dự báo thời tiết {forecast[0]?.date}–{forecast[forecast.length-1]?.date}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${forecast.length}, 1fr)`, gap: 8 }}>
+          <div style={{ display: 'flex', overflowX: 'auto', gap: 8, paddingBottom: 4, scrollbarWidth: 'none' }}>
             {forecast.map((day, i) => (
-              <div key={i} style={{ background: isDark ? '#0f172a' : '#eff6ff', border: isDark ? '1px solid #1e293b' : '1px solid #bfdbfe', borderRadius: 14, padding: '10px 6px', textAlign: 'center' }}>
+              <div key={i} style={{ flex: '1 0 65px', background: isDark ? '#0f172a' : '#eff6ff', border: isDark ? '1px solid #1e293b' : '1px solid #bfdbfe', borderRadius: 14, padding: '10px 6px', textAlign: 'center' }}>
                 <div style={{ fontSize: 10, fontWeight: 800, color: textSub, marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{day.day || `N${i+1}`}</div>
                 <div style={{ fontSize: 22, marginBottom: 3 }}>{day.icon}</div>
                 <div style={{ fontSize: 13, fontWeight: 900, color: textMain }}>{day.high_c !== null ? `${day.high_c}°` : '--'}</div>
@@ -2402,7 +2443,76 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
 
   return (
     <>
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px' }} className="ais-root">
+      <style>{`
+        /* ═══════════════════════════════════════
+           📱 AiSchedule — Mobile responsive
+        ═══════════════════════════════════════ */
+        @media (max-width: 768px) {
+          .ais-root { padding: 16px !important; }
+
+          /* Header title */
+          .ais-root h1 { font-size: 32px !important; }
+          .ais-root > div > h1 { font-size: 32px !important; }
+
+          /* Transport grid: auto-fit minmax(380px) → 1 col */
+          .ais-transport-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          /* Flight grid: 1fr 1fr → 1 col */
+          .ais-flight-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          /* Hotel section */
+          .ais-hotel-wrap {
+            padding: 16px !important;
+            border-radius: 24px !important;
+          }
+          .ais-hotel-map {
+            height: 260px !important;
+            border-radius: 18px !important;
+          }
+
+          /* Session cards row → stack vertically */
+          .ais-session-row {
+            flex-direction: column !important;
+            gap: 14px !important;
+          }
+
+          /* Day block */
+          .ais-day-block {
+            padding: 20px 16px !important;
+            border-radius: 24px !important;
+            margin-top: 20px !important;
+          }
+
+          /* Drink / specialty buttons row */
+          .ais-panel-btns {
+            flex-direction: column !important;
+            gap: 12px !important;
+            align-items: stretch !important;
+          }
+          .ais-panel-btns button {
+            max-width: 100% !important;
+            font-size: 16px !important;
+            padding: 16px 24px !important;
+          }
+
+          /* Big title */
+          .ais-big-title { font-size: 24px !important; }
+
+          /* Sub-title (phương tiện) */
+          .ais-section-title { font-size: 22px !important; }
+        }
+
+        @media (max-width: 480px) {
+          .ais-root { padding: 12px !important; }
+          .ais-root h1 { font-size: 26px !important; }
+          .ais-hotel-map { height: 200px !important; }
+        }
+      `}</style>
 
       {/* 🗺️ MAP MODAL */}
       {mapModal.show && (
@@ -2494,34 +2604,72 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
 
 
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '25px', marginBottom: '30px' }}>
-                {initialData.transport.options.map((opt, idx) => (
-                  <TransportCard 
-                    key={idx} 
-                    opt={opt} 
-                    isCombined={opt.type === 'combined'} 
-                    isDark={isDark} 
-                    noTickets={realFlights.length === 0} // <-- THÊM DÒNG NÀY ĐỂ BÁO TRẠNG THÁI KHÔNG CÓ VÉ
-                  />
-                ))}
+
+              <style>{`
+                .ais-transport-grid {
+                  display: grid;
+                  grid-template-columns: 1fr 1fr;
+                  gap: 25px;
+                  margin-bottom: 30px;
+                }
+                @media (max-width: 768px) {
+                  .ais-transport-grid {
+                    grid-template-columns: 1fr;
+                  }
+                  .ais-place-card {
+                    flex-direction: column !important;
+                    align-items: stretch !important;
+                    padding: 0 !important;
+                    gap: 0 !important;
+                    overflow: hidden;
+                  }
+                  .ais-place-card-img {
+                    width: 100% !important;
+                    height: auto !important;
+                    aspect-ratio: 4 / 3 !important;
+                    border-radius: 0 !important;
+                  }
+                  .ais-place-card-content {
+                    padding: 16px 20px 20px !important;
+                  }
+                  .ais-place-card-actions {
+                    justify-content: flex-start !important;
+                    margin-top: 14px !important;
+                  }
+                  .ais-place-card-actions button {
+                    flex: 1;
+                    justify-content: center;
+                  }
+                }
+              `}</style>
+              <div className="ais-transport-grid">
+                {(() => {
+                  let opts = [...(initialData.transport?.options || [])];
+                  if (realFlights.length === 0) {
+                    const flightIdx = opts.findIndex(o => o.recommended && /bay|flight/i.test(o.label || o.type || ''));
+                    if (flightIdx !== -1) {
+                      opts[flightIdx] = { ...opts[flightIdx], recommended: false };
+                      const fallbackIdx = opts.findIndex(o => !(/bay|flight/i.test(o.label || o.type || '')));
+                      if (fallbackIdx !== -1) {
+                        opts[fallbackIdx] = { ...opts[fallbackIdx], recommended: true };
+                      } else if (opts.length > 0) {
+                        opts[0] = { ...opts[0], recommended: true };
+                      }
+                    }
+                  }
+                  return opts.map((opt, idx) => (
+                    <TransportCard 
+                      key={idx} 
+                      opt={opt} 
+                      isCombined={opt.type === 'combined'} 
+                      isDark={isDark} 
+                      noTickets={realFlights.length === 0} 
+                    />
+                  ));
+                })()}
               </div>
 
-              {/* ✈️ Thông báo không tìm thấy vé cho ngày đã chọn */}
-              {realFlights.length === 0 &&
-               initialData.transport?.options?.some(o => o.type === 'combined' || /bay|flight/i.test(o.label || o.type || '')) && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  marginTop: -10, marginBottom: 10, padding: '9px 14px',
-                  background: isDark ? 'rgba(239,68,68,0.08)' : '#fff1f2',
-                  border: isDark ? '1px solid rgba(239,68,68,0.25)' : '1px solid #fecdd3',
-                  borderRadius: 10,
-                }}>
-                  <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? '#fca5a5' : '#be123c' }}>
-                    Không tìm thấy vé máy bay cho ngày đã chọn. Vui lòng kiểm tra lại hoặc chọn ngày khác.
-                  </span>
-                </div>
-              )}
+
             </>
           )}
           
@@ -2531,7 +2679,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
               <div style={{ fontSize: '24px', fontWeight: '900', color: isDark ? '#f8fafc' : '#1f2937', marginBottom: '16px' }}>
                 ✈️ Chi tiết chuyến bay tham khảo
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
+              <div className="ais-flight-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
                 {realFlights.slice(0, 2).map((f, i) => (
                   <PlaceCard 
                     key={i} 
@@ -2559,10 +2707,10 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       {/* 2. KHÁCH SẠN */}
 <div style={{ marginBottom: '60px' }}>
   <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>🛌 Chỗ ở {initialData.realHotels?.length > 0 ? '(Dữ liệu thực)' : '(Gợi ý)'}</div>
-  <div style={{ backgroundColor: isDark ? '#1e293b' : '#f8fafc', padding: '30px', borderRadius: '40px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
+  <div className="ais-hotel-wrap" style={{ backgroundColor: isDark ? '#1e293b' : '#f8fafc', padding: '30px', borderRadius: '40px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
     <PlaceCard type="Khách sạn" data={currentHotel} locationName={initialData.location} setMapQuery={setMapQuery} guestCount={passengers} onEdit={() => setModal({ show: true, type: 'Khách sạn' })} isDark={isDark} />
     
-    <div style={{ borderRadius: '25px', overflow: 'hidden', height: '450px', border: isDark ? 'none' : '1px solid #e2e8f0', position: 'relative' }}>
+    <div className="ais-hotel-map" style={{ borderRadius: '25px', overflow: 'hidden', height: '450px', border: isDark ? 'none' : '1px solid #e2e8f0', position: 'relative' }}>
       {/* Fix 1: Dùng place_id để ghim chính xác ngay lần render đầu tiên.
                   Fallback về query-string nếu chưa có place_id */}
       <iframe
@@ -2595,7 +2743,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
 
       {/* 3. LỊCH TRÌNH */}
       <div style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', gap: 40, justifyContent: 'center', alignItems: 'center', marginTop: '0px', marginBottom: '50px' }}>
+        <div className="ais-panel-btns" style={{ display: 'flex', gap: 40, justifyContent: 'center', alignItems: 'center', marginTop: '0px', marginBottom: '50px' }}>
           {/* 🧋 NÚT THAM KHẢO ĐỒ UỐNG */}
           <button
             onClick={() => setDrinksOpen(true)}
@@ -2635,7 +2783,8 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
           <button
             onClick={() => setSpecialtiesOpen(true)}
             style={{
-              display: 'flex', alignItems: 'center', gap: 12,
+              flex: 1, maxWidth: 360,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
               padding: '20px 40px', borderRadius: 99,
               border: '2.5px solid #f97316',
               background: 'white', color: '#ea580c',
@@ -2670,7 +2819,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
         const dayForecast = weatherData?.forecast?.[d.day - 1] || null;
 
         return (
-        <div key={d.day} style={{ marginBottom: '45px', padding: '35px', backgroundColor: isDark ? '#1e293b' : '#f8fafc', borderRadius: '40px', marginTop: '40px' }}>
+        <div key={d.day} className="ais-day-block" style={{ marginBottom: '45px', padding: '35px', backgroundColor: isDark ? '#1e293b' : '#f8fafc', borderRadius: '40px', marginTop: '40px' }}>
           {/* Header ngày + badge thời tiết */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '30px' }}>
             <div style={{ fontWeight: '900', color: '#10b981', fontSize: '26px' }}>
@@ -2740,7 +2889,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
             {/* SÁNG */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ fontWeight: '800', color: '#f59e0b', fontSize: '14px' }}><FontAwesomeIcon icon={faSun} /> BUỔI SÁNG</div>
-              <div style={{ display: 'flex', gap: '25px' }}>
+              <div className="ais-session-row" style={{ display: 'flex', gap: '25px' }}>
                 <PlaceCard type="Điểm tham quan" sessionLabel="Sáng" data={d.morning.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'morning', subType: 'tour' })} isDark={isDark} />
                 <PlaceCard type="Địa điểm ăn uống" sessionLabel="Sáng" data={d.morning.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'morning', subType: 'food' })} isDark={isDark} />
               </div>
@@ -2749,7 +2898,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
             {/* CHIỀU */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ fontWeight: '800', color: '#3b82f6', fontSize: '14px' }}><FontAwesomeIcon icon={faCloudSun} /> BUỔI CHIỀU</div>
-              <div style={{ display: 'flex', gap: '25px' }}>
+              <div className="ais-session-row" style={{ display: 'flex', gap: '25px' }}>
                 <PlaceCard type="Điểm tham quan" sessionLabel="Chiều" data={d.afternoon.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'afternoon', subType: 'tour' })} isDark={isDark} />
                 <PlaceCard type="Địa điểm ăn uống" sessionLabel="Chiều" data={d.afternoon.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'afternoon', subType: 'food' })} isDark={isDark} />
               </div>
@@ -2758,7 +2907,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
             {/* TỐI */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ fontWeight: '800', color: '#8b5cf6', fontSize: '14px' }}><FontAwesomeIcon icon={faMoon} /> BUỔI TỐI</div>
-              <div style={{ display: 'flex', gap: '25px' }}>
+              <div className="ais-session-row" style={{ display: 'flex', gap: '25px' }}>
                 <PlaceCard type="Điểm tham quan" sessionLabel="Tối" data={d.evening.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'evening', subType: 'tour' })} isDark={isDark} />
                 <PlaceCard type="Địa điểm ăn uống" sessionLabel="Tối" data={d.evening.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'evening', subType: 'food' })} isDark={isDark} />
               </div>

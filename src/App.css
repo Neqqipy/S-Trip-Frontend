@@ -4,24 +4,16 @@
   box-sizing: border-box;
 }
 
-/* ── TRANSITION mượt khi đổi theme ── */
+/* ── Smooth theme transitions ── */
 *, *::before, *::after {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* ═══════════════════════════════════════
    DARK MODE
-   Nền đen #1a1a1a, card xám #2a2a2a
-   Chữ trắng ngà #e8e8e8
    ═══════════════════════════════════════ */
+.theme-dark { background-color: #1a1a1a !important; color: #e8e8e8 !important; }
 
-/* --- NỀN NGOÀI CÙNG --- */
-.theme-dark {
-  background-color: #1a1a1a !important;
-  color: #e8e8e8 !important;
-}
-
-/* --- NỀN TRẮNG → XÁM TỐI (card, panel, modal) --- */
 .theme-dark [style*="background-color: white"],
 .theme-dark [style*="background-color: #fff"],
 .theme-dark [style*="background-color: #ffffff"],
@@ -30,24 +22,18 @@
 .theme-dark [style*="backgroundColor: '#ffffff'"],
 .theme-dark [style*="backgroundColor:'white'"],
 .theme-dark [style*="backgroundColor: \"white\""] {
-  background-color: #2a2a2a !important;
-  color: #e8e8e8 !important;
+  background-color: #2a2a2a !important; color: #e8e8e8 !important;
 }
 
-/* --- NỀN XÁM NHẠT → XÁM ĐẬM HƠN (section wrapper) --- */
 .theme-dark [style*="background-color: #f9fafb"],
 .theme-dark [style*="background-color: #f8fafc"],
 .theme-dark [style*="background-color: #f3f4f6"],
 .theme-dark [style*="background-color: #f1f5f9"],
 .theme-dark [style*="background-color: #f0f4f8"],
-.theme-dark [style*="background-color: #f8f9fa"],
-.theme-dark [style*="backgroundColor: '#f9fafb'"],
-.theme-dark [style*="backgroundColor: '#f8fafc'"],
-.theme-dark [style*="backgroundColor: '#f1f5f9'"] {
+.theme-dark [style*="background-color: #f8f9fa"] {
   background-color: #222222 !important;
 }
 
-/* --- NỀN XÁM TRUNG (#e...) --- */
 .theme-dark [style*="background-color: #e2e8f0"],
 .theme-dark [style*="background-color: #e5e7eb"],
 .theme-dark [style*="background-color: #ebebeb"],
@@ -56,20 +42,15 @@
   background-color: #333333 !important;
 }
 
-/* --- CHỮ ĐEN → TRẮNG NGÀ --- */
 .theme-dark [style*="color: #111827"],
-.theme-dark [style*="color: '#111827'"],
 .theme-dark [style*="color: #1f2937"],
-.theme-dark [style*="color: '#1f2937'"],
 .theme-dark [style*="color: #0f172a"],
 .theme-dark [style*="color: #000000"],
 .theme-dark [style*="color: #000"],
-.theme-dark [style*="color: black"],
-.theme-dark [style*="color: rgb(0,0,0)"] {
+.theme-dark [style*="color: black"] {
   color: #e8e8e8 !important;
 }
 
-/* --- CHỮ XÁM ĐẬM → XÁM SÁNG HƠN --- */
 .theme-dark [style*="color: #374151"],
 .theme-dark [style*="color: #4b5563"],
 .theme-dark [style*="color: #555"],
@@ -77,9 +58,7 @@
   color: #cccccc !important;
 }
 
-/* --- CHỮ XÁM NHẠT → XÁM VỪA --- */
 .theme-dark [style*="color: #6b7280"],
-.theme-dark [style*="color: '#6b7280'"],
 .theme-dark [style*="color: #9ca3af"],
 .theme-dark [style*="color: #888"],
 .theme-dark [style*="color: #999"],
@@ -87,70 +66,30 @@
   color: #999999 !important;
 }
 
-/* --- INPUTS / FORM --- */
-.theme-dark input,
-.theme-dark textarea,
-.theme-dark select {
-  background-color: #333333 !important;
-  color: #e8e8e8 !important;
-  border-color: #444444 !important;
+.theme-dark input, .theme-dark textarea, .theme-dark select {
+  background-color: #333333 !important; color: #e8e8e8 !important; border-color: #444444 !important;
 }
-.theme-dark input::placeholder,
-.theme-dark textarea::placeholder {
-  color: #777777 !important;
-}
+.theme-dark input::placeholder, .theme-dark textarea::placeholder { color: #777777 !important; }
 
-/* --- BORDER --- */
-.theme-dark [style*="border: 1px solid #e"],
-.theme-dark [style*="border: 2px solid #e"],
-.theme-dark [style*="border: 1px solid #d"],
-.theme-dark [style*="borderColor: '#e"],
-.theme-dark [style*="border-top: 1px solid"],
-.theme-dark [style*="border-bottom: 1px solid"] {
-  border-color: #3a3a3a !important;
-}
-
-/* --- BADGE màu sáng → tối xuống giữ sắc --- */
 .theme-dark [style*="background-color: #ecfdf5"],
-.theme-dark [style*="background-color: #d1fae5"] {
-  background-color: #0d3326 !important; color: #34d399 !important;
-}
+.theme-dark [style*="background-color: #d1fae5"] { background-color: #0d3326 !important; color: #34d399 !important; }
 .theme-dark [style*="background-color: #eff6ff"],
-.theme-dark [style*="background-color: #dbeafe"] {
-  background-color: #0d1f3c !important; color: #60a5fa !important;
-}
+.theme-dark [style*="background-color: #dbeafe"] { background-color: #0d1f3c !important; color: #60a5fa !important; }
 .theme-dark [style*="background-color: #fef3c7"],
-.theme-dark [style*="background-color: #fde68a"] {
-  background-color: #3b2a00 !important; color: #fbbf24 !important;
-}
+.theme-dark [style*="background-color: #fde68a"] { background-color: #3b2a00 !important; color: #fbbf24 !important; }
 .theme-dark [style*="background-color: #fee2e2"],
-.theme-dark [style*="background-color: #fecaca"] {
-  background-color: #3b0d0d !important; color: #f87171 !important;
-}
-.theme-dark [style*="background-color: #fce7f3"] {
-  background-color: #3b0d25 !important; color: #f472b6 !important;
-}
+.theme-dark [style*="background-color: #fecaca"] { background-color: #3b0d0d !important; color: #f87171 !important; }
+.theme-dark [style*="background-color: #fce7f3"] { background-color: #3b0d25 !important; color: #f472b6 !important; }
 
-/* --- SECTION/FOOTER TỐI SẴN: giữ nguyên, nhích sáng chút --- */
 .theme-dark [style*="background-color: #111827"],
 .theme-dark [style*="background-color: #0f172a"],
 .theme-dark [style*="background-color: #1e293b"],
-.theme-dark [style*="background-color: #111"],
-.theme-dark [style*="backgroundColor: '#111827'"] {
-  background-color: #1f1f1f !important;
-}
+.theme-dark [style*="background-color: #111"] { background-color: #1f1f1f !important; }
 
-/* --- SHADOW nhẹ hơn --- */
-.theme-dark [style*="box-shadow: 0"] {
-  box-shadow: 0 2px 12px rgba(0,0,0,0.5) !important;
-}
-
-/* --- SCROLLBAR --- */
 .theme-dark ::-webkit-scrollbar        { width: 8px; }
 .theme-dark ::-webkit-scrollbar-track  { background: #1a1a1a; }
 .theme-dark ::-webkit-scrollbar-thumb  { background: #444; border-radius: 4px; }
 .theme-dark ::-webkit-scrollbar-thumb:hover { background: #666; }
-
 
 /* ═══════════════════════════════════════
    ANIMATIONS
@@ -176,8 +115,139 @@ html, body {
   min-height: 100vh;
   scroll-behavior: auto !important;
 }
-#root {
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
+#root { margin: 0; padding: 0; min-height: 100vh; }
+
+/* ═══════════════════════════════════════
+   📱 RESPONSIVE — TABLET (≤1024px)
+   ═══════════════════════════════════════ */
+@media (max-width: 1024px) {
+  * { font-size: 95%; }
+}
+
+/* ═══════════════════════════════════════
+   📱 RESPONSIVE — MOBILE (≤768px)
+   
+   ⚠️  NOTE: We intentionally AVOID the
+   blanket `flex-direction: column` rule
+   here because it breaks components that
+   manage their own flex layout via JS.
+   Each component handles its own stacking
+   using scoped CSS classes.
+   ═══════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Typography */
+  h1 { font-size: clamp(22px, 6vw, 40px) !important; }
+  h2 { font-size: clamp(18px, 5vw, 28px) !important; }
+  h3 { font-size: clamp(16px, 4vw, 22px) !important; }
+  h4, h5, h6 { font-size: clamp(14px, 3.5vw, 18px) !important; }
+  p  { font-size: clamp(13px, 3.5vw, 16px) !important; }
+
+  /* Images responsive — exclude images inside fixed-height containers */
+  img:not([data-fixed-h]) { max-width: 100% !important; }
+  /* Don't force height:auto on images that need fixed height (cards, galleries, etc.) */
+
+  /* Inputs — prevent iOS zoom on focus */
+  input, textarea, select {
+    font-size: 16px !important;
+    min-height: 44px !important;
+  }
+
+  /* Buttons — touch targets */
+  button:not(.hero-swap-mobile), [role="button"]:not(.hero-swap-mobile) {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+
+  /* AiSchedule / general card containers */
+  [style*="padding: 50px"]    { padding: 20px !important; }
+  [style*="padding: 40px"]    { padding: 16px !important; }
+  [style*="padding: 30px"]    { padding: 12px !important; }
+
+  /* Grid auto-collapse */
+  [style*="gridTemplateColumns: 'repeat(3"],
+  [style*="gridTemplateColumns: repeat(3"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  [style*="gridTemplateColumns: 'repeat(4"],
+  [style*="gridTemplateColumns: repeat(4"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* AiSchedule export buttons row */
+  [style*="display: 'flex'"][style*="gap: '20px'"] {
+    flex-wrap: wrap !important;
+  }
+
+  /* Modal responsive */
+  [style*="width: 560px"],
+  [style*="width: '560px'"] {
+    width: calc(100vw - 32px) !important;
+    max-width: 100% !important;
+    padding: 24px 16px !important;
+    border-radius: 20px !important;
+  }
+
+  /* Fix full-bleed sections that use negative margins */
+  [style*="marginLeft: '-50vw'"],
+  [style*="marginLeft: -50vw"] {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}
+
+/* ═══════════════════════════════════════
+   📱 SMALL MOBILE (≤640px)
+   ═══════════════════════════════════════ */
+@media (max-width: 640px) {
+  h1 { font-size: 22px !important; }
+  h2 { font-size: 18px !important; }
+  h3 { font-size: 16px !important; }
+  p  { font-size: 13px !important; }
+
+  [style*="gridTemplateColumns: 'repeat(2"],
+  [style*="gridTemplateColumns: repeat(2"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Modal tighter on small phones */
+  [style*="width: 560px"],
+  [style*="width: '560px'"] {
+    width: calc(100vw - 16px) !important;
+    padding: 16px 12px !important;
+  }
+}
+
+/* ═══════════════════════════════════════
+   📱 VERY SMALL (≤480px)
+   ═══════════════════════════════════════ */
+@media (max-width: 480px) {
+  html, body { font-size: 13px; }
+  h1 { font-size: 20px !important; }
+  h2 { font-size: 17px !important; }
+  h3 { font-size: 15px !important; }
+  p  { font-size: 13px !important; }
+}
+
+/* ═══════════════════════════════════════
+   Landscape mode
+   ═══════════════════════════════════════ */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hero-section {
+    min-height: 100% !important;
+    padding: 80px 0 20px !important;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Touch-friendly (pointer: coarse)
+   ═══════════════════════════════════════ */
+@media (hover: none) and (pointer: coarse) {
+  button:not(.hero-swap-mobile), a, [role="button"]:not(.hero-swap-mobile) {
+    min-height: 48px !important;
+    min-width: 48px !important;
+  }
+  button:hover { opacity: 0.85 !important; }
 }
