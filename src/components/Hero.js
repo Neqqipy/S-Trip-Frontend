@@ -76,16 +76,6 @@ const Hero = ({ onSearch, isDark = false }) => {
     borderRight: isLast ? 'none' : `1px solid ${divider}`,
   });
 
-  // Mobile item style — 3col × 2row grid via inline style (CSS classes can't override inline)
-  // col 1,2 → right border | row 1 → bottom border
-  const mItem = (col, row) => ({
-    flex: '0 0 33.333%', width: '33.333%',
-    padding: '12px 10px', textAlign: 'left', position: 'relative', boxSizing: 'border-box',
-    borderTop: 'none', borderLeft: 'none',
-    borderRight: col < 3 ? `1px solid ${divider}` : 'none',
-    borderBottom: row === 1 ? `1px solid ${divider}` : 'none',
-  });
-
   const styles = {
     hero: {
       width: '100vw', height: 'auto',
@@ -93,7 +83,7 @@ const Hero = ({ onSearch, isDark = false }) => {
       display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
       backgroundImage: `linear-gradient(rgba(17,24,39,0.4),rgba(17,24,39,0.5)),url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=2000')`,
       backgroundSize: 'cover', backgroundPosition: 'center', color: 'white', textAlign: 'center',
-      paddingTop: isMobile ? '100px' : '180px', paddingBottom: isMobile ? '36px' : '100px',
+      paddingTop: isMobile ? '100px' : '180px', paddingBottom: isMobile ? '25px' : '80px',
     },
     bar: {
       backgroundColor: isDark ? '#2a2a2a' : '#ffffff',
@@ -104,7 +94,7 @@ const Hero = ({ onSearch, isDark = false }) => {
       flexWrap: isMobile ? 'wrap' : 'nowrap',
       width: isMobile ? 'calc(100% - 24px)' : '95%',
       maxWidth: isMobile ? '100%' : '1600px',
-      marginTop: isMobile ? '20px' : '40px', position: 'relative', overflow: 'visible',
+      marginTop: isMobile ? '30px' : '50px', position: 'relative', overflow: 'visible',
       transition: '0.4s all cubic-bezier(0.175,0.885,0.32,1.275)',
       boxShadow: isAnyFieldEmpty ? '0 0 30px rgba(239,68,68,0.4)' : '0 25px 50px -12px rgba(0,0,0,0.25)',
       border: isAnyFieldEmpty ? '3px solid #ef4444' : `1px solid ${isDark ? '#3a3a3a' : '#e2e8f0'}`,
@@ -202,77 +192,116 @@ const Hero = ({ onSearch, isDark = false }) => {
         onClick={(e) => e.stopPropagation()}
       >
         {isMobile ? (
-          /* ── MOBILE LAYOUT: 3×2 grid, DOM order = visual order ── */
-          <>
-            {/* Row 1 */}
-            {/* Col1 Row1: Điểm đi */}
-            <div style={mItem(1,1)}>
-              <div style={styles.label}>ĐIỂM ĐI</div>
-              <input style={styles.input} placeholder="Từ đâu?" value={origin}
-                onChange={e => setOrigin(e.target.value)} onFocus={() => setActiveDropdown('origin')} />
-              <Dropdown type="origin" list={filterList(origin)} icon={faPlane} />
-              {/* Swap button sits on the row1 bottom border */}
-              <div onClick={e => { e.stopPropagation(); handleSwap(); }}
-                style={{
-                  position:'absolute', bottom:0, left:'50%', transform:'translate(-50%,50%)',
-                  width:'22px', height:'22px', borderRadius:'50%',
-                  background: isDark ? '#2a2a2a' : '#fff',
-                  border:`1.5px solid #10b981`, color:'#10b981',
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  zIndex:10, cursor:'pointer', boxShadow:'0 1px 4px rgba(0,0,0,0.15)',
-                }}>
-                <FontAwesomeIcon icon={faRightLeft} style={{fontSize:'8px', transform:'rotate(90deg)'}} />
+          /* ── MOBILE LAYOUT: Dark/Light Mode & Tối ưu màu sắc S-Trip ── */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', padding: '16px' }}>
+            
+            {/* HÀNG 1: TỪ - ĐẾN */}
+            <div>
+              <div style={{ display: 'flex', marginBottom: '8px' }}>
+                <div style={{ flex: 1, padding: '0 20px', color: isDark ? '#e8e8e8' : '#1e293b', fontSize: '14px', fontWeight: '700' }}>Từ</div>
+                <div style={{ flex: 1, padding: '0 20px', color: isDark ? '#e8e8e8' : '#1e293b', fontSize: '14px', fontWeight: '700' }}>Đến</div>
+              </div>
+              
+              <div style={{ display: 'flex', position: 'relative', background: 'transparent', borderRadius: '16px', border: `1px solid ${divider}` }}>
+                
+                {/* Cột 1: Điểm đi */}
+                <div style={{ flex: 1, padding: '16px 20px', borderRight: `1px solid ${divider}`, display: 'flex', alignItems: 'center', gap: '12px', position: 'relative' }}>
+                  <FontAwesomeIcon icon={faPlane} style={{ color: '#10b981', fontSize: '20px' }} />
+                  <div style={{ flex: 1 }}>
+                    <input style={{ ...styles.input, fontSize: '16px', fontWeight: '700', color: isDark ? '#fff' : '#1e293b' }} placeholder="Từ đâu?" value={origin}
+                      onChange={e => setOrigin(e.target.value)} onFocus={() => setActiveDropdown('origin')} />
+                  </div>
+                  <Dropdown type="origin" list={filterList(origin)} icon={faPlane} />
+                </div>
+
+                {/* Nút Swap chính giữa */}
+                <div onClick={e => { e.stopPropagation(); handleSwap(); }}
+                  style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    background: isDark ? '#3a3a3a' : '#fff',
+                    border: `1.5px solid ${divider}`, color: '#10b981',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 10, cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                  }}>
+                  <FontAwesomeIcon icon={faRightLeft} style={{ fontSize: '14px' }} />
+                </div>
+
+                {/* Cột 2: Điểm đến */}
+                <div style={{ flex: 1, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px', position: 'relative' }}>
+                  <FontAwesomeIcon icon={faLocationDot} style={{ color: '#10b981', fontSize: '20px' }} />
+                  <div style={{ flex: 1 }}>
+                    <input style={{ ...styles.input, fontSize: '16px', fontWeight: '700', color: isDark ? '#fff' : '#1e293b' }} placeholder="Đi đâu?" value={location}
+                      onChange={e => setLocation(e.target.value)} onFocus={() => setActiveDropdown('loc')} />
+                  </div>
+                  <Dropdown type="loc" list={filterList(location)} icon={faLocationDot} />
+                </div>
               </div>
             </div>
-            {/* Col2 Row1: Ngày đi */}
-            <div style={mItem(2,1)}>
-              <div style={styles.label}>NGÀY ĐI</div>
-              <div style={{display:'flex',alignItems:'center',gap:'6px',cursor:'pointer', minHeight: '44px'}}
-                onClick={() => setActiveDropdown(activeDropdown==='date'?null:'date')}>
-                <span style={{...styles.input, color: departureDate?(isDark?'#e8e8e8':'#111827'):'#9ca3af', display: 'flex', alignItems: 'center'}}>
-                  {departureDate ? departureDate.split('-').reverse().join('/') : 'dd/mm/yyyy'}
-                </span>
-                <FontAwesomeIcon icon={faCalendarDays} style={{color:'#10b981',fontSize:'14px',flexShrink:0}} />
+
+            {/* HÀNG 2: NGÀY ĐI - SỐ NGÀY */}
+            <div>
+              <div style={{ display: 'flex', marginBottom: '8px' }}>
+                <div style={{ flex: 1, padding: '0 20px', color: isDark ? '#e8e8e8' : '#1e293b', fontSize: '14px', fontWeight: '700' }}>Ngày đi</div>
+                <div style={{ flex: 1, padding: '0 20px', color: isDark ? '#e8e8e8' : '#1e293b', fontSize: '14px', fontWeight: '700' }}>Số ngày</div>
               </div>
-              {activeDropdown==='date' && <CalendarDropdown {...{calYear,calMonth,setCalYear,setCalMonth,today,departureDate,setDepartureDate,setActiveDropdown,isDark,styles,isMobile}} />}
-            </div>
-            {/* Col3 Row1: Số người */}
-            <div style={mItem(3,1)}>
-              <div style={styles.label}>SỐ NGƯỜI</div>
-              <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                <FontAwesomeIcon icon={faUserGroup} style={{color:'#9ca3af',fontSize:'16px'}} />
-                <input type="number" min="1" max="10" style={styles.input} value={passengers} onChange={e => setPassengers(e.target.value)} />
+              <div style={{ display: 'flex', background: 'transparent', borderRadius: '16px', border: `1px solid ${divider}` }}>
+                
+                {/* Cột 1: Ngày đi */}
+                <div style={{ flex: 1, padding: '16px 20px', borderRight: `1px solid ${divider}`, display: 'flex', alignItems: 'center', gap: '12px', position: 'relative', cursor: 'pointer' }}
+                  onClick={() => setActiveDropdown(activeDropdown === 'date' ? null : 'date')}>
+                  <FontAwesomeIcon icon={faCalendarDays} style={{ color: '#10b981', fontSize: '20px' }} />
+                  <span style={{ ...styles.input, fontSize: '16px', fontWeight: '700', color: departureDate ? (isDark ? '#fff' : '#1e293b') : '#9ca3af' }}>
+                    {departureDate ? departureDate.split('-').reverse().join('/') : 'Chọn ngày'}
+                  </span>
+                  {activeDropdown === 'date' && <CalendarDropdown {...{calYear,calMonth,setCalYear,setCalMonth,today,departureDate,setDepartureDate,setActiveDropdown,isDark,styles,isMobile}} />}
+                </div>
+
+                {/* Cột 2: Số ngày (Không Icon) */}
+                <div style={{ flex: 1, padding: '16px 20px', display: 'flex', alignItems: 'center', position: 'relative' }}>
+                  <div style={{ flex: 1 }}>
+                    <input style={{ ...styles.input, fontSize: '16px', fontWeight: '700', color: isDark ? '#fff' : '#1e293b' }} placeholder="Ví dụ: 3 ngày" value={days} 
+                      onChange={e => setDays(e.target.value)} onFocus={() => setActiveDropdown('days')} />
+                  </div>
+                  <Dropdown type="days" list={dayOptions} icon={faCalendarDays} />
+                </div>
               </div>
             </div>
-            {/* Row 2 */}
-            {/* Col1 Row2: Địa điểm */}
-            <div style={mItem(1,2)}>
-              <div style={styles.label}>ĐỊA ĐIỂM</div>
-              <input style={styles.input} placeholder="Đi đâu?" value={location}
-                onChange={e => setLocation(e.target.value)} onFocus={() => setActiveDropdown('loc')} />
-              <Dropdown type="loc" list={filterList(location)} icon={faLocationDot} />
+
+            {/* HÀNG 3: KHÁCH - NGÂN SÁCH */}
+            <div>
+              <div style={{ display: 'flex', marginBottom: '8px' }}>
+                <div style={{ flex: 1, padding: '0 20px', color: isDark ? '#e8e8e8' : '#1e293b', fontSize: '14px', fontWeight: '700' }}>Số khách</div>
+                <div style={{ flex: 1, padding: '0 20px', color: isDark ? '#e8e8e8' : '#1e293b', fontSize: '14px', fontWeight: '700' }}>Ngân sách</div>
+              </div>
+              <div style={{ display: 'flex', background: 'transparent', borderRadius: '16px', border: `1px solid ${divider}` }}>
+                
+                {/* Cột 1: Số người */}
+                <div style={{ flex: 1, padding: '16px 20px', borderRight: `1px solid ${divider}`, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <FontAwesomeIcon icon={faUserGroup} style={{ color: '#10b981', fontSize: '20px' }} />
+                  <div style={{ flex: 1 }}>
+                    <input type="number" min="1" max="10" style={{ ...styles.input, fontSize: '16px', fontWeight: '700', color: isDark ? '#fff' : '#1e293b' }} value={passengers} onChange={e => setPassengers(e.target.value)} />
+                  </div>
+                </div>
+
+                {/* Cột 2: Ngân sách (Không Icon) */}
+                <div style={{ flex: 1, padding: '16px 20px', display: 'flex', alignItems: 'center', position: 'relative' }}>
+                  <div style={{ flex: 1 }}>
+                    <input style={{ ...styles.input, fontSize: '16px', fontWeight: '700', color: isDark ? '#fff' : '#1e293b' }} placeholder="Tùy chọn" value={budget}
+                      onChange={e => { const f=e.target.value.replace(/[^0-9]/g,''); setBudget(f||''); }}
+                      onFocus={() => { setActiveDropdown('budget'); setBudget(String(budget).replace(/[.đ\s]/g,'')); }}
+                      onBlur={() => { const r=String(budget).replace(/[.đ\s]/g,''); if(r&&parseInt(r)>0){setBudget(parseInt(r).toLocaleString('vi-VN')+'đ'); setEmptyFields(f=>({...f,budget:false}));} }} />
+                  </div>
+                  <Dropdown type="budget" list={budgetOptions} icon={faMoneyBillWave} />
+                </div>
+              </div>
             </div>
-            {/* Col2 Row2: Số ngày */}
-            <div style={mItem(2,2)}>
-              <div style={styles.label}>SỐ NGÀY</div>
-              <input style={styles.input} placeholder="3 ngày 2 đêm" autoComplete="off"
-                value={days} onChange={e => setDays(e.target.value)} onFocus={() => setActiveDropdown('days')} />
-              <Dropdown type="days" list={dayOptions} icon={faCalendarDays} />
-            </div>
-            {/* Col3 Row2: Ngân sách */}
-            <div style={mItem(3,2)}>
-              <div style={styles.label}>NGÂN SÁCH</div>
-              <input style={styles.input} placeholder="Kinh phí?" value={budget}
-                onChange={e => { const f=e.target.value.replace(/[^0-9]/g,''); setBudget(f||''); }}
-                onFocus={() => { setActiveDropdown('budget'); setBudget(String(budget).replace(/[.đ\s]/g,'')); }}
-                onBlur={() => { const r=String(budget).replace(/[.đ\s]/g,''); if(r&&parseInt(r)>0){setBudget(parseInt(r).toLocaleString('vi-VN')+'đ'); setEmptyFields(f=>({...f,budget:false}));} }} />
-              <Dropdown type="budget" list={budgetOptions} icon={faMoneyBillWave} />
-            </div>
-            {/* Search button full width */}
-            <button style={styles.searchBtn} onClick={handleSearchClick}>
-              <FontAwesomeIcon icon={faMagnifyingGlass} /> Tìm kiếm
+
+            {/* NÚT TÌM KIẾM */}
+            <button style={{ ...styles.searchBtn, width: '100%', borderRadius: '16px', marginTop: '12px', marginBottom: '0px', height: '56px', fontSize: '18px', fontWeight: '800' }} onClick={handleSearchClick}>
+              <FontAwesomeIcon icon={faMagnifyingGlass} style={{ fontSize: '18px' }} /> Tìm kiếm
             </button>
-          </>
+          </div>
         ) : (
           /* ── DESKTOP LAYOUT: original horizontal row ── */
           <>

@@ -1719,19 +1719,19 @@ const WeatherWidget = ({ location, isDark, externalData, departureDate }) => {
     <div style={{ marginBottom: 55, borderRadius: 32, overflow: 'hidden', border, boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(59,130,246,0.10)' }}>
 
       {/* Header gradient */}
-      <div style={{ background: isDark ? 'linear-gradient(135deg, #1e3a5f 0%, #162032 100%)' : 'linear-gradient(135deg, #bae6fd 0%, #dbeafe 100%)', padding: '20px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      <div className="weather-header" style={{ background: isDark ? 'linear-gradient(135deg, #1e3a5f 0%, #162032 100%)' : 'linear-gradient(135deg, #bae6fd 0%, #dbeafe 100%)', padding: '20px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
 
-        {/* Thời tiết hiện tại */}
+        {/* Thời tiết hiện tại — bên trái */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
-          <div style={{ fontSize: 52, lineHeight: 1 }}>{current.icon}</div>
+          <div className="weather-icon-main" style={{ fontSize: 52, lineHeight: 1 }}>{current.icon}</div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: isDark ? '#7dd3fc' : '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>
+            <div className="weather-label" style={{ fontSize: 11, fontWeight: 800, color: isDark ? '#7dd3fc' : '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>
               🌍 Thời tiết tại {location}
             </div>
-            <div style={{ fontSize: 38, fontWeight: 900, color: isDark ? '#ffffff' : '#1e3a8a', lineHeight: 1, marginBottom: 2 }}>
+            <div className="weather-temp" style={{ fontSize: 38, fontWeight: 900, color: isDark ? '#ffffff' : '#1e3a8a', lineHeight: 1, marginBottom: 2 }}>
               {current.temp_c !== null ? `${current.temp_c}°C` : '--'}
             </div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#94a3b8' : '#1d4ed8' }}>
+            <div className="weather-cond" style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#94a3b8' : '#1d4ed8' }}>
               {current.condition || 'Không xác định'}
             </div>
             {current.feels_like_c !== null && (
@@ -1742,8 +1742,8 @@ const WeatherWidget = ({ location, isDark, externalData, departureDate }) => {
           </div>
         </div>
 
-        {/* Chỉ số phụ — co đều theo chiều ngang */}
-        <div style={{ display: 'flex', gap: 8, flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        {/* Chỉ số phụ — hàng ngang trên desktop, 2x2 grid trên mobile (qua CSS) */}
+        <div className="weather-stats" style={{ display: 'flex', gap: 8, flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           {[
             { label: '💧 Độ ẩm',    val: current.humidity      != null ? `${current.humidity}%`        : '--' },
             { label: '💨 Gió',       val: current.wind_kph      != null ? `${current.wind_kph} km/h`    : '--' },
@@ -2505,12 +2505,49 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
 
           /* Sub-title (phương tiện) */
           .ais-section-title { font-size: 22px !important; }
+
+          /* ── Weather widget mobile ── */
+          .weather-header {
+            padding: 16px !important;
+            gap: 10px !important;
+            flex-wrap: nowrap !important;
+          }
+          .weather-icon-main { font-size: 36px !important; }
+          .weather-temp { font-size: 26px !important; }
+          .weather-label { font-size: 9px !important; }
+          .weather-cond { font-size: 11px !important; }
+          .weather-stats {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            flex: 0 0 auto !important;
+            gap: 6px !important;
+          }
+          .weather-stats > div {
+            padding: 6px 8px !important;
+            min-width: unset !important;
+            max-width: unset !important;
+            border-radius: 10px !important;
+          }
+          .weather-stats > div > div:first-child { font-size: 9px !important; }
+          .weather-stats > div > div:last-child { font-size: 12px !important; }
         }
 
         @media (max-width: 480px) {
           .ais-root { padding: 12px !important; }
           .ais-root h1 { font-size: 26px !important; }
           .ais-hotel-map { height: 200px !important; }
+
+          /* Weather on very small screens */
+          .weather-header { padding: 12px !important; gap: 6px !important; flex-wrap: nowrap !important; }
+          .weather-icon-main { font-size: 28px !important; }
+          .weather-temp { font-size: 20px !important; }
+          .weather-stats { gap: 4px !important; }
+          .weather-stats > div {
+            padding: 4px 5px !important;
+            min-width: unset !important;
+          }
+          .weather-stats > div > div:first-child { font-size: 8px !important; }
+          .weather-stats > div > div:last-child { font-size: 11px !important; }
         }
       `}</style>
 

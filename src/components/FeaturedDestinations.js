@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faStar, faStarHalfAlt, faSearch, faChevronLeft, faChevronRight,
   faTimes, faMapMarkerAlt, faSpinner, faQuoteLeft,
-  faWallet, faImages, faBookmark,
+  faWallet, faImages,
 } from '@fortawesome/free-solid-svg-icons';
 import { fetchProvinceImages } from '../services/api';
 
@@ -490,16 +490,16 @@ const MobileDestCard = ({ item, onClick }) => {
       <div style={{
         borderRadius: '18px',
         overflow: 'hidden',
-        background: '#0f172a',
-        border: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 10px 18px rgba(0,0,0,0.18)',
+        background: isDark ? '#0f172a' : '#ffffff',
+        border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0',
+        boxShadow: isDark ? '0 10px 18px rgba(0,0,0,0.18)' : '0 4px 16px rgba(0,0,0,0.08)',
       }}>
         <div style={{
           position: 'relative',
           width: '100%',
           height: '140px',
           overflow: 'hidden',
-          background: '#0f172a',
+          background: isDark ? '#0f172a' : '#f1f5f9',
         }}>
           <img
             src={item.img}
@@ -531,7 +531,7 @@ const MobileDestCard = ({ item, onClick }) => {
           <div style={{
             fontSize: '14px',
             fontWeight: 800,
-            color: '#f8fafc',
+            color: isDark ? '#f8fafc' : '#111827',
             lineHeight: '1.2',
             marginBottom: '4px',
             minHeight: '28px',
@@ -552,7 +552,7 @@ const MobileDestCard = ({ item, onClick }) => {
           </div>
           <div style={{
             fontSize: '11px',
-            color: '#cbd5e1',
+            color: isDark ? '#cbd5e1' : '#64748b',
             lineHeight: '1.35',
             display: '-webkit-box',
             WebkitLineClamp: 2,
@@ -953,8 +953,6 @@ const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
     return () => clearInterval(timer);
   }, [maxStartIndex]);
   const safeStart = Math.max(0, Math.min(startIndex, maxStartIndex < 0 ? 0 : maxStartIndex));
-  const canPrev = safeStart > 0;
-  const canNext = safeStart < maxStartIndex;
 
   // ─────────────────────────────────────────────
   // LỌC DỮ LIỆU ĐÃ CHUẨN HÓA KHÔNG DẤU (Trong Modal)
@@ -1125,9 +1123,9 @@ const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
       ) : (
         // ── DESKTOP LAYOUT (Slider thông thường) ──
         <div style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
-            <div style={{ marginTop: '138px' }}>
-              <ArrowBtn dir="left" disabled={!canPrev} onClick={() => setStartIndex(i => i - 1)} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div>
+              <ArrowBtn dir="left" disabled={false} onClick={() => setStartIndex(i => i <= 0 ? (maxStartIndex < 0 ? 0 : maxStartIndex) : i - 1)} />
             </div>
             <div style={{
               flex: 1, overflow: 'hidden',
@@ -1154,8 +1152,8 @@ const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
                 </div>
               )}
             </div>
-            <div style={{ marginTop: '138px' }}>
-              <ArrowBtn dir="right" disabled={!canNext} onClick={() => setStartIndex(i => i + 1)} />
+            <div>
+              <ArrowBtn dir="right" disabled={false} onClick={() => setStartIndex(i => i >= (maxStartIndex < 0 ? 0 : maxStartIndex) ? 0 : i + 1)} />
             </div>
           </div>
 

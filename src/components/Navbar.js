@@ -58,6 +58,31 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
     return () => window.removeEventListener('openAuthModal', handleOpenAuth);
   }, []);
 
+  // Đóng dropdown khi click ra ngoài — dùng document listener thay vì overlay
+  // để không chặn các nút khác (hamburger, nav links, v.v.)
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleOutside = (e) => {
+      if (!e.target.closest('.user-menu-wrapper')) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [menuOpen]);
+
+  // Đóng mobile menu khi click ra ngoài
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const handleOutside = (e) => {
+      if (!e.target.closest('.s-mobile-menu') && !e.target.closest('.navbar-hamburger')) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [isMobileMenuOpen]);
+
   const handleSubmit = async () => {
     setAuthError('');
     if (isLogin) {
@@ -127,7 +152,10 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
 
   const handleLogout = async () => {
     await fetch(`${BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+    // Xóa dữ liệu phiên đăng nhập nhưng GIỮ LẠI theme preference (sTripTheme)
+    const themeBackup = localStorage.getItem('sTripTheme');
     localStorage.clear();
+    if (themeBackup) localStorage.setItem('sTripTheme', themeBackup);
     onUserChange(null);
     setMenuOpen(false);
     window.location.href = '/';
@@ -196,12 +224,14 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
     mobileMenu: {
       position: 'fixed', top: '80px', left: 0, right: 0, bottom: 'auto',
       height: 'fit-content',
-      background: isDark ? '#0f172a' : 'white',
+      background: isDark ? 'rgba(15,23,42,0.97)' : 'rgba(255,255,255,0.97)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
       zIndex: 999,
       maxHeight: 'calc(100vh - 80px)',
       overflowY: 'auto',
       display: 'flex', flexDirection: 'column',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+      boxShadow: '0 8px 40px rgba(0,0,0,0.35)',
       paddingTop: '8px', paddingBottom: '0px',
     },
     mobileMenuItem: {
@@ -220,9 +250,16 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
   return (
     <>
       <style>{`
+        /* Prevent scrollbar-appear/disappear from shifting layout */
+        html { overflow-y: scroll; }
+
         @keyframes fadeInDown {
           from { opacity: 0; transform: translate(-50%, -6px); }
           to   { opacity: 1; transform: translate(-50%, 0); }
+        }
+        @keyframes dropdownFadeIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes mobileSlideDown {
           from { opacity: 0; transform: translateY(-16px); }
@@ -272,7 +309,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
           border-radius: 20px; min-width: 220px;
           box-shadow: 0 20px 50px rgba(0,0,0,0.2);
           overflow: hidden; z-index: 5000;
-          animation: fadeInDown 0.18s ease;
+          animation: dropdownFadeIn 0.18s ease;
         }
 
         /* ══════════════════════════════════════
@@ -368,8 +405,9 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
           <div className="navbar-mobile-auth" style={{ display: 'none', alignItems: 'center' }}>
             {user ? (
               <div
+                className="user-menu-wrapper"
                 onClick={() => { setMenuOpen(!menuOpen); setIsMobileMenuOpen(false); }}
-                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative' }}
+                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}
               >
                 {user.avatar
                   ? <img src={user.avatar} alt={user.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 2px rgba(16,185,129,0.7)' }} />
@@ -378,29 +416,26 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
                     </div>
                 }
                 {menuOpen && (
-                  <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 4999 }} onClick={e => { e.stopPropagation(); setMenuOpen(false); }} />
-                    <div className="user-dropdown" style={{ top: 'calc(100% + 8px)', right: 0, position: 'absolute' }}>
-                      <div style={{ padding: '16px 20px', borderBottom: isDark ? '1px solid #334155' : '1px solid #f1f5f9' }}>
-                        <div style={{ fontWeight: 800, fontSize: 15, color: isDark ? '#f8fafc' : '#111827' }}>{user.name}</div>
-                        <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{user.email}</div>
-                      </div>
-                      <button onClick={() => { if (onNavigate) onNavigate('dashboard'); setMenuOpen(false); }}
-                        style={{ width: '100%', padding: '14px 20px', border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700, color: isDark ? '#f8fafc' : '#111827', textAlign: 'left' }}
-                        onMouseEnter={e => e.currentTarget.style.background = isDark ? '#334155' : '#f1f5f9'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                      >
-                        <FontAwesomeIcon icon={faUser} /> Hồ sơ cá nhân
-                      </button>
-                      <button onClick={handleLogout}
-                        style={{ width: '100%', padding: '14px 20px', border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#ef4444', textAlign: 'left' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                      >
-                        <FontAwesomeIcon icon={faSignOutAlt} /> Đăng xuất
-                      </button>
+                  <div className="user-dropdown" style={{ top: 'calc(100% + 8px)', right: 0, position: 'absolute' }}>
+                    <div style={{ padding: '16px 20px', borderBottom: isDark ? '1px solid #334155' : '1px solid #f1f5f9' }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: isDark ? '#f8fafc' : '#111827' }}>{user.name}</div>
+                      <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{user.email}</div>
                     </div>
-                  </>
+                    <button onClick={() => { if (onNavigate) onNavigate('dashboard'); setMenuOpen(false); }}
+                      style={{ width: '100%', padding: '14px 20px', border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700, color: isDark ? '#f8fafc' : '#111827', textAlign: 'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background = isDark ? '#334155' : '#f1f5f9'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <FontAwesomeIcon icon={faUser} /> Hồ sơ cá nhân
+                    </button>
+                    <button onClick={handleLogout}
+                      style={{ width: '100%', padding: '14px 20px', border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#ef4444', textAlign: 'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <FontAwesomeIcon icon={faSignOutAlt} /> Đăng xuất
+                    </button>
+                  </div>
                 )}
               </div>
             ) : (
@@ -463,10 +498,10 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
             </div>
 
             {user ? (
-              <div style={{ position: 'relative' }}>
+              <div className="user-menu-wrapper" style={{ position: 'relative', flexShrink: 0 }}>
                 <div
                   onClick={() => { setMenuOpen(!menuOpen); setIsMobileMenuOpen(false); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 18px 10px 10px', borderRadius: 9999, cursor: 'pointer', background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.25)', transition: '0.2s' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 18px 10px 10px', borderRadius: 9999, cursor: 'pointer', background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.25)', transition: '0.2s', whiteSpace: 'nowrap' }}
                 >
                   {user.avatar
                     ? <img src={user.avatar} alt={user.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 2px rgba(16,185,129,0.6)' }} />
@@ -481,30 +516,26 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
                 </div>
 
                 {menuOpen && (
-                  <>
-                    {/* Overlay to close dropdown */}
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 4999 }} onClick={() => setMenuOpen(false)} />
-                    <div className="user-dropdown">
-                      <div style={{ padding: '16px 20px', borderBottom: isDark ? '1px solid #334155' : '1px solid #f1f5f9' }}>
-                        <div style={{ fontWeight: 800, fontSize: 16, color: isDark ? '#f8fafc' : '#111827' }}>{user.name}</div>
-                        <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{user.email}</div>
-                      </div>
-                      <button onClick={() => { if (onNavigate) onNavigate('dashboard'); setMenuOpen(false); }}
-                        style={{ width: '100%', padding: '14px 20px', border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700, color: isDark ? '#f8fafc' : '#111827', textAlign: 'left' }}
-                        onMouseEnter={e => e.currentTarget.style.background = isDark ? '#334155' : '#f1f5f9'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                      >
-                        <FontAwesomeIcon icon={faUser} /> Hồ sơ cá nhân
-                      </button>
-                      <button onClick={handleLogout}
-                        style={{ width: '100%', padding: '14px 20px', border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#ef4444', textAlign: 'left' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                      >
-                        <FontAwesomeIcon icon={faSignOutAlt} /> Đăng xuất
-                      </button>
+                  <div className="user-dropdown">
+                    <div style={{ padding: '16px 20px', borderBottom: isDark ? '1px solid #334155' : '1px solid #f1f5f9' }}>
+                      <div style={{ fontWeight: 800, fontSize: 16, color: isDark ? '#f8fafc' : '#111827' }}>{user.name}</div>
+                      <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{user.email}</div>
                     </div>
-                  </>
+                    <button onClick={() => { if (onNavigate) onNavigate('dashboard'); setMenuOpen(false); }}
+                      style={{ width: '100%', padding: '14px 20px', border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700, color: isDark ? '#f8fafc' : '#111827', textAlign: 'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background = isDark ? '#334155' : '#f1f5f9'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <FontAwesomeIcon icon={faUser} /> Hồ sơ cá nhân
+                    </button>
+                    <button onClick={handleLogout}
+                      style={{ width: '100%', padding: '14px 20px', border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#ef4444', textAlign: 'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <FontAwesomeIcon icon={faSignOutAlt} /> Đăng xuất
+                    </button>
+                  </div>
                 )}
               </div>
             ) : (
