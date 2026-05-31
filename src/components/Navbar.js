@@ -6,9 +6,11 @@ import {
   faLock,
   faCalendarDays,
   faCompass,
+  faEarthAsia,
   faHouse,
   faSignOutAlt,
   faBars,
+  faMapLocationDot,
 } from '@fortawesome/free-solid-svg-icons';
 import { faUser } from '@fortawesome/free-regular-svg-icons';
 import { BASE_URL } from '../config';
@@ -286,20 +288,23 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
           background-color: white; border-radius: 50%;
           display: flex; align-items: center; justify-content: center;
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          transition: left 0.45s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.3s ease;
-          will-change: left;
+          transform: translateX(0);
+          transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.3s ease, box-shadow 0.3s ease;
+          will-change: transform, width;
         }
         .theme-toggle-track.is-dark .theme-toggle-thumb {
-          left: 33px; box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+          transform: translateX(30px);
+          box-shadow: 0 2px 10px rgba(0,0,0,0.35);
         }
         .theme-toggle-icon {
           font-size: 16px; line-height: 1;
           display: flex; align-items: center; justify-content: center;
-          transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.2s ease;
+          transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
           user-select: none;
         }
-        .theme-toggle-track:active .theme-toggle-thumb { width: 30px; }
-        .theme-toggle-track.is-dark:active .theme-toggle-thumb { left: 29px; }
+        .theme-toggle-track:active .theme-toggle-thumb { width: 34px; }
+        .theme-toggle-track.is-dark:active .theme-toggle-thumb { transform: translateX(22px); width: 34px; }
+        .theme-toggle-track:hover .theme-toggle-icon { transform: scale(1.15) rotate(15deg); }
 
         /* ── Dropdown user menu ── */
         .user-dropdown {
@@ -472,7 +477,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
 
             <div style={{ position: 'relative' }}>
               <div style={styles.link(isScheduleActive, isItineraryLocked)} onClick={handleItineraryClick}>
-                {isItineraryLocked && <FontAwesomeIcon icon={faLock} style={{ fontSize: '18px' }} />}
+                {isItineraryLocked ? <FontAwesomeIcon icon={faLock} style={{ fontSize: '18px' }} /> : <FontAwesomeIcon icon={faMapLocationDot} style={{ fontSize: '18px', marginRight: '6px' }} />}
                 Lịch trình
                 {isScheduleActive && !isItineraryLocked && <div style={styles.underline} />}
               </div>
@@ -486,7 +491,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
             </div>
 
             <div style={styles.link(activeSection === 'featured', false)} onClick={() => onNavigate('featured-section')}>
-              <FontAwesomeIcon icon={faCompass} style={{ fontSize: '18px', marginRight: '4px' }} />
+              <FontAwesomeIcon icon={faEarthAsia} style={{ fontSize: '18px', marginRight: '4px' }} />
               Khám phá
               {activeSection === 'featured' && <div style={styles.underline} />}
             </div>
@@ -561,14 +566,14 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
             {/* Lịch trình */}
             <div style={{ ...styles.mobileMenuItem, ...(isScheduleActive ? styles.mobileMenuItemActive : {}), ...(isItineraryLocked ? { color: 'rgba(128,128,128,0.6)' } : {}) }}
               onClick={() => { handleItineraryClick(); if (!isItineraryLocked) setIsMobileMenuOpen(false); }}>
-              <FontAwesomeIcon icon={isItineraryLocked ? faLock : faCalendarDays} />
+              <FontAwesomeIcon icon={isItineraryLocked ? faLock : faMapLocationDot} />
               Lịch trình {isItineraryLocked && <span style={{ fontSize: '13px', fontWeight: '600' }}>(Tìm kiếm trước)</span>}
             </div>
 
             {/* Khám phá */}
             <div style={{ ...styles.mobileMenuItem, ...(activeSection === 'featured' ? styles.mobileMenuItemActive : {}) }}
               onClick={() => { onNavigate('featured-section'); setIsMobileMenuOpen(false); }}>
-              <FontAwesomeIcon icon={faCompass} /> Khám phá
+              <FontAwesomeIcon icon={faEarthAsia} /> Khám phá
             </div>
 
             {/* User section */}

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faRobot, faPaperPlane, faXmark } from '@fortawesome/free-solid-svg-icons';
+import { faCompass, faPaperPlane, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { sendChatMessage } from '../services/api';
 
 const TypingIndicator = ({ isDark }) => (
@@ -142,7 +142,7 @@ const ChatAI = ({ tripData, isDark }) => {
         onClick={() => setIsOpen(true)}
         aria-label="Mở chat AI"
       >
-        <FontAwesomeIcon icon={faRobot} />
+        <FontAwesomeIcon icon={faCompass} />
       </button>
 
       {/* CHAT WINDOW */}
@@ -157,10 +157,10 @@ const ChatAI = ({ tripData, isDark }) => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#10b981', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '22px', flexShrink: 0 }}>
-              <FontAwesomeIcon icon={faRobot} />
+              <FontAwesomeIcon icon={faCompass} />
             </div>
             <div>
-              <div style={{ fontWeight: '900', fontSize: '20px' }}>S-Trip AI</div>
+              <div style={{ fontWeight: '900', fontSize: '20px' }}>Trợ lý S-Trip</div>
               <div style={{ fontSize: '13px', color: '#10b981' }}>● Đang trực tuyến</div>
             </div>
           </div>

@@ -28,10 +28,22 @@ const GOOGLE_IMG_DOMAINS = ['googleusercontent.com', 'ggpht.com', 'googleapis.co
 const proxyImage = (url) => {
   if (!url) return null;
   if (url.includes('placehold.co') || url.includes('placeholder')) return url;
-  if (url.includes('api/proxy-image')) return url;
 
-  let optimizedUrl = url;
-  if (GOOGLE_IMG_DOMAINS.some(d => url.includes(d))) {
+  let rawUrl = url;
+  let isProxied = false;
+  if (url.includes('api/proxy-image')) {
+    const match = url.match(/[?&]url=([^&]+)/);
+    if (match) {
+      rawUrl = decodeURIComponent(match[1]);
+      isProxied = true;
+    } else {
+      return url;
+    }
+  }
+
+  let optimizedUrl = rawUrl;
+  
+  if (GOOGLE_IMG_DOMAINS.some(d => rawUrl.includes(d))) {
     if (optimizedUrl.includes('=')) {
       optimizedUrl = optimizedUrl.replace(/=.*$/, '=w600-h450-k-no');
     } else {
@@ -39,7 +51,14 @@ const proxyImage = (url) => {
     }
     return `${BASE_URL}/api/proxy-image?url=${encodeURIComponent(optimizedUrl)}`;
   }
-  return url;
+
+  // Nâng cấp ảnh Tripadvisor từ photo-s (small) hoặc photo-m lên photo-w (wide/high-res)
+  if (rawUrl.includes('tripadvisor.com') && rawUrl.includes('/media/photo-')) {
+    optimizedUrl = optimizedUrl.replace(/\/media\/photo-[a-z]\//, '/media/photo-w/');
+    return `${BASE_URL}/api/proxy-image?url=${encodeURIComponent(optimizedUrl)}`;
+  }
+
+  return isProxied ? url : optimizedUrl;
 };
 
 // Hook thông minh khử mờ ảnh: Tự gọi API lấy ảnh nét và UPDATE lưu đè vĩnh viễn vào DB
@@ -475,7 +494,7 @@ function Empty({ icon, text, sub }) {
 
 
 // 🗑️ CONFIRM MODAL — thay thế window.confirm
-function ConfirmModal({ open, title, message, icon = '🗑️', confirmLabel = 'Xoá', confirmColor = '#ef4444', onConfirm, onCancel }) {
+function ConfirmModal({ open, title, message, icon = '🗑️', confirmLabel = 'Xoá', confirmColor = '#ef4444', onConfirm, onCancel, T }) {
   useEffect(() => {
     if (!open) return;
     const handler = (e) => { if (e.key === 'Escape') onCancel(); };
@@ -490,17 +509,17 @@ function ConfirmModal({ open, title, message, icon = '🗑️', confirmLabel = '
         @keyframes confirmIn { from{opacity:0;transform:scale(0.88) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
         @keyframes confirmBg { from{opacity:0} to{opacity:1} }
       `}</style>
-      <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'confirmBg 0.18s ease' }}>
-        <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, background: 'linear-gradient(145deg, #0f1e35, #0d1a2e)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 24, padding: '32px 28px', boxShadow: '0 32px 80px rgba(0,0,0,0.6)', animation: 'confirmIn 0.22s cubic-bezier(0.34,1.4,0.64,1)' }}>
+      <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: T?.bg ? (T.bg.includes('f0fdf8') ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)') : 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'confirmBg 0.18s ease' }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, background: T?.card || 'linear-gradient(145deg, #0f1e35, #0d1a2e)', border: `1px solid ${T?.cardBorder || 'rgba(255,255,255,0.1)'}`, borderRadius: 24, padding: '32px 28px', boxShadow: '0 32px 80px rgba(0,0,0,0.6)', animation: 'confirmIn 0.22s cubic-bezier(0.34,1.4,0.64,1)' }}>
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <div style={{ width: 64, height: 64, borderRadius: 20, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 16px' }}>{icon}</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#f8fafc', marginBottom: 8 }}>{title}</div>
-            <div style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.5 }}>{message}</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: T?.text || '#f8fafc', marginBottom: 8 }}>{title}</div>
+            <div style={{ fontSize: 14, color: T?.muted || '#94a3b8', lineHeight: 1.5 }}>{message}</div>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
-            <button onClick={onCancel} style={{ flex: 1, padding: '12px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.06)', color: '#94a3b8', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s' }}
-              onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.1)'; e.currentTarget.style.color='#f8fafc'; }}
-              onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.06)'; e.currentTarget.style.color='#94a3b8'; }}>
+            <button onClick={onCancel} style={{ flex: 1, padding: '12px', borderRadius: 14, border: `1px solid ${T?.btnBorder || 'rgba(255,255,255,0.1)'}`, background: T?.btnBg || 'rgba(255,255,255,0.06)', color: T?.muted || '#94a3b8', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background=T?.cardBorder || 'rgba(255,255,255,0.1)'; e.currentTarget.style.color=T?.text || '#f8fafc'; }}
+              onMouseLeave={e => { e.currentTarget.style.background=T?.btnBg || 'rgba(255,255,255,0.06)'; e.currentTarget.style.color=T?.muted || '#94a3b8'; }}>
               Huỷ
             </button>
             <button onClick={onConfirm} style={{ flex: 1, padding: '12px', borderRadius: 14, border: 'none', background: `linear-gradient(135deg, ${confirmColor}, ${confirmColor}cc)`, color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s', boxShadow: `0 4px 16px ${confirmColor}44` }}
@@ -820,7 +839,7 @@ const TYPE_ICON = {
 // ════════════════════════════════════════════════════════════
 // 🗓️ MODAL XEM CHI TIẾT LỊCH TRÌNH
 // ════════════════════════════════════════════════════════════
-function ScheduleModal({ schedule, onClose, onLoadToMain }) {
+function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
   const [activeDay, setActiveDay] = useState(0);
 
   useEffect(() => {
@@ -847,10 +866,16 @@ function ScheduleModal({ schedule, onClose, onLoadToMain }) {
   const SLOT_TIME = { morning: '🌅 Sáng', afternoon: '☀️ Chiều', evening: '🌙 Tối' };
   const days = editedPlans.map((plan) => {
     const activities = [];
-    ['morning', 'afternoon', 'evening'].forEach(slot => {
-      const slotData = plan[slot] || {};
+    // Hỗ trợ cả key tiếng Anh (morning) lẫn tiếng Việt (sáng)
+    const slots = [
+      { key: 'morning', alt: 'sáng' },
+      { key: 'afternoon', alt: 'chiều' },
+      { key: 'evening', alt: 'tối' }
+    ];
+    slots.forEach(slotInfo => {
+      const slotData = plan[slotInfo.key] || plan[slotInfo.alt] || {};
       if (slotData.tour) activities.push({
-        slot,
+        slot: slotInfo.key,
         type: 'explore',
         name: slotData.tour.name,
         note: slotData.tour.desc?.replace(/^"|"$/g, '') || '',
@@ -858,7 +883,7 @@ function ScheduleModal({ schedule, onClose, onLoadToMain }) {
         rating: slotData.tour.rating,
       });
       if (slotData.food) activities.push({
-        slot,
+        slot: slotInfo.key,
         type: 'food',
         name: slotData.food.name,
         note: slotData.food.desc?.replace(/^"|"$/g, '') || '',
@@ -879,21 +904,21 @@ function ScheduleModal({ schedule, onClose, onLoadToMain }) {
         @keyframes overlayIn  { from{opacity:0} to{opacity:1} }
         @keyframes slideRight { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
         .day-tab:hover { background: rgba(16,185,129,0.1) !important; color: #10b981 !important; }
-        .act-row:hover { background: rgba(255,255,255,0.05) !important; }
+        .act-row:hover { background: ${T?.rowBorder || 'rgba(255,255,255,0.05)'} !important; }
         .sm-btn:hover  { opacity: 0.8; transform: translateY(-1px); }
         .sm-btn        { transition: all 0.2s; }
       `}</style>
 
       {/* Overlay */}
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 1000, animation: 'overlayIn 0.2s ease' }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: T?.bg?.includes('f0fdf8') ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 1000, animation: 'overlayIn 0.2s ease' }} />
 
       {/* Modal container */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', pointerEvents: 'none' }}>
-        <div onClick={e => e.stopPropagation()} style={{ pointerEvents: 'auto', width: '100%', maxWidth: 760, maxHeight: '90vh', background: 'linear-gradient(145deg, #0f1e35 0%, #0d1a2e 100%)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 28, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 40px 100px rgba(0,0,0,0.6)', animation: 'modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}>
+        <div onClick={e => e.stopPropagation()} style={{ pointerEvents: 'auto', width: '100%', maxWidth: 760, maxHeight: '90vh', background: T?.card || 'linear-gradient(145deg, #0f1e35 0%, #0d1a2e 100%)', border: `1px solid ${T?.cardBorder || 'rgba(16,185,129,0.2)'}`, borderRadius: 28, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 40px 100px rgba(0,0,0,0.6)', animation: 'modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}>
 
           {/* Header */}
-          <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.08) 100%)', borderBottom: '1px solid rgba(16,185,129,0.15)', padding: '24px 28px 20px', position: 'relative', flexShrink: 0 }}>
-            <button onClick={onClose} className="sm-btn" style={{ position: 'absolute', top: 20, right: 20, width: 38, height: 38, borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.06)', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: T?.headerBg || 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.08) 100%)', borderBottom: `1px solid ${T?.cardBorder || 'rgba(16,185,129,0.15)'}`, padding: '24px 28px 20px', position: 'relative', flexShrink: 0 }}>
+            <button onClick={onClose} className="sm-btn" style={{ position: 'absolute', top: 20, right: 20, width: 38, height: 38, borderRadius: 12, border: `1px solid ${T?.btnBorder || 'rgba(255,255,255,0.1)'}`, background: T?.btnBg || 'rgba(255,255,255,0.06)', color: T?.muted || '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
             </button>
 
@@ -905,11 +930,11 @@ function ScheduleModal({ schedule, onClose, onLoadToMain }) {
                 }
               </div>
               <div style={{ flex: 1, paddingRight: 40 }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: '#f8fafc', marginBottom: 6, lineHeight: 1.2 }}>{schedule.title}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: T?.text || '#f8fafc', marginBottom: 6, lineHeight: 1.2 }}>{schedule.title}</div>
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10 }}>
                   <span style={{ fontSize: 13, color: C.primary, display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.map} {schedule.location}</span>
-                  <span style={{ fontSize: 13, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.plane} {schedule.days} ngày</span>
-                  <span style={{ fontSize: 13, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.clock} {formatDate(schedule.updated_at)}</span>
+                  <span style={{ fontSize: 13, color: T?.muted || '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.plane} {schedule.days} ngày</span>
+                  <span style={{ fontSize: 13, color: T?.muted || '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.clock} {formatDate(schedule.updated_at)}</span>
                 </div>
               </div>
             </div>
@@ -923,9 +948,9 @@ function ScheduleModal({ schedule, onClose, onLoadToMain }) {
 
           {/* Day Tabs */}
           {days.length > 1 && (
-            <div style={{ display: 'flex', gap: 0, overflowX: 'auto', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', gap: 0, overflowX: 'auto', flexShrink: 0, borderBottom: `1px solid ${T?.rowBorder || 'rgba(255,255,255,0.06)'}`, background: T?.inputBg || 'rgba(0,0,0,0.2)' }}>
               {days.map((d, i) => (
-                <button key={i} className="day-tab" onClick={() => setActiveDay(i)} style={{ flexShrink: 0, padding: '14px 20px', border: 'none', borderBottom: `3px solid ${i === activeDay ? C.primary : 'transparent'}`, background: i === activeDay ? 'rgba(16,185,129,0.08)' : 'transparent', color: i === activeDay ? C.primary : '#94a3b8', cursor: 'pointer', fontWeight: 700, fontSize: 13, transition: 'all 0.2s', whiteSpace: 'nowrap' }}>
+                <button key={i} className="day-tab" onClick={() => setActiveDay(i)} style={{ flexShrink: 0, padding: '14px 20px', border: 'none', borderBottom: `3px solid ${i === activeDay ? C.primary : 'transparent'}`, background: i === activeDay ? 'rgba(16,185,129,0.08)' : 'transparent', color: i === activeDay ? C.primary : (T?.muted || '#94a3b8'), cursor: 'pointer', fontWeight: 700, fontSize: 13, transition: 'all 0.2s', whiteSpace: 'nowrap' }}>
                   ☀️&nbsp;&nbsp;Ngày {d.day}{d.title ? ` — ${d.title}` : ''}
                 </button>
               ))}
@@ -935,7 +960,7 @@ function ScheduleModal({ schedule, onClose, onLoadToMain }) {
           {/* Activities */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
             {days.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: T?.muted || '#94a3b8' }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
                 <div style={{ fontWeight: 700, fontSize: 15 }}>Lịch trình chưa có chi tiết</div>
               </div>
@@ -945,8 +970,8 @@ function ScheduleModal({ schedule, onClose, onLoadToMain }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
                   <div style={{ width: 36, height: 36, borderRadius: 11, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: C.primary, fontSize: 14 }}>{currentDay.day}</div>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: '#f8fafc' }}>{currentDay.title || `Ngày ${currentDay.day}`}</div>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>{activities.length} hoạt động</div>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: T?.text || '#f8fafc' }}>{currentDay.title || `Ngày ${currentDay.day}`}</div>
+                    <div style={{ fontSize: 12, color: T?.muted || '#94a3b8' }}>{activities.length} hoạt động</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -972,17 +997,17 @@ function ScheduleModal({ schedule, onClose, onLoadToMain }) {
                               <div key={ai} className="act-row" style={{ display: 'flex', gap: 12, padding: '10px 12px', borderRadius: 14, transition: '0.2s', border: `1px solid ${border}`, background: bg, alignItems: 'center' }}>
                                 <div style={{ flexShrink: 0, width: 52, height: 52, borderRadius: 10, overflow: 'hidden', background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   {act.thumbnail
-                                    ? <img src={act.thumbnail} alt={act.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display='none'; e.target.parentNode.innerHTML = `<span style='font-size:22px'>${cfg.emoji}</span>`; }} />
+                                    ? <img src={proxyImage(act.thumbnail)} alt={act.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display='none'; e.target.parentNode.innerHTML = `<span style='font-size:22px'>${cfg.emoji}</span>`; }} />
                                     : <span style={{ fontSize: 22 }}>{cfg.emoji}</span>
                                   }
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                                    <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 5, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', flexShrink: 0 }}>{cfg.emoji} {act.type === 'food' ? 'Ăn uống' : 'Tham quan'}</span>
+                                    <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 5, background: T?.btnBg || 'rgba(255,255,255,0.06)', color: T?.muted || '#94a3b8', flexShrink: 0 }}>{cfg.emoji} {act.type === 'food' ? 'Ăn uống' : 'Tham quan'}</span>
                                     {act.rating && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700, flexShrink: 0 }}>⭐ {act.rating}</span>}
                                   </div>
-                                  <div style={{ fontSize: 14, fontWeight: 800, color: '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>{act.name}</div>
-                                  {act.note && <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{act.note}</div>}
+                                  <div style={{ fontSize: 14, fontWeight: 800, color: T?.text || '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>{act.name}</div>
+                                  {act.note && <div style={{ fontSize: 12, color: T?.muted || '#94a3b8', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{act.note}</div>}
                                 </div>
                               </div>
                             );
@@ -997,7 +1022,7 @@ function ScheduleModal({ schedule, onClose, onLoadToMain }) {
           </div>
 
           {/* Footer */}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '14px 24px', background: 'rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ borderTop: `1px solid ${T?.rowBorder || 'rgba(255,255,255,0.07)'}`, padding: '14px 24px', background: T?.inputBg || 'rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
             <button className="sm-btn" onClick={(e) => onLoadToMain(schedule, e)} style={{ padding: '12px 32px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 16px rgba(16,185,129,0.3)' }}>
               Xem lịch trình đầy đủ {Icon.arrow}
             </button>
@@ -1083,7 +1108,7 @@ function SavedSchedules({ T, onLoadSchedule }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {schedules.map((s, i) => (
           <div key={s.id} className="sp-card" onClick={() => handleOpen(s)} style={{ background: (T||{}).card || 'rgba(255,255,255,0.04)', border: `1px solid ${(T||{}).cardBorder || 'rgba(255,255,255,0.08)'}`, borderRadius: 24, padding: '22px 28px', display: 'flex', gap: 20, alignItems: 'center', cursor: 'pointer', animation: `fadeUp 0.3s ease ${i * 0.06}s both` }}>
-            <div style={{ width: 80, height: 80, borderRadius: 18, flexShrink: 0, overflow: 'hidden', border: '2px solid rgba(16,185,129,0.3)', background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>
+            <div style={{ width: 80, height: 80, borderRadius: 18, flexShrink: 0, overflow: 'hidden', border: `2px solid ${T?.primary || '#10b981'}`, background: T?.inputBg || 'rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>
               {getProvinceAvatar(s.location)
                 ? <img src={getProvinceAvatar(s.location)} alt={s.location} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display='none'; e.target.parentNode.innerHTML = '🗺️'; }} />
                 : '🗺️'
@@ -1109,7 +1134,7 @@ function SavedSchedules({ T, onLoadSchedule }) {
 
       {/* Modal xem chi tiết */}
       {selectedSchedule && (
-        <ScheduleModal schedule={selectedSchedule} onClose={handleClose} onLoadToMain={handleLoadToMainDashboard} />
+        <ScheduleModal schedule={selectedSchedule} onClose={handleClose} onLoadToMain={handleLoadToMainDashboard} T={T} />
       )}
 
       {/* Modal xác nhận xoá */}
@@ -1121,6 +1146,7 @@ function SavedSchedules({ T, onLoadSchedule }) {
         confirmLabel="Xoá lịch trình"
         onConfirm={doDelete}
         onCancel={() => setConfirmDel(null)}
+        T={T}
       />
     </>
   );

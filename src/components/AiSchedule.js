@@ -173,8 +173,21 @@ const proxyImage = (url) => {
   if (!url) return null;
   if (url.includes('placehold.co') || url.includes('placeholder')) return url;
   
-  let optimizedUrl = url;
-  if (GOOGLE_IMG_DOMAINS.some(d => url.includes(d))) {
+  let rawUrl = url;
+  let isProxied = false;
+  if (url.includes('/api/proxy-image')) {
+    const match = url.match(/[?&]url=([^&]+)/);
+    if (match) {
+      rawUrl = decodeURIComponent(match[1]);
+      isProxied = true;
+    } else {
+      return url;
+    }
+  }
+
+  let optimizedUrl = rawUrl;
+  
+  if (GOOGLE_IMG_DOMAINS.some(d => rawUrl.includes(d))) {
     // 🟢 Ép tham số size của Google Maps thành kích thước lớn w600-h450 chuẩn nét
     if (optimizedUrl.includes('=')) {
       optimizedUrl = optimizedUrl.replace(/=.*$/, '=w600-h450-k-no');
@@ -183,7 +196,14 @@ const proxyImage = (url) => {
     }
     return `${BASE_URL}/api/proxy-image?url=${encodeURIComponent(optimizedUrl)}`;
   }
-  return url;
+
+  // 🟢 Nâng cấp ảnh Tripadvisor từ photo-s (small) hoặc photo-m lên photo-w (wide/high-res)
+  if (rawUrl.includes('tripadvisor.com') && rawUrl.includes('/media/photo-')) {
+    optimizedUrl = optimizedUrl.replace(/\/media\/photo-[a-z]\//, '/media/photo-w/');
+    return `${BASE_URL}/api/proxy-image?url=${encodeURIComponent(optimizedUrl)}`;
+  }
+
+  return isProxied ? url : optimizedUrl;
 };
 
 // 📦 Mock data dự phòng
@@ -2613,7 +2633,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       <div ref={contentRef} id="itinerary-content" data-screenshot="itinerary">
       <div style={{ textAlign: 'center', marginBottom: '60px' }}>
         <h1 style={{ fontSize: '80px', fontWeight: '900' }}>
-          <FontAwesomeIcon icon={faWandMagicSparkles} style={{ color: '#10b981', marginRight: '18px' }} />
+          <FontAwesomeIcon icon={faMapLocationDot} style={{ color: '#10b981', marginRight: '18px' }} />
           Hành trình tại <span style={{ color: '#10b981' }}>{initialData.location}</span>
         </h1>
         <p style={{ fontSize: '28px', color: '#64748b' }}>Hành trình {numDays} ngày {numDays - 1} đêm của bạn sẵn sàng ✨</p>
@@ -2743,7 +2763,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
 
       {/* 2. KHÁCH SẠN */}
 <div style={{ marginBottom: '60px' }}>
-  <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>🛌 Chỗ ở {initialData.realHotels?.length > 0 ? '(Dữ liệu thực)' : '(Gợi ý)'}</div>
+  <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>🛌 Chỗ ở </div>
   <div className="ais-hotel-wrap" style={{ backgroundColor: isDark ? '#1e293b' : '#f8fafc', padding: '30px', borderRadius: '40px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
     <PlaceCard type="Khách sạn" data={currentHotel} locationName={initialData.location} setMapQuery={setMapQuery} guestCount={passengers} onEdit={() => setModal({ show: true, type: 'Khách sạn' })} isDark={isDark} />
     
@@ -3031,44 +3051,70 @@ const ScreenshotButtonNew = ({ contentRef, location, isDark }) => {
     if (!el) return;
     setStatus('loading');
 
-    // Helper: fetch 1 ảnh → data URL (thử proxy → cors → trả null nếu lỗi)
     const toDataUrl = async (src) => {
       if (!src || src.startsWith('data:') || src.startsWith('blob:')) return src;
-      // Thử 1: proxy backend
-      try {
-        const r = await fetch(`/api/proxy-image?url=${encodeURIComponent(src)}`, { credentials: 'include' });
-        if (r.ok) {
-          const blob = await r.blob();
-          if (blob.size > 100) {
-            return await new Promise((res, rej) => {
-              const fr = new FileReader();
-              fr.onload = () => res(fr.result);
-              fr.onerror = rej;
-              fr.readAsDataURL(blob);
-            });
+      if (src.includes('placehold.co') || src.includes('placeholder')) return null;
+
+      const blobToDataUrl = (blob) => new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.onerror = rej;
+        fr.readAsDataURL(blob);
+      });
+
+      const fetchWithTimeout = (url, opts, ms = 7000) => {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), ms);
+        return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(t));
+      };
+
+      let rawUrl = src;
+      if (src.includes('/api/proxy-image')) {
+        const match = src.match(/[?&]url=([^&]+)/);
+        if (match) rawUrl = decodeURIComponent(match[1]);
+      }
+
+      // --- TỐI ƯU NHẬN DIỆN THÔNG MINH ---
+      // Nếu là ảnh từ các domain hay lỗi CORS, đi thẳng đến wsrv.nl siêu tốc
+      const isProblematic = /serpapi|google|gstatic/i.test(rawUrl);
+      
+      if (!isProblematic) {
+        // Thử 1: fetch trực tiếp cho ảnh bình thường
+        try {
+          const r = await fetchWithTimeout(rawUrl, { mode: 'cors', credentials: 'omit' }, 3000);
+          if (r.ok) {
+            const blob = await r.blob();
+            if (blob.size > 100) return await blobToDataUrl(blob);
           }
+        } catch (_) {}
+      }
+
+      // Thử 2: Dùng public CORS proxy
+      if (!rawUrl.includes('localhost') && !rawUrl.startsWith('/')) {
+        const proxyList = isProblematic
+          ? ['https://wsrv.nl/?url=' + encodeURIComponent(rawUrl)] // Bỏ qua corsproxy.io để tránh 403, đi thẳng wsrv.nl
+          : [
+              'https://corsproxy.io/?' + encodeURIComponent(rawUrl),
+              'https://api.allorigins.win/raw?url=' + encodeURIComponent(rawUrl),
+              'https://wsrv.nl/?url=' + encodeURIComponent(rawUrl)
+            ];
+
+        for (const proxyUrl of proxyList) {
+          try {
+            const r = await fetchWithTimeout(proxyUrl, { credentials: 'omit' }, 5000);
+            if (r.ok) {
+              const blob = await r.blob();
+              if (blob.size > 100) return await blobToDataUrl(blob);
+            }
+          } catch (_) {}
         }
-      } catch (_) {}
-      // Thử 2: fetch trực tiếp (same-origin hoặc CORS OK)
-      try {
-        const r = await fetch(src, { mode: 'cors', credentials: 'omit' });
-        if (r.ok) {
-          const blob = await r.blob();
-          if (blob.size > 100) {
-            return await new Promise((res, rej) => {
-              const fr = new FileReader();
-              fr.onload = () => res(fr.result);
-              fr.onerror = rej;
-              fr.readAsDataURL(blob);
-            });
-          }
-        }
-      } catch (_) {}
-      return null; // để html2canvas bỏ qua, không crash
+      }
+
+      return null;
     };
 
     try {
-      const html2canvas = (await import('html2canvas')).default;
+      const html2canvas = (await import('html2canvas-pro')).default;
 
       // ── BƯỚC 1: Đánh index vào từng <img> trong DOM thật ──────────────────
       // Dùng data-ss-idx thay vì dựa vào thứ tự querySelectorAll để tránh lệch index
@@ -3082,13 +3128,13 @@ const ScreenshotButtonNew = ({ contentRef, location, isDark }) => {
       // ── BƯỚC 2: Chụp canvas ────────────────────────────────────────────────
       setProg('Đang chụp...');
       const canvas = await html2canvas(el, {
-        scale: 2,
+        scale: window.devicePixelRatio > 1 ? 1.5 : 1, // Tối ưu scale để tăng tốc
         useCORS: true,
         allowTaint: true,
         backgroundColor: isDark ? '#0f172a' : '#ffffff',
         logging: false,
-        imageTimeout: 30000,
-        ignoreElements: (node) => node.tagName === 'IFRAME',
+        imageTimeout: 10000, // Giảm timeout để không bị treo
+        ignoreElements: (node) => node.tagName === 'IFRAME' || (node.classList && (node.classList.contains('sd-fab') || node.classList.contains('sd-overlay') || node.classList.contains('ap-card'))),
         onclone: (_doc, cloneEl) => {
           // Swap ảnh bằng data-ss-idx → không bị lệch dù DOM clone có thêm phần tử
           cloneEl.querySelectorAll('img[data-ss-idx]').forEach((img) => {

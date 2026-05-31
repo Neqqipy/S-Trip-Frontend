@@ -18,6 +18,14 @@ import { enrichPlacesWithCoords } from './services/geocodeUtils';
 import { BASE_URL } from './config';
 import './App.css';
 
+const normalizeForSearch = (text) => {
+  if (!text) return '';
+  return text.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]/g, '');
+};
+
 // ----------------------------------------------------------------
 // ✉️ Trang xử lý xác nhận email (khi user bấm link trong mail)
 // Dùng useSearchParams để đọc ?token= đúng cách với HashRouter
@@ -40,7 +48,7 @@ const VerifyEmailPage = ({ isDark, onUserChange }) => {
       return;
     }
 
-    fetch('/api/auth/verify-email', {
+    fetch(`${BASE_URL}/api/auth/verify-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -73,7 +81,7 @@ const VerifyEmailPage = ({ isDark, onUserChange }) => {
     }
     setResending(true); setResendErr('');
     try {
-      const r    = await fetch('/api/auth/resend-verification', {
+      const r    = await fetch(`${BASE_URL}/api/auth/resend-verification`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: resendEmail }),
       });
@@ -184,7 +192,7 @@ const HomePage = ({
                 throw new Error("Not authenticated");
               }
               try {
-                const res = await fetch('/api/schedules/save', {
+                const res = await fetch(`${BASE_URL}/api/schedules/save`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   credentials: 'include',
