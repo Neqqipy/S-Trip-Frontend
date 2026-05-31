@@ -229,7 +229,19 @@ const normalizeActivity = (item, defaultType = null) => {
   let p = item.price;
   if (!p || p === "Giá tùy chọn" || p === "Giá tuỳ chọn") {
     p = "✨ Đang ước tính...";
+  } else if (typeof p === 'number') {
+    p = p === 0 ? 'Miễn phí' : p.toLocaleString('vi-VN') + 'đ/người';
+  } else if (typeof p === 'string') {
+    let lower = p.toLowerCase().trim();
+    if (lower === '0' || lower === '0đ' || lower === 'miễn phí') {
+      p = 'Miễn phí';
+    } else if (p !== '✨ Đang ước tính...') {
+      if (!lower.includes('/người')) {
+        p = lower.includes('đ') || lower.includes('vnd') ? p + '/người' : p + 'đ/người';
+      }
+    }
   }
+
   return {
     name: item.name,
     rating: item.rating || "4.5",
@@ -2313,13 +2325,24 @@ const BudgetDashboard = ({ initialData, currentHotel, dailyPlans, numDays, isDar
     const hCost = parseMoney(currentHotel?.price) * numDays;
 
     // 2. Phương tiện (Vé máy bay hoặc Tàu/Xe)
-    const flights = initialData.realFlights || initialData.flights || [];
+    const validFlights = (initialData.realFlights || initialData.flights || []).filter(f => f.airline && f.price);
     let fCost = 0;
     let tLabel = 'Vé máy bay';
-    if (flights.length > 0 && flights[0]) {
-      fCost = parseMoney(flights[0].price) * passengers;
+    
+    if (validFlights.length > 0) {
+      fCost = parseMoney(validFlights[0].price) * passengers;
     } else if (initialData.transport && initialData.transport.options && initialData.transport.options.length > 0) {
-      fCost = parseMoney(initialData.transport.options[0].price) * passengers;
+      let opts = initialData.transport.options;
+      let activeOpt = opts.find(o => o.recommended);
+      
+      // Fallback nếu máy bay được gợi ý nhưng không có vé
+      if (activeOpt && /bay|flight/i.test(activeOpt.label || activeOpt.type || '')) {
+         const fallbackOpt = opts.find(o => !(/bay|flight/i.test(o.label || o.type || '')));
+         if (fallbackOpt) activeOpt = fallbackOpt;
+      }
+      if (!activeOpt) activeOpt = opts[0];
+
+      fCost = parseMoney(activeOpt.price || activeOpt.price_range) * passengers;
       tLabel = 'Vé xe/tàu';
     }
 
@@ -2708,7 +2731,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
                     const item = newD[session][type];
                     if (item && pricesMap[item.name]) {
                        let rawVal = String(pricesMap[item.name]).replace(/đ/gi, '').trim();
-                       let finalPrice = (rawVal === '0') ? 'Miễn phí' : rawVal + '/người';
+                       let finalPrice = (rawVal === '0' || rawVal.toLowerCase() === 'miễn phí') ? 'Miễn phí' : rawVal + 'đ/người';
                        newD[session][type] = { ...item, price: finalPrice };
                     }
                   });
@@ -2738,11 +2761,11 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
             ['food', 'tour'].forEach(type => {
               const item = newD[session][type];
               if (item && item.price === "✨ Đang ước tính...") {
-                let fallbackPrice = '100.000/người';
+                let fallbackPrice = '100.000đ/người';
                 if (type === 'tour') {
-                  fallbackPrice = 'Miễn phí - 50.000/người';
+                  fallbackPrice = 'Miễn phí - 50.000đ/người';
                 } else if (type === 'food') {
-                  fallbackPrice = '30.000 - 100.000/người';
+                  fallbackPrice = '30.000đ - 100.000đ/người';
                 }
                 newD[session][type] = { ...item, price: fallbackPrice };
                 changed = true;

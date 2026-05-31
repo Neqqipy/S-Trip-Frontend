@@ -73,7 +73,7 @@ const SkeletonLoader = ({ isDark = false }) => {
   // Slate 700 (#334155) → border / shimmer highlight
   // Slate 400 (#94a3b8) → chữ phụ
   const colors = {
-    pageBg:    isDark ? '#0f172a' : 'transparent',
+    pageBg:    'transparent',
     areaBg:    isDark ? '#0f172a' : '#e2e8f0',
     cardBg:    isDark ? '#1e293b' : '#f8fafc',
     labelColor: isDark ? '#64748b' : '#94a3b8',

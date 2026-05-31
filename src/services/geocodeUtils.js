@@ -228,6 +228,7 @@ export async function enrichPlacesWithCoords(location, tours = [], foods = []) {
     const eLat = place.lat || place.latitude;
     const eLng = place.lng || place.longitude;
     let result;
+    let didCallApi = false;
 
     if (eLat && eLng && (allHaveCoords || inBounds(+eLat, +eLng, b))) {
       // Tọa độ đã có sẵn (từ SerpAPI) → dùng luôn, không geocode
@@ -240,6 +241,7 @@ export async function enrichPlacesWithCoords(location, tours = [], foods = []) {
         result = { ...place, lat: cached.lat, lng: cached.lng };
       } else {
         const coords = await geocodeOne(place.name, location, b);
+        didCallApi = true;
         if (coords) {
           result = { ...place, ...coords };
         } else {
@@ -249,7 +251,7 @@ export async function enrichPlacesWithCoords(location, tours = [], foods = []) {
       }
     }
     (place._g === 'tours' ? enrichedTours : enrichedFoods).push(result);
-    await sleep(400);
+    if (didCallApi) await sleep(400); // Chỉ đợi khi thực sự có gọi API để tránh rate limit
   }
   return { tours: enrichedTours, foods: enrichedFoods };
 }

@@ -4,6 +4,7 @@
 // ================================================================
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { BASE_URL } from '../config';
 
 // ── Icons SVG inline ──────────────────
@@ -158,21 +159,21 @@ const THEME = {
     rowBorder:   'rgba(255,255,255,0.05)',
     scrollbar:   '#334155',
   },
-  // Light: nền xám nhạt, card trắng tinh, border xám mờ
+  // Light: nền xám nhạt, card trắng tinh, border xám đủ thấy
   light: {
-    bg:          '#f1f5f9',                      // Slate-100 — trung tính, không xanh
+    bg:          '#f1f5f9',                      // Slate-100
     text:        '#0f172a',                      // Slate-900
-    muted:       '#64748b',                      // Slate-500 — 4.9:1 trên trắng
+    muted:       '#64748b',                      // Slate-500
     card:        '#ffffff',                      // trắng tinh
-    cardBorder:  'rgba(15,23,42,0.08)',          // đen 8% — tinh tế
-    inputBg:     '#f1f5f9',
-    inputBorder: 'rgba(15,23,42,0.12)',
+    cardBorder:  'rgba(15,23,42,0.13)',          // đen 13% — đủ thấy trên nền trắng/xám
+    inputBg:     '#f8fafc',
+    inputBorder: 'rgba(15,23,42,0.15)',
     inputColor:  '#0f172a',
-    headerBg:    'rgba(241,245,249,0.90)',
-    headerBorder:'rgba(15,23,42,0.07)',
-    btnBg:       'rgba(15,23,42,0.05)',
-    btnBorder:   'rgba(15,23,42,0.10)',
-    rowBorder:   'rgba(15,23,42,0.06)',
+    headerBg:    'rgba(241,245,249,0.92)',
+    headerBorder:'rgba(15,23,42,0.08)',
+    btnBg:       'rgba(15,23,42,0.06)',
+    btnBorder:   'rgba(15,23,42,0.14)',
+    rowBorder:   'rgba(15,23,42,0.07)',
     scrollbar:   '#cbd5e1',
   },
 };
@@ -464,7 +465,7 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
                     width: '100%', padding: '13px 18px',
                     border: `1px solid ${tab === t.id ? 'rgba(16,185,129,0.25)' : T.cardBorder}`,
                     borderRadius: 14,
-                    background: tab === t.id ? 'rgba(16,185,129,0.15)' : T.card,
+                    background: tab === t.id ? 'rgba(16,185,129,0.15)' : T.btnBg,
                     color: tab === t.id ? C.primary : T.muted,
                     display: 'flex', alignItems: 'center', gap: 12,
                     cursor: 'pointer',
@@ -580,13 +581,13 @@ function ConfirmModal({ open, title, message, icon = '🗑️', confirmLabel = '
   }, [open, onCancel]);
 
   if (!open) return null;
-  return (
+  return createPortal(
     <>
       <style>{`
         @keyframes confirmIn { from{opacity:0;transform:scale(0.88) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
         @keyframes confirmBg { from{opacity:0} to{opacity:1} }
       `}</style>
-      <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: T?.bg ? (T.bg.includes('f0fdf8') ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)') : 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'confirmBg 0.18s ease' }}>
+      <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: T?.bg ? (T?.bg === '#f1f5f9' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)') : 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'confirmBg 0.18s ease' }}>
         <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, background: T?.card || 'linear-gradient(145deg, #0f1e35, #0d1a2e)', border: `1px solid ${T?.cardBorder || 'rgba(255,255,255,0.1)'}`, borderRadius: 24, padding: '32px 28px', boxShadow: '0 32px 80px rgba(0,0,0,0.6)', animation: 'confirmIn 0.22s cubic-bezier(0.34,1.4,0.64,1)' }}>
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <div style={{ width: 64, height: 64, borderRadius: 20, background: 'rgba(248,113,113,0.10)', border: '1px solid rgba(248,113,113,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 16px' }}>{icon}</div>
@@ -607,7 +608,7 @@ function ConfirmModal({ open, title, message, icon = '🗑️', confirmLabel = '
           </div>
         </div>
       </div>
-    </>
+    </>, document.body
   );
 }
 
@@ -682,7 +683,7 @@ function AvatarCard({ user, onUpdate, isDark, T }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
       {/* Lightbox */}
-      {lightboxOpen && preview && (
+      {lightboxOpen && preview && createPortal(
         <>
           <style>{`@keyframes lb-in { from{opacity:0;transform:scale(0.82)} to{opacity:1;transform:scale(1)} } @keyframes lb-bg { from{opacity:0} to{opacity:1} } .lb-close:hover { background:rgba(255,255,255,0.25) !important; transform:scale(1.1); }`}</style>
           <div onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 20, animation: 'lb-bg 0.2s ease', cursor: 'zoom-out' }}>
@@ -690,7 +691,7 @@ function AvatarCard({ user, onUpdate, isDark, T }) {
             <div style={{ color: 'white', fontWeight: 800, fontSize: 18, textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>{user.name}</div>
             <button className="lb-close" onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', top: 24, right: 28, width: 44, height: 44, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.12)', color: 'white', fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', backdropFilter: 'blur(8px)' }}>✕</button>
           </div>
-        </>
+        </>, document.body
       )}
 
       <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -759,7 +760,7 @@ function AvatarCardDesktop({ user, onUpdate, isDark, T }) {
 
   return (
     <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 24, overflow: 'hidden', textAlign: 'center' }}>
-      {lightboxOpen && preview && (
+      {lightboxOpen && preview && createPortal(
         <>
           <style>{`@keyframes lb-in { from{opacity:0;transform:scale(0.82)} to{opacity:1;transform:scale(1)} } @keyframes lb-bg { from{opacity:0} to{opacity:1} } .lb-close:hover { background:rgba(255,255,255,0.25) !important; transform:scale(1.1); }`}</style>
           <div onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 20, animation: 'lb-bg 0.2s ease', cursor: 'zoom-out' }}>
@@ -767,7 +768,7 @@ function AvatarCardDesktop({ user, onUpdate, isDark, T }) {
             <div style={{ color: 'white', fontWeight: 800, fontSize: 18, textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>{user.name}</div>
             <button className="lb-close" onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', top: 24, right: 28, width: 44, height: 44, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.12)', color: 'white', fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', backdropFilter: 'blur(8px)' }}>✕</button>
           </div>
-        </>
+        </>, document.body
       )}
 
       {/* Avatar */}
@@ -1005,7 +1006,7 @@ function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
       `}</style>
 
       {/* Overlay */}
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: T?.bg?.includes('f0fdf8') ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 1000, animation: 'overlayIn 0.2s ease' }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: T?.bg === '#f1f5f9' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 1000, animation: 'overlayIn 0.2s ease' }} />
 
       {/* Modal container */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', pointerEvents: 'none' }}>
@@ -1303,7 +1304,7 @@ function LocationGroup({ locationName, items, T, accentColor, children }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 24 }}>📍</span>
           <span style={{ fontWeight: 900, fontSize: 18 }}>{locationName}</span>
-          <span style={{ background: `${accentColor}25`, color: accentColor, padding: '3px 14px', borderRadius: 12, fontSize: 14, fontWeight: 800 }}>
+          <span style={{ background: accentColor, color: accentColor === C.warn ? '#451a03' : '#ffffff', padding: '3px 14px', borderRadius: 12, fontSize: 14, fontWeight: 800 }}>
             {items.length}
           </span>
         </div>
