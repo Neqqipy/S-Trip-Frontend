@@ -76,7 +76,7 @@ const SkeletonLoader = ({ isDark = false }) => {
     pageBg:    isDark ? '#0f172a' : 'transparent',
     areaBg:    isDark ? '#0f172a' : '#e2e8f0',
     cardBg:    isDark ? '#1e293b' : '#f8fafc',
-    labelColor: isDark ? '#475569' : '#94a3b8',
+    labelColor: isDark ? '#64748b' : '#94a3b8',
   };
 
   return (
@@ -112,7 +112,7 @@ const SkeletonLoader = ({ isDark = false }) => {
                 position: 'absolute',
                 width: '8px', height: '8px',
                 borderRadius: '50%',
-                backgroundColor: '#10b981',
+                backgroundColor: colors.labelColor,
                 top: `${y - 4}px`,
                 left: `${x - 4}px`,
                 animation: `orbitPulse${i} 1.8s ease-in-out infinite`,
@@ -139,7 +139,7 @@ const SkeletonLoader = ({ isDark = false }) => {
               opacity: 0,
               fontSize: '36px',
               lineHeight: 1,
-              color: '#10b981',
+              color: colors.labelColor,
             }}>.</span>
           ))}
         </div>

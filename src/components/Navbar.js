@@ -5,7 +5,6 @@ import {
   faXmark,
   faLock,
   faCalendarDays,
-  faCompass,
   faEarthAsia,
   faHouse,
   faSignOutAlt,

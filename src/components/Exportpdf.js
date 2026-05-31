@@ -4,6 +4,7 @@
 
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import React, { useState } from 'react';
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -137,8 +138,6 @@ export const exportTripPdf = async (scheduleRef, initialData = {}, options = {})
 //   initialData  — object (location, days, startDate)
 //   isDark       — bool
 // ─────────────────────────────────────────────────────────────
-import React, { useState } from 'react';
-
 export const PdfButton = ({ scheduleRef, initialData, isDark }) => {
   const [status, setStatus] = useState('idle'); // idle | loading | success | error
 

@@ -18,14 +18,6 @@ import { enrichPlacesWithCoords } from './services/geocodeUtils';
 import { BASE_URL } from './config';
 import './App.css';
 
-const normalizeForSearch = (text) => {
-  if (!text) return '';
-  return text.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/[^a-z0-9]/g, '');
-};
-
 // ----------------------------------------------------------------
 // ✉️ Trang xử lý xác nhận email (khi user bấm link trong mail)
 // Dùng useSearchParams để đọc ?token= đúng cách với HashRouter

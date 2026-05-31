@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faWandMagicSparkles, faHotel, faUtensils, faMapLocationDot,
+  faHotel, faUtensils, faMapLocationDot,
   faPenToSquare, faStar, faXmark, faLocationArrow, faPlane,
   faSun, faCloudSun, faMoon, faMap, faImages, faComments, faSpinner,
   faUsers, faBed, faHome, faUserGroup,
@@ -14,7 +14,8 @@ import {
 import { 
   faCalendar as faRegularCalendar,
   faBookmark as faBookmarkRegular,
-  faHeart as faHeartRegular
+  faHeart as faHeartRegular,
+  faClock
  } from '@fortawesome/free-regular-svg-icons';
 import { fetchReviews, fetchImages, fetchWeather } from '../services/api';
 import { BASE_URL } from '../config';
@@ -224,16 +225,22 @@ const mockRepo = {
   ]
 };
 
-const normalizeActivity = (item) => ({
-  name: item.name,
-  rating: item.rating || "4.5",
-  price: item.price || "Giá tùy chọn",
-  desc: item.desc || "",
-  thumbnail: item.thumbnail || null,
-  lat: item.lat || item.latitude || null,
-  lng: item.lng || item.longitude || null,
-  place_id: item.place_id || "",
-});
+const normalizeActivity = (item, defaultType = null) => {
+  let p = item.price;
+  if (!p || p === "Giá tùy chọn" || p === "Giá tuỳ chọn") {
+    p = "✨ Đang ước tính...";
+  }
+  return {
+    name: item.name,
+    rating: item.rating || "4.5",
+    price: p,
+    desc: item.desc || "",
+    thumbnail: item.thumbnail || null,
+    lat: item.lat || item.latitude || null,
+    lng: item.lng || item.longitude || null,
+    place_id: item.place_id || "",
+  };
+};
 
 // 💾 Cache toàn cục — tránh gọi API lại khi đã fetch
 const panelCache = {};
@@ -1441,7 +1448,14 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
       </div>
 
       <div className="ais-place-card-content" style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '11px', fontWeight: '800', color: mainColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{sessionLabel ? `${sessionLabel} · ${type}` : type}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+          {data.timeLabel && (
+            <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: isDark ? '#374151' : '#f1f5f9', color: isDark ? '#f8fafc' : '#475569', padding: '3px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <FontAwesomeIcon icon={faClock} /> {data.timeLabel}
+            </span>
+          )}
+          <span style={{ fontSize: '11px', fontWeight: '800', color: mainColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{type}</span>
+        </div>
         
         {/* Ép chữ tên địa điểm hoặc tên hãng máy bay (Vietjet/Vietnam Airlines) sang màu trắng */}
         <div style={{ fontSize: '16px', fontWeight: '900', color: isDark ? '#ffffff' : '#111827', margin: '4px 0 5px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: '1.35', wordBreak: 'break-word' }}>
@@ -2272,6 +2286,167 @@ const ShareButton = ({ dailyPlans, initialData, currentHotel, plan, isDark }) =>
   );
 };
 
+// Hàm tiện ích phân tích chuỗi thành số tiền (VNĐ)
+const parseMoney = (str) => {
+  if (!str) return 0;
+  const s = String(str).toLowerCase().replace(/,/g, '').replace(/\./g, '');
+  // Nếu có dạng "300.000đ - 500.000đ", lấy số đầu tiên
+  const match = s.match(/(\d+)/);
+  if (!match) return 0;
+  let num = parseInt(match[1], 10);
+  if (s.includes('triệu') || s.includes('tr')) {
+    if (num < 1000) num *= 1000000;
+  }
+  return num;
+};
+
+const BudgetDashboard = ({ initialData, currentHotel, dailyPlans, numDays, isDark }) => {
+  const [showDetails, setShowDetails] = React.useState(false);
+
+  // Mặc định 5 triệu nếu ko nhập
+  const budget = parseMoney(initialData.budget) || 5000000; 
+  const passengers = parseInt(initialData.passengers) || 1;
+
+  // Tính toán real-time bằng useMemo
+  const { hotelCost, flightCost, foodTourCost, totalCost, remaining, transportLabel } = React.useMemo(() => {
+    // 1. Khách sạn
+    const hCost = parseMoney(currentHotel?.price) * numDays;
+
+    // 2. Phương tiện (Vé máy bay hoặc Tàu/Xe)
+    const flights = initialData.realFlights || initialData.flights || [];
+    let fCost = 0;
+    let tLabel = 'Vé máy bay';
+    if (flights.length > 0 && flights[0]) {
+      fCost = parseMoney(flights[0].price) * passengers;
+    } else if (initialData.transport && initialData.transport.options && initialData.transport.options.length > 0) {
+      fCost = parseMoney(initialData.transport.options[0].price) * passengers;
+      tLabel = 'Vé xe/tàu';
+    }
+
+    // 3. Ăn uống & tham quan
+    let actCost = 0;
+    (dailyPlans || []).forEach(day => {
+      ['morning', 'afternoon', 'evening'].forEach(session => {
+        if (day[session]?.food?.price) actCost += parseMoney(day[session].food.price) * passengers;
+        if (day[session]?.tour?.price) actCost += parseMoney(day[session].tour.price) * passengers;
+      });
+    });
+
+    const total = hCost + fCost + actCost;
+    return { hotelCost: hCost, flightCost: fCost, foodTourCost: actCost, totalCost: total, remaining: budget - total, transportLabel: tLabel };
+  }, [currentHotel, dailyPlans, initialData, numDays, budget, passengers]);
+
+  return (
+    <>
+      <style>
+        {`
+          @keyframes dangerBlink {
+            0% { opacity: 1; box-shadow: 0 4px 20px rgba(239,68,68,0.8); }
+            50% { opacity: 0.7; box-shadow: 0 4px 10px rgba(239,68,68,0.3); }
+            100% { opacity: 1; box-shadow: 0 4px 20px rgba(239,68,68,0.8); }
+          }
+        `}
+      </style>
+      {/* Backdrop (chỉ dùng để đóng chi tiết khi click ra ngoài) */}
+      {showDetails && (
+        <div onClick={() => setShowDetails(false)} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'transparent' }} />
+      )}
+      
+      <div 
+        onClick={() => setShowDetails(!showDetails)}
+        style={{
+          position: 'fixed', top: '100px', right: '30px', zIndex: 9999,
+          display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+          cursor: 'pointer'
+        }}
+      >
+        {/* The Text Above the Bar */}
+        <div style={{
+          fontSize: '11px', fontWeight: 900, 
+          color: isDark ? '#f8fafc' : '#1e293b',
+          background: isDark ? 'rgba(15, 23, 42, 0.7)' : 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(8px)',
+          padding: '5px 12px', borderRadius: '12px',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.1)',
+          marginBottom: '8px',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+          transition: 'all 0.2s ease',
+        }}>
+          <span style={{ color: remaining < 0 ? '#ef4444' : 'inherit' }}>{(totalCost/1000000).toFixed(1)}M</span> 
+          <span style={{ color: isDark ? '#94a3b8' : '#64748b' }}> / {(budget/1000000).toFixed(1)}M</span>
+        </div>
+
+        {/* The Bar */}
+        <div style={{
+          width: '350px', height: '8px',
+          background: isDark ? 'rgba(15, 23, 42, 0.8)' : 'rgba(226, 232, 240, 0.9)',
+          backdropFilter: 'blur(8px)',
+          borderRadius: '4px', overflow: 'hidden',
+          boxShadow: remaining < 0 ? '0 6px 20px rgba(239,68,68,0.5)' : '0 6px 16px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.08)',
+          border: `1px solid ${remaining < 0 ? 'rgba(239,68,68,0.6)' : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)')}`,
+          animation: remaining < 0 ? 'dangerBlink 0.8s infinite' : 'none'
+        }}>
+          {/* Background fill - Modern Semantic Gradient */}
+          <div style={{ 
+            height: '100%', 
+            width: `${Math.min((totalCost/budget)*100, 100)}%`, 
+            background: remaining < 0 ? '#ef4444' : 'linear-gradient(90deg, #0ea5e9, #10b981, #eab308, #f97316, #ef4444)', 
+            transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          }} />
+        </div>
+
+        {/* The Details Popover */}
+        {showDetails && (
+          <div style={{
+            position: 'absolute', top: '100%', right: 0, marginTop: '14px',
+            width: '320px',
+            background: isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: `1px solid ${isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(226, 232, 240, 0.8)'}`,
+            borderRadius: '16px',
+            padding: '20px',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+            animation: 'fadeIn 0.2s ease',
+            cursor: 'default'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', fontSize: '13px' }}>
+              <span style={{ color: isDark ? '#94a3b8' : '#64748b', fontWeight: 600 }}>Ngân sách ban đầu:</span>
+              <span style={{ fontWeight: 800, color: isDark ? '#f8fafc' : '#1e293b' }}>{budget.toLocaleString('vi-VN')}đ</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '14px', marginBottom: '14px', borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, fontSize: '13px' }}>
+              <span style={{ color: isDark ? '#94a3b8' : '#64748b', fontWeight: 600 }}>Đã lên kế hoạch:</span>
+              <span style={{ fontWeight: 800, color: isDark ? '#f8fafc' : '#1e293b' }}>{totalCost.toLocaleString('vi-VN')}đ</span>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '14px' }}>
+              <span style={{ color: isDark ? '#cbd5e1' : '#334155', fontWeight: 700 }}>Trạng thái:</span>
+              <span style={{ fontWeight: 900, color: remaining < 0 ? '#ef4444' : '#10b981' }}>
+                {remaining < 0 ? 'Lố ' : 'Còn dư '}
+                {Math.abs(remaining).toLocaleString('vi-VN')}đ
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b', display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{width:10,height:10,borderRadius:'50%',background:'#0ea5e9'}}/> {transportLabel}</span>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: isDark ? '#f8fafc' : '#1e293b' }}>{flightCost.toLocaleString('vi-VN')}đ</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b', display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{width:10,height:10,borderRadius:'50%',background:'#8b5cf6'}}/> Khách sạn ({numDays} đêm)</span>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: isDark ? '#f8fafc' : '#1e293b' }}>{hotelCost.toLocaleString('vi-VN')}đ</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b', display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{width:10,height:10,borderRadius:'50%',background:'#10b981'}}/> Ăn uống & Tour</span>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: isDark ? '#f8fafc' : '#1e293b' }}>{foodTourCost.toLocaleString('vi-VN')}đ</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
 // ── COMPONENT CHÍNH ──────────────────────────────────────────
 const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark = false }) => {
   // Normalize tất cả các field string để tránh lỗi ".replace is not a function"
@@ -2377,13 +2552,14 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
   const realHotels = (initialData.realHotels || []).map(h => ({
     name: h.name, rating: h.rating,
     price: h.price_per_night != null ? h.price_per_night.toLocaleString() + "đ/đêm" : "Liên hệ",
+    price_per_night: h.price_per_night,
     thumbnail: h.thumbnail,
     desc: h.desc || "Lựa chọn tốt nhất dựa trên ngân sách.",
     lat: h.lat, lng: h.lng, place_id: h.place_id || "", room_type: h.room_type,
   }));
 
-  const realTours = (initialData.realTours || []).map(normalizeActivity);
-  const realFoods = (initialData.realFoods || []).map(normalizeActivity);
+  const realTours = (initialData.realTours || []).map(i => normalizeActivity(i, 'tour'));
+  const realFoods = (initialData.realFoods || []).map(i => normalizeActivity(i, 'food'));
 
   const realFlights = (initialData.realFlights || initialData.flights || []).filter(f => f.airline && f.price);
 
@@ -2409,19 +2585,65 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
   }, [initialData.realHotels]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const plans = [];
-    for (let i = 0; i < numDays; i++) {
-      plans.push({
-        day: i + 1,
-        morning:   { tour: toursPool[(i*3)   % toursPool.length], food: foodsPool[(i*3)   % foodsPool.length] },
-        afternoon: { tour: toursPool[(i*3+1) % toursPool.length], food: foodsPool[(i*3+1) % foodsPool.length] },
-        evening:   { tour: toursPool[(i*3+2) % toursPool.length], food: foodsPool[(i*3+2) % foodsPool.length] },
+    let plans = [];
+    if (initialData.itinerary && initialData.itinerary.length > 0) {
+      // Đồng bộ lịch trình từ AI Backend
+      plans = initialData.itinerary.map(dayObj => {
+        const slots = dayObj.slots || [];
+        const getSlotItem = (slotName, type) => {
+          const slot = slots.find(s => s.slot === slotName);
+          if (!slot) return null;
+          const item = slot.items.find(i => i.item_type === type);
+          return item ? normalizeActivity(item, type) : null;
+        };
+
+        const mFood = getSlotItem('🌅 Buổi sáng', 'food');
+        const mTour = getSlotItem('🌅 Buổi sáng', 'tour');
+        const aFood = getSlotItem('☀️ Buổi chiều', 'food');
+        const aTour = getSlotItem('☀️ Buổi chiều', 'tour');
+        const eFood = getSlotItem('🌙 Buổi tối', 'food');
+        const eTour = getSlotItem('🌙 Buổi tối', 'tour');
+
+        return {
+          day: dayObj.day,
+          morning: {
+            food: mFood ? { ...mFood, timeLabel: '07:30 - 08:30' } : null,
+            tour: mTour ? { ...mTour, timeLabel: '09:00 - 11:30' } : null
+          },
+          afternoon: {
+            food: aFood ? { ...aFood, timeLabel: '12:00 - 13:30' } : null,
+            tour: aTour ? { ...aTour, timeLabel: '14:00 - 16:30' } : null
+          },
+          evening: {
+            food: eFood ? { ...eFood, timeLabel: '18:30 - 20:00' } : null,
+            tour: eTour ? { ...eTour, timeLabel: '20:30 - 22:00' } : null
+          }
+        };
       });
+    } else {
+      // Fallback khi không có itinerary (e.g. mock data)
+      for (let i = 0; i < numDays; i++) {
+        plans.push({
+          day: i + 1,
+          morning:   { 
+            food: { ...foodsPool[(i*3)   % foodsPool.length], timeLabel: '07:30 - 08:30' },
+            tour: { ...toursPool[(i*3)   % toursPool.length], timeLabel: '09:00 - 11:30' }
+          },
+          afternoon: { 
+            food: { ...foodsPool[(i*3+1) % foodsPool.length], timeLabel: '12:00 - 13:30' },
+            tour: { ...toursPool[(i*3+1) % toursPool.length], timeLabel: '14:00 - 16:30' }
+          },
+          evening:   { 
+            food: { ...foodsPool[(i*3+2) % foodsPool.length], timeLabel: '18:30 - 20:00' },
+            tour: { ...toursPool[(i*3+2) % toursPool.length], timeLabel: '20:30 - 22:00' }
+          },
+        });
+      }
     }
     setDailyPlans(plans);
     if (onPlanChange) onPlanChange(plans);
     setMapQuery(`${currentHotel.name} ${initialData.location}`);
-  }, [initialData.location, numDays]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialData.location, numDays, initialData.itinerary]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!dailyPlans.length) return;
@@ -2433,14 +2655,107 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
     setDailyPlans(prev => {
       const updated = prev.map(d => ({
         ...d,
-        morning:   { tour: { ...d.morning.tour,   ...(coordMap[d.morning.tour?.name]   || {}) }, food: { ...d.morning.food,   ...(coordMap[d.morning.food?.name]   || {}) } },
-        afternoon: { tour: { ...d.afternoon.tour, ...(coordMap[d.afternoon.tour?.name] || {}) }, food: { ...d.afternoon.food, ...(coordMap[d.afternoon.food?.name] || {}) } },
-        evening:   { tour: { ...d.evening.tour,   ...(coordMap[d.evening.tour?.name]   || {}) }, food: { ...d.evening.food,   ...(coordMap[d.evening.food?.name]   || {}) } },
+        morning:   { tour: d.morning.tour ? { ...d.morning.tour,   ...(coordMap[d.morning.tour?.name]   || {}) } : null, food: d.morning.food ? { ...d.morning.food,   ...(coordMap[d.morning.food?.name]   || {}) } : null },
+        afternoon: { tour: d.afternoon.tour ? { ...d.afternoon.tour, ...(coordMap[d.afternoon.tour?.name] || {}) } : null, food: d.afternoon.food ? { ...d.afternoon.food, ...(coordMap[d.afternoon.food?.name] || {}) } : null },
+        evening:   { tour: d.evening.tour ? { ...d.evening.tour,   ...(coordMap[d.evening.tour?.name]   || {}) } : null, food: d.evening.food ? { ...d.evening.food,   ...(coordMap[d.evening.food?.name]   || {}) } : null },
       }));
       if (onPlanChange) onPlanChange(updated);
       return updated;
     });
   }, [initialData.realTours, initialData.realFoods]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Lấy giá dự đoán từ AI cho các địa điểm chưa có giá
+  const aiPriceFetched = useRef(false);
+  useEffect(() => {
+    if (!dailyPlans.length || aiPriceFetched.current) return;
+
+    const missingPricePlaces = new Set();
+    dailyPlans.forEach(d => {
+      ['morning', 'afternoon', 'evening'].forEach(session => {
+        ['food', 'tour'].forEach(type => {
+          const item = d[session]?.[type];
+          if (item && (item.price === "Giá tùy chọn" || item.price === "Giá tuỳ chọn" || item.price === "✨ Đang ước tính...")) {
+            missingPricePlaces.add(item.name);
+          }
+        });
+      });
+    });
+
+    if (missingPricePlaces.size === 0) return;
+    aiPriceFetched.current = true;
+
+    const names = Array.from(missingPricePlaces);
+    const prompt = `Bạn là chuyên gia du lịch. Hãy ước tính chi phí trung bình 1 người (VND) khi đến các địa điểm sau ở ${initialData.location || 'Việt Nam'}. Đưa ra mức giá chi tiết, thực tế và không làm tròn quá chẵn (VD: 35.000đ, 120.000đ, 210.000đ thay vì 100k hay 150k). Với các điểm tham quan miễn phí (chùa, di tích công cộng...), hãy ghi "0đ". Trả về ĐÚNG định dạng JSON (VD: {"Tên địa điểm": "120.000đ"}). KHÔNG thêm text giải thích.\nDanh sách: ${names.join(', ')}`;
+
+    fetch(`${BASE_URL}/api/chat-gemini`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: prompt, location: initialData.location || 'Việt Nam' })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        try {
+          const jsonMatch = data.text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const pricesMap = JSON.parse(jsonMatch[0]);
+            setDailyPlans(prev => {
+              const updated = prev.map(d => {
+                const newD = { ...d };
+                ['morning', 'afternoon', 'evening'].forEach(session => {
+                  newD[session] = { ...d[session] };
+                  ['food', 'tour'].forEach(type => {
+                    const item = newD[session][type];
+                    if (item && pricesMap[item.name]) {
+                       let rawVal = String(pricesMap[item.name]).replace(/đ/gi, '').trim();
+                       let finalPrice = (rawVal === '0') ? 'Miễn phí' : rawVal + '/người';
+                       newD[session][type] = { ...item, price: finalPrice };
+                    }
+                  });
+                });
+                return newD;
+              });
+              if (onPlanChange) onPlanChange(updated);
+              return updated;
+            });
+          }
+        } catch (e) {
+          console.error("Lỗi parse JSON giá AI:", e);
+        }
+      }
+    })
+    .catch(err => {
+      console.error("Lỗi API Gemini ước tính giá:", err);
+    })
+    .finally(() => {
+      // Dọn dẹp: Nếu cái nào còn treo "✨ Đang ước tính..." thì fallback về 100k
+      setDailyPlans(prev => {
+        let changed = false;
+        const updated = prev.map(d => {
+          const newD = { ...d };
+          ['morning', 'afternoon', 'evening'].forEach(session => {
+            newD[session] = { ...d[session] };
+            ['food', 'tour'].forEach(type => {
+              const item = newD[session][type];
+              if (item && item.price === "✨ Đang ước tính...") {
+                let fallbackPrice = '100.000/người';
+                if (type === 'tour') {
+                  fallbackPrice = 'Miễn phí - 50.000/người';
+                } else if (type === 'food') {
+                  fallbackPrice = '30.000 - 100.000/người';
+                }
+                newD[session][type] = { ...item, price: fallbackPrice };
+                changed = true;
+              }
+            });
+          });
+          return newD;
+        });
+        if (changed && onPlanChange) onPlanChange(updated);
+        return changed ? updated : prev;
+      });
+    });
+  }, [dailyPlans.length, initialData.location]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleShowMap = (query, placeName, placeId = '', lat = null, lng = null) => setMapModal({ show: true, query, placeName, placeId, lat, lng });
 
@@ -2463,6 +2778,13 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
 
   return (
     <>
+    <BudgetDashboard 
+      initialData={initialData} 
+      currentHotel={currentHotel} 
+      dailyPlans={dailyPlans} 
+      numDays={numDays} 
+      isDark={isDark} 
+    />
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px' }} className="ais-root">
       <style>{`
         /* ═══════════════════════════════════════
@@ -2947,8 +3269,8 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ fontWeight: '800', color: '#f59e0b', fontSize: '14px' }}><FontAwesomeIcon icon={faSun} /> BUỔI SÁNG</div>
               <div className="ais-session-row" style={{ display: 'flex', gap: '25px' }}>
-                <PlaceCard type="Điểm tham quan" sessionLabel="Sáng" data={d.morning.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'morning', subType: 'tour' })} isDark={isDark} />
-                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Sáng" data={d.morning.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'morning', subType: 'food' })} isDark={isDark} />
+                {d.morning.food && <PlaceCard type="Địa điểm ăn uống" sessionLabel="Sáng" data={d.morning.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'morning', subType: 'food' })} isDark={isDark} />}
+                {d.morning.tour && <PlaceCard type="Điểm tham quan" sessionLabel="Sáng" data={d.morning.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'morning', subType: 'tour' })} isDark={isDark} />}
               </div>
             </div>
             
@@ -2956,8 +3278,8 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ fontWeight: '800', color: '#3b82f6', fontSize: '14px' }}><FontAwesomeIcon icon={faCloudSun} /> BUỔI CHIỀU</div>
               <div className="ais-session-row" style={{ display: 'flex', gap: '25px' }}>
-                <PlaceCard type="Điểm tham quan" sessionLabel="Chiều" data={d.afternoon.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'afternoon', subType: 'tour' })} isDark={isDark} />
-                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Chiều" data={d.afternoon.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'afternoon', subType: 'food' })} isDark={isDark} />
+                {d.afternoon.food && <PlaceCard type="Địa điểm ăn uống" sessionLabel="Chiều" data={d.afternoon.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'afternoon', subType: 'food' })} isDark={isDark} />}
+                {d.afternoon.tour && <PlaceCard type="Điểm tham quan" sessionLabel="Chiều" data={d.afternoon.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'afternoon', subType: 'tour' })} isDark={isDark} />}
               </div>
             </div>
             
@@ -2965,8 +3287,8 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ fontWeight: '800', color: '#8b5cf6', fontSize: '14px' }}><FontAwesomeIcon icon={faMoon} /> BUỔI TỐI</div>
               <div className="ais-session-row" style={{ display: 'flex', gap: '25px' }}>
-                <PlaceCard type="Điểm tham quan" sessionLabel="Tối" data={d.evening.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'evening', subType: 'tour' })} isDark={isDark} />
-                <PlaceCard type="Địa điểm ăn uống" sessionLabel="Tối" data={d.evening.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'evening', subType: 'food' })} isDark={isDark} />
+                {d.evening.food && <PlaceCard type="Địa điểm ăn uống" sessionLabel="Tối" data={d.evening.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'evening', subType: 'food' })} isDark={isDark} />}
+                {d.evening.tour && <PlaceCard type="Điểm tham quan" sessionLabel="Tối" data={d.evening.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'evening', subType: 'tour' })} isDark={isDark} />}
               </div>
             </div>
 

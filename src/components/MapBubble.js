@@ -49,16 +49,16 @@ function buildDayPlaces(data) {
         const food    = slot.food || {};
         return [
           {
-            session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'tour',
-            name: tour.name || '', thumbnail: tour.thumbnail || null,
-            lat: tour.lat || tour.latitude || null,
-            lng: tour.lng || tour.longitude || null,
-          },
-          {
             session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'food',
             name: food.name || '', thumbnail: food.thumbnail || null,
             lat: food.lat || food.latitude || null,
             lng: food.lng || food.longitude || null,
+          },
+          {
+            session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'tour',
+            name: tour.name || '', thumbnail: tour.thumbnail || null,
+            lat: tour.lat || tour.latitude || null,
+            lng: tour.lng || tour.longitude || null,
           },
         ];
       })
@@ -73,24 +73,24 @@ function buildDayPlaces(data) {
   let tourCursor = 0, foodCursor = 0;
   for (let i = 0; i < numDays; i++) {
     const places = [];
-    SESSION_META.forEach((s) => {
+    for (let s of SESSION_META) {
       const tour = toursPool[tourCursor] || mockTours[0];
       const food = foodsPool[foodCursor] || mockFoods[0];
       tourCursor++;
       foodCursor++;
-      places.push({
-        session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'tour',
-        name: tour.name, thumbnail: tour.thumbnail || null,
-        lat: tour.lat || tour.latitude || null,
-        lng: tour.lng || tour.longitude || null,
-      });
       places.push({
         session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'food',
         name: food.name, thumbnail: food.thumbnail || null,
         lat: food.lat || food.latitude || null,
         lng: food.lng || food.longitude || null,
       });
-    });
+      places.push({
+        session: s.label, sessionColor: s.color, sessionIcon: s.icon, type: 'tour',
+        name: tour.name, thumbnail: tour.thumbnail || null,
+        lat: tour.lat || tour.latitude || null,
+        lng: tour.lng || tour.longitude || null,
+      });
+    }
     days.push(places);
   }
   return days;
@@ -421,12 +421,12 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose, isDark }) => {
   const numDays = parseInt(data.days?.toString().split(' ')[0]) || 3;
   const allDays = (editedPlans && editedPlans.length > 0)
     ? editedPlans.map(d => [
-        { ...d.morning.tour,   type:'tour', session:'Sáng',  sessionColor:'#f59e0b', sessionIcon:SESSION_META[0].icon },
         { ...d.morning.food,   type:'food', session:'Sáng',  sessionColor:'#f59e0b', sessionIcon:SESSION_META[0].icon },
-        { ...d.afternoon.tour, type:'tour', session:'Chiều', sessionColor:'#3b82f6', sessionIcon:SESSION_META[1].icon },
+        { ...d.morning.tour,   type:'tour', session:'Sáng',  sessionColor:'#f59e0b', sessionIcon:SESSION_META[0].icon },
         { ...d.afternoon.food, type:'food', session:'Chiều', sessionColor:'#3b82f6', sessionIcon:SESSION_META[1].icon },
-        { ...d.evening.tour,   type:'tour', session:'Tối',   sessionColor:'#8b5cf6', sessionIcon:SESSION_META[2].icon },
+        { ...d.afternoon.tour, type:'tour', session:'Chiều', sessionColor:'#3b82f6', sessionIcon:SESSION_META[1].icon },
         { ...d.evening.food,   type:'food', session:'Tối',   sessionColor:'#8b5cf6', sessionIcon:SESSION_META[2].icon },
+        { ...d.evening.tour,   type:'tour', session:'Tối',   sessionColor:'#8b5cf6', sessionIcon:SESSION_META[2].icon },
       ])
     : buildDayPlaces(data);
   const [selectedDay, setSelectedDay] = useState(0);

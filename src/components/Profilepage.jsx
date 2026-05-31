@@ -120,11 +120,61 @@ const useCrispImageProfile = (item, tabType, T) => {
   return imgUrl;
 };
 
-const C = { primary: '#10b981', primary2: '#059669', dark: '#0f172a', card: '#1e293b', border: '#334155', text: '#f8fafc', muted: '#94a3b8', danger: '#ef4444', warn: '#f59e0b' };
+// ── Design Tokens ─────────────────────────────────────────────
+// Primary: Emerald mượt mà — đủ sáng, không neon
+// Neutral Dark: xanh đen sâu slate-based
+// Neutral Light: trắng xám f8fafc
+const C = {
+  primary:  '#10b981',   // Sky-500 — xanh lam teal hiện đại, thoát khỏi neon-green
+  primary2: '#059669',   // Sky-600 — hover/active shade
+  primaryBg10: 'rgba(16,185,129,0.10)', // nền nút active nhẹ
+  primaryBg15: 'rgba(16,185,129,0.15)', // nền tag/badge
+  dark:     '#0f172a',   // Slate-900
+  card:     '#1e293b',   // Slate-800
+  border:   '#334155',   // Slate-700
+  text:     '#f1f5f9',   // Slate-100
+  muted:    '#94a3b8',   // Slate-400 — đủ tương phản trên dark bg (4.6:1)
+  danger:   '#f87171',   // Red-400 — muted hơn ef4444, vẫn đọc được
+  dangerBg: 'rgba(248,113,113,0.10)',
+  warn:     '#fbbf24',   // Amber-400 — ấm hơn f59e0b
+  warnBg:   'rgba(251,191,36,0.10)',
+};
 
 const THEME = {
-  dark: { bg: 'linear-gradient(135deg, #0a1628 0%, #0f2040 40%, #0a1628 100%)', text: '#f8fafc', muted: '#94a3b8', card: 'rgba(255,255,255,0.04)', cardBorder: 'rgba(255,255,255,0.08)', inputBg: 'rgba(255,255,255,0.06)', inputBorder: 'rgba(255,255,255,0.12)', inputColor: '#f8fafc', headerBg: 'rgba(16,185,129,0.08)', headerBorder:'rgba(16,185,129,0.15)', btnBg: 'rgba(255,255,255,0.06)', btnBorder: 'rgba(255,255,255,0.1)', rowBorder: 'rgba(255,255,255,0.05)', scrollbar: '#334155' },
-  light: { bg: 'linear-gradient(135deg, #f0fdf8 0%, #ecfdf5 40%, #f0fdf8 100%)', text: '#0f172a', muted: '#64748b', card: 'rgba(16,185,129,0.13)', cardBorder: 'rgba(5,150,105,0.35)', inputBg: '#f8fafc', inputBorder: '#6ee7b7', inputColor: '#0f172a', headerBg: 'rgba(16,185,129,0.14)', headerBorder:'rgba(5,150,105,0.35)', btnBg: 'rgba(16,185,129,0.15)', btnBorder: 'rgba(5,150,105,0.35)', rowBorder: 'rgba(16,185,129,0.2)', scrollbar: '#6ee7b7' },
+  // Dark: nền slate đơn sắc, card layer rõ ràng, border mờ nhẹ
+  dark: {
+    bg:          '#0b1120',                      // xanh đen sâu — không gradient
+    text:        '#f1f5f9',                      // Slate-100
+    muted:       '#94a3b8',                      // Slate-400
+    card:        '#1e293b',                      // Slate-800 — solid, rõ layer
+    cardBorder:  'rgba(255,255,255,0.07)',        // mờ tối 7%
+    inputBg:     'rgba(255,255,255,0.05)',        // 5%
+    inputBorder: 'rgba(255,255,255,0.10)',        // 10%
+    inputColor:  '#f1f5f9',
+    headerBg:    'rgba(11,17,32,0.85)',           // blur dark header
+    headerBorder:'rgba(255,255,255,0.06)',
+    btnBg:       'rgba(255,255,255,0.06)',
+    btnBorder:   'rgba(255,255,255,0.09)',
+    rowBorder:   'rgba(255,255,255,0.05)',
+    scrollbar:   '#334155',
+  },
+  // Light: nền xám nhạt, card trắng tinh, border xám mờ
+  light: {
+    bg:          '#f1f5f9',                      // Slate-100 — trung tính, không xanh
+    text:        '#0f172a',                      // Slate-900
+    muted:       '#64748b',                      // Slate-500 — 4.9:1 trên trắng
+    card:        '#ffffff',                      // trắng tinh
+    cardBorder:  'rgba(15,23,42,0.08)',          // đen 8% — tinh tế
+    inputBg:     '#f1f5f9',
+    inputBorder: 'rgba(15,23,42,0.12)',
+    inputColor:  '#0f172a',
+    headerBg:    'rgba(241,245,249,0.90)',
+    headerBorder:'rgba(15,23,42,0.07)',
+    btnBg:       'rgba(15,23,42,0.05)',
+    btnBorder:   'rgba(15,23,42,0.10)',
+    rowBorder:   'rgba(15,23,42,0.06)',
+    scrollbar:   '#cbd5e1',
+  },
 };
 
 const api = {
@@ -314,13 +364,15 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
       <style>{`
         @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
         @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.5} }
-        .sp-tab:hover  { background: rgba(16,185,129,0.12) !important; color: #10b981 !important; }
+        .sp-tab:hover  { background: rgba(16,185,129,0.10) !important; color: #10b981 !important; }
+        .sp-tab-active { background: rgba(16,185,129,0.15) !important; color: #10b981 !important; box-shadow: 0 4px 16px rgba(16,185,129,0.12); }
+        .sp-tab-active .sp-tab-icon { transform: scale(1.1); }
         .sp-card:hover { transform: translateY(-3px); box-shadow: 0 12px 36px rgba(0,0,0,0.2) !important; }
         .sp-card       { transition: all 0.25s ease; }
         .sp-btn:hover  { opacity: 0.85; transform: translateY(-1px); }
         .sp-btn        { transition: all 0.2s ease; }
-        .sp-del:hover  { background: rgba(239,68,68,0.15) !important; color: #ef4444 !important; }
-        .sp-input:focus{ outline:none; border-color: #10b981 !important; box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
+        .sp-del:hover  { background: rgba(248,113,113,0.12) !important; color: #f87171 !important; }
+        .sp-input:focus{ outline:none; border-color: #10b981 !important; box-shadow: 0 0 0 3px rgba(16,185,129,0.15); }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${T.scrollbar}; border-radius: 10px; }
@@ -331,11 +383,19 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
         .sp-mobile  { display: none; }
         .sp-main-grid {
           display: grid;
-          grid-template-columns: 280px 1fr;
-          gap: 28px;
+          grid-template-columns: 320px 1fr;
+          gap: 40px;
           max-width: 1300px;
           margin: 0 auto;
           padding: 32px 24px;
+          align-items: start;
+        }
+        .sp-sidebar {
+          position: sticky;
+          top: 92px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
         }
         /* ═══════════════════════════════════════
            📱 Mobile — Banner + Tabs ngang
@@ -388,17 +448,34 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
         </div>
       </div>
 
-      {/* ═══ DESKTOP: Sidebar layout cũ ═══ */}
+      {/* ═══ DESKTOP: Sidebar layout ═══ */}
       <div className="sp-desktop">
         <div className="sp-main-grid">
           {/* Sidebar */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div className="sp-sidebar">
             <AvatarCardDesktop user={user} onUpdate={handleUserUpdate} isDark={isDark} T={T} />
-            <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 24, overflow: 'hidden' }}>
-              {tabs.map((t, i) => (
-                <button key={t.id} className="sp-tab" onClick={() => handleTabClick(t.id)} style={{ width: '100%', padding: '14px 20px', border: 'none', borderBottom: i < tabs.length - 1 ? `1px solid ${T.rowBorder}` : 'none', background: tab === t.id ? 'rgba(16,185,129,0.15)' : 'transparent', color: tab === t.id ? C.primary : T.muted, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', fontWeight: tab === t.id ? 800 : 600, fontSize: 14, textAlign: 'left', transition: 'all 0.2s' }}>
-                  <span style={{ opacity: tab === t.id ? 1 : 0.6 }}>{t.icon}</span>{t.label}
-                  {tab === t.id && <div style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: C.primary }} />}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  className={`sp-tab ${tab === t.id ? 'sp-tab-active' : ''}`}
+                  onClick={() => handleTabClick(t.id)}
+                  style={{
+                    width: '100%', padding: '13px 18px',
+                    border: `1px solid ${tab === t.id ? 'rgba(16,185,129,0.25)' : T.cardBorder}`,
+                    borderRadius: 14,
+                    background: tab === t.id ? 'rgba(16,185,129,0.15)' : T.card,
+                    color: tab === t.id ? C.primary : T.muted,
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    cursor: 'pointer',
+                    fontWeight: tab === t.id ? 800 : 600,
+                    fontSize: 14, textAlign: 'left',
+                    transition: 'all 0.22s ease',
+                  }}
+                >
+                  <span className="sp-tab-icon" style={{ transition: 'transform 0.22s ease', opacity: tab === t.id ? 1 : 0.55, display: 'flex' }}>{t.icon}</span>
+                  <span>{t.label}</span>
+                  {tab === t.id && <div style={{ marginLeft: 'auto', width: 7, height: 7, borderRadius: '50%', background: C.primary, boxShadow: '0 0 6px rgba(16,185,129,0.35)' }} />}
                 </button>
               ))}
             </div>
@@ -429,7 +506,7 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
           {/* Horizontal Tabs */}
           <div className="sp-horizontal-tabs" style={{ marginTop: 24 }}>
             {tabs.map((t) => (
-              <button key={t.id} className="sp-btn" onClick={() => handleTabClick(t.id)} style={{ flexShrink: 0, padding: '12px 20px', borderRadius: 99, border: tab === t.id ? `1px solid ${C.primary}` : `1px solid ${T.btnBorder}`, background: tab === t.id ? 'rgba(16,185,129,0.15)' : T.card, color: tab === t.id ? C.primary : T.muted, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: tab === t.id ? 800 : 700, fontSize: 14, transition: 'all 0.25s', boxShadow: tab === t.id ? '0 6px 18px rgba(16,185,129,0.2)' : 'none' }}>
+              <button key={t.id} className="sp-btn" onClick={() => handleTabClick(t.id)} style={{ flexShrink: 0, padding: '12px 20px', borderRadius: 99, border: tab === t.id ? `1px solid ${C.primary}` : `1px solid ${T.btnBorder}`, background: tab === t.id ? 'rgba(16,185,129,0.15)' : T.card, color: tab === t.id ? C.primary : T.muted, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: tab === t.id ? 800 : 700, fontSize: 14, transition: 'all 0.25s', boxShadow: tab === t.id ? '0 6px 18px rgba(16,185,129,0.15)' : 'none' }}>
                 <span style={{ opacity: tab === t.id ? 1 : 0.7 }}>{t.icon}</span>{t.label}
               </button>
             ))}
@@ -456,7 +533,7 @@ function Section({ title, icon, count, filteredCount, filterLabel, action, child
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 14, background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1))', color: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 14, background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.10))', color: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {icon}
           </div>
           <div>
@@ -468,7 +545,7 @@ function Section({ title, icon, count, filteredCount, filterLabel, action, child
                 </div>
               )}
               {filterLabel && (
-                <div style={{ fontSize: 12, fontWeight: 700, padding: '2px 10px', borderRadius: 10, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: C.primary, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, padding: '2px 10px', borderRadius: 10, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.20)', color: C.primary, display: 'flex', alignItems: 'center', gap: 4 }}>
                   {filterLabel.emoji} {filterLabel.label}
                 </div>
               )}
@@ -494,7 +571,7 @@ function Empty({ icon, text, sub }) {
 
 
 // 🗑️ CONFIRM MODAL — thay thế window.confirm
-function ConfirmModal({ open, title, message, icon = '🗑️', confirmLabel = 'Xoá', confirmColor = '#ef4444', onConfirm, onCancel, T }) {
+function ConfirmModal({ open, title, message, icon = '🗑️', confirmLabel = 'Xoá', confirmColor = '#f87171', onConfirm, onCancel, T }) {
   useEffect(() => {
     if (!open) return;
     const handler = (e) => { if (e.key === 'Escape') onCancel(); };
@@ -512,13 +589,13 @@ function ConfirmModal({ open, title, message, icon = '🗑️', confirmLabel = '
       <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: T?.bg ? (T.bg.includes('f0fdf8') ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)') : 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'confirmBg 0.18s ease' }}>
         <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, background: T?.card || 'linear-gradient(145deg, #0f1e35, #0d1a2e)', border: `1px solid ${T?.cardBorder || 'rgba(255,255,255,0.1)'}`, borderRadius: 24, padding: '32px 28px', boxShadow: '0 32px 80px rgba(0,0,0,0.6)', animation: 'confirmIn 0.22s cubic-bezier(0.34,1.4,0.64,1)' }}>
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
-            <div style={{ width: 64, height: 64, borderRadius: 20, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 16px' }}>{icon}</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: T?.text || '#f8fafc', marginBottom: 8 }}>{title}</div>
+            <div style={{ width: 64, height: 64, borderRadius: 20, background: 'rgba(248,113,113,0.10)', border: '1px solid rgba(248,113,113,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 16px' }}>{icon}</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: T?.text || '#f1f5f9', marginBottom: 8 }}>{title}</div>
             <div style={{ fontSize: 14, color: T?.muted || '#94a3b8', lineHeight: 1.5 }}>{message}</div>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button onClick={onCancel} style={{ flex: 1, padding: '12px', borderRadius: 14, border: `1px solid ${T?.btnBorder || 'rgba(255,255,255,0.1)'}`, background: T?.btnBg || 'rgba(255,255,255,0.06)', color: T?.muted || '#94a3b8', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s' }}
-              onMouseEnter={e => { e.currentTarget.style.background=T?.cardBorder || 'rgba(255,255,255,0.1)'; e.currentTarget.style.color=T?.text || '#f8fafc'; }}
+              onMouseEnter={e => { e.currentTarget.style.background=T?.cardBorder || 'rgba(255,255,255,0.1)'; e.currentTarget.style.color=T?.text || '#f1f5f9'; }}
               onMouseLeave={e => { e.currentTarget.style.background=T?.btnBg || 'rgba(255,255,255,0.06)'; e.currentTarget.style.color=T?.muted || '#94a3b8'; }}>
               Huỷ
             </button>
@@ -545,12 +622,12 @@ function Skeleton() {
 }
 
 function LoadingScreen() {
-  return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a1628', color: '#10b981', fontSize: 18, fontWeight: 700 }}>⏳ Đang tải...</div>;
+  return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0b1120', color: '#10b981', fontSize: 18, fontWeight: 700 }}>⏳ Đang tải...</div>;
 }
 
 function NotLoggedIn({ onBack }) {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a1628', color: 'white', gap: 16 }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0b1120', color: 'white', gap: 16 }}>
       <div style={{ fontSize: 48 }}>🔒</div>
       <div style={{ fontSize: 20, fontWeight: 800 }}>Bạn chưa đăng nhập</div>
       <button onClick={onBack} style={{ padding: '10px 24px', borderRadius: 99, border: 'none', background: C.primary, color: 'white', fontWeight: 800, cursor: 'pointer' }}>Quay lại Trang chủ</button>
@@ -609,7 +686,7 @@ function AvatarCard({ user, onUpdate, isDark, T }) {
         <>
           <style>{`@keyframes lb-in { from{opacity:0;transform:scale(0.82)} to{opacity:1;transform:scale(1)} } @keyframes lb-bg { from{opacity:0} to{opacity:1} } .lb-close:hover { background:rgba(255,255,255,0.25) !important; transform:scale(1.1); }`}</style>
           <div onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 20, animation: 'lb-bg 0.2s ease', cursor: 'zoom-out' }}>
-            <img src={preview} alt={user.name} onClick={e => e.stopPropagation()} style={{ maxWidth: '80vw', maxHeight: '80vh', borderRadius: 20, objectFit: 'contain', boxShadow: '0 40px 100px rgba(0,0,0,0.8), 0 0 0 2px rgba(16,185,129,0.4)', animation: 'lb-in 0.28s cubic-bezier(0.34,1.4,0.64,1)', cursor: 'default', userSelect: 'none' }} />
+            <img src={preview} alt={user.name} onClick={e => e.stopPropagation()} style={{ maxWidth: '80vw', maxHeight: '80vh', borderRadius: 20, objectFit: 'contain', boxShadow: '0 40px 100px rgba(0,0,0,0.8), 0 0 0 2px rgba(16,185,129,0.25)', animation: 'lb-in 0.28s cubic-bezier(0.34,1.4,0.64,1)', cursor: 'default', userSelect: 'none' }} />
             <div style={{ color: 'white', fontWeight: 800, fontSize: 18, textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>{user.name}</div>
             <button className="lb-close" onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', top: 24, right: 28, width: 44, height: 44, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.12)', color: 'white', fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', backdropFilter: 'blur(8px)' }}>✕</button>
           </div>
@@ -617,13 +694,13 @@ function AvatarCard({ user, onUpdate, isDark, T }) {
       )}
 
       <div style={{ position: 'relative', display: 'inline-block' }}>
-        <div onClick={() => preview && setLightboxOpen(true)} style={{ width: 110, height: 110, borderRadius: '50%', border: `5px solid ${isDark ? '#0a1628' : '#f0fdf8'}`, overflow: 'hidden', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, fontWeight: 900, color: 'white', boxShadow: '0 8px 24px rgba(0,0,0,0.35)', cursor: preview ? 'zoom-in' : 'default', transition: 'box-shadow 0.2s, transform 0.2s' }}
-          onMouseEnter={e => { if (preview) { e.currentTarget.style.boxShadow='0 8px 30px rgba(16,185,129,0.5)'; e.currentTarget.style.transform='scale(1.04)'; }}}
+        <div onClick={() => preview && setLightboxOpen(true)} style={{ width: 110, height: 110, borderRadius: '50%', border: `5px solid ${isDark ? '#0b1120' : '#f1f5f9'}`, overflow: 'hidden', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, fontWeight: 900, color: 'white', boxShadow: '0 8px 24px rgba(0,0,0,0.35)', cursor: preview ? 'zoom-in' : 'default', transition: 'box-shadow 0.2s, transform 0.2s' }}
+          onMouseEnter={e => { if (preview) { e.currentTarget.style.boxShadow='0 8px 30px rgba(16,185,129,0.40)'; e.currentTarget.style.transform='scale(1.04)'; }}}
           onMouseLeave={e => { e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.35)'; e.currentTarget.style.transform='scale(1)'; }}
         >
           {preview ? <img src={preview} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
         </div>
-        <button onClick={() => fileRef.current?.click()} disabled={uploading} className="sp-btn" style={{ position: 'absolute', bottom: 4, right: 4, width: 26, height: 26, borderRadius: '50%', border: `2px solid ${isDark ? '#0a1628' : '#f0fdf8'}`, background: C.primary, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12 }}>
+        <button onClick={() => fileRef.current?.click()} disabled={uploading} className="sp-btn" style={{ position: 'absolute', bottom: 4, right: 4, width: 26, height: 26, borderRadius: '50%', border: `2px solid ${isDark ? '#0b1120' : '#f1f5f9'}`, background: C.primary, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12 }}>
           {uploading ? '⏳' : Icon.camera}
         </button>
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
@@ -632,8 +709,8 @@ function AvatarCard({ user, onUpdate, isDark, T }) {
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 4, color: T.text }}>{user.name}</div>
         <div style={{ fontSize: 13, color: T.muted, marginBottom: 12 }}>{user.email}</div>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, background: 'linear-gradient(135deg, #10b981, #059669)', border: '1px solid rgba(255,255,255,0.2)', fontSize: 12, fontWeight: 800, color: 'white', boxShadow: '0 3px 10px rgba(16,185,129,0.3)' }}>✈️ Traveler</div>
-        {uploadMsg && <div style={{ marginTop: 10, padding: '7px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: uploadMsg === 'ok' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.12)', border: `1px solid ${uploadMsg === 'ok' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, color: uploadMsg === 'ok' ? C.primary : C.danger }}>{uploadMsg === 'ok' ? '✅ Cập nhật ảnh thành công!' : uploadMsg.replace(/^err:/, '❌ ')}</div>}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, background: 'linear-gradient(135deg, #10b981, #059669)', border: '1px solid rgba(255,255,255,0.2)', fontSize: 12, fontWeight: 800, color: 'white', boxShadow: '0 3px 10px rgba(16,185,129,0.20)' }}>✈️ Traveler</div>
+        {uploadMsg && <div style={{ marginTop: 10, padding: '7px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: uploadMsg === 'ok' ? 'rgba(16,185,129,0.15)' : 'rgba(248,113,113,0.10)', border: `1px solid ${uploadMsg === 'ok' ? 'rgba(16,185,129,0.20)' : 'rgba(248,113,113,0.20)'}`, color: uploadMsg === 'ok' ? C.primary : C.danger }}>{uploadMsg === 'ok' ? '✅ Cập nhật ảnh thành công!' : uploadMsg.replace(/^err:/, '❌ ')}</div>}
       </div>
     </div>
   );
@@ -681,33 +758,40 @@ function AvatarCardDesktop({ user, onUpdate, isDark, T }) {
   const initials = (user.name || user.email || '?')[0].toUpperCase();
 
   return (
-    <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.08) 100%)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 24, padding: '28px 20px', textAlign: 'center' }}>
+    <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 24, overflow: 'hidden', textAlign: 'center' }}>
       {lightboxOpen && preview && (
         <>
           <style>{`@keyframes lb-in { from{opacity:0;transform:scale(0.82)} to{opacity:1;transform:scale(1)} } @keyframes lb-bg { from{opacity:0} to{opacity:1} } .lb-close:hover { background:rgba(255,255,255,0.25) !important; transform:scale(1.1); }`}</style>
           <div onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 20, animation: 'lb-bg 0.2s ease', cursor: 'zoom-out' }}>
-            <img src={preview} alt={user.name} onClick={e => e.stopPropagation()} style={{ maxWidth: '80vw', maxHeight: '80vh', borderRadius: 20, objectFit: 'contain', boxShadow: '0 40px 100px rgba(0,0,0,0.8), 0 0 0 2px rgba(16,185,129,0.4)', animation: 'lb-in 0.28s cubic-bezier(0.34,1.4,0.64,1)', cursor: 'default', userSelect: 'none' }} />
+            <img src={preview} alt={user.name} onClick={e => e.stopPropagation()} style={{ maxWidth: '80vw', maxHeight: '80vh', borderRadius: 20, objectFit: 'contain', boxShadow: '0 40px 100px rgba(0,0,0,0.8), 0 0 0 2px rgba(16,185,129,0.25)', animation: 'lb-in 0.28s cubic-bezier(0.34,1.4,0.64,1)', cursor: 'default', userSelect: 'none' }} />
             <div style={{ color: 'white', fontWeight: 800, fontSize: 18, textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>{user.name}</div>
             <button className="lb-close" onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', top: 24, right: 28, width: 44, height: 44, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.12)', color: 'white', fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', backdropFilter: 'blur(8px)' }}>✕</button>
           </div>
         </>
       )}
-      <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
-        <div onClick={() => preview && setLightboxOpen(true)} style={{ width: 100, height: 100, borderRadius: '50%', border: '3px solid rgba(16,185,129,0.5)', overflow: 'hidden', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 900, color: 'white', boxShadow: '0 0 30px rgba(16,185,129,0.3)', cursor: preview ? 'zoom-in' : 'default', transition: 'box-shadow 0.2s, transform 0.2s' }}
-          onMouseEnter={e => { if (preview) { e.currentTarget.style.boxShadow='0 0 44px rgba(16,185,129,0.6)'; e.currentTarget.style.transform='scale(1.05)'; }}}
-          onMouseLeave={e => { e.currentTarget.style.boxShadow='0 0 30px rgba(16,185,129,0.3)'; e.currentTarget.style.transform='scale(1)'; }}
-        >
-          {preview ? <img src={preview} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
+
+      {/* Avatar */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '28px 20px 24px' }}>
+        <div style={{ position: 'relative', marginBottom: 4 }}>
+          <div
+            onClick={() => preview && setLightboxOpen(true)}
+            style={{ width: 90, height: 90, borderRadius: '50%', border: `4px solid ${isDark ? '#1e293b' : '#ffffff'}`, overflow: 'hidden', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 900, color: 'white', boxShadow: `0 6px 24px rgba(0,0,0,0.35), 0 0 0 3px ${isDark ? '#1e293b' : '#ffffff'}`, cursor: preview ? 'zoom-in' : 'default', transition: 'box-shadow 0.2s, transform 0.2s' }}
+            onMouseEnter={e => { if (preview) { e.currentTarget.style.boxShadow=`0 8px 30px rgba(16,185,129,0.40), 0 0 0 3px ${isDark ? '#1e293b' : '#ffffff'}`; e.currentTarget.style.transform='scale(1.05)'; }}}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow=`0 6px 24px rgba(0,0,0,0.35), 0 0 0 3px ${isDark ? '#1e293b' : '#ffffff'}`; e.currentTarget.style.transform='scale(1)'; }}
+          >
+            {preview ? <img src={preview} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
+          </div>
+          <button onClick={() => fileRef.current?.click()} disabled={uploading} className="sp-btn" style={{ position: 'absolute', bottom: 2, right: 2, width: 26, height: 26, borderRadius: '50%', border: `2px solid ${isDark ? '#1e293b' : '#ffffff'}`, background: C.primary, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12 }}>
+            {uploading ? '⏳' : Icon.camera}
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
         </div>
-        <button onClick={() => fileRef.current?.click()} disabled={uploading} className="sp-btn" style={{ position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: '50%', border: `2px solid ${isDark ? '#0f172a' : '#ffffff'}`, background: C.primary, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12 }}>
-          {uploading ? '⏳' : Icon.camera}
-        </button>
-        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+
+        <div style={{ fontSize: 18, fontWeight: 900, marginTop: 14, marginBottom: 4, color: T.text, textAlign: 'center' }}>{user.name}</div>
+        <div style={{ fontSize: 13, color: T.muted, marginBottom: 14, textAlign: 'center' }}>{user.email}</div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 16px', borderRadius: 99, background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.12))', border: '1px solid rgba(16,185,129,0.25)', fontSize: 12, fontWeight: 800, color: C.primary, textAlign: 'center' }}>✈️ Thành viên</div>
+        {uploadMsg && <div style={{ marginTop: 10, padding: '7px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: uploadMsg === 'ok' ? 'rgba(16,185,129,0.15)' : 'rgba(248,113,113,0.10)', border: `1px solid ${uploadMsg === 'ok' ? 'rgba(16,185,129,0.20)' : 'rgba(248,113,113,0.20)'}`, color: uploadMsg === 'ok' ? C.primary : C.danger, textAlign: 'center' }}>{uploadMsg === 'ok' ? '✅ Cập nhật ảnh thành công!' : uploadMsg.replace(/^err:/, '❌ ')}</div>}
       </div>
-      <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 4, color: T.text }}>{user.name}</div>
-      <div style={{ fontSize: 13, color: T.muted, marginBottom: 14 }}>{user.email}</div>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', fontSize: 12, fontWeight: 700, color: C.primary }}>✈️ Traveler</div>
-      {uploadMsg && <div style={{ marginTop: 10, padding: '7px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: uploadMsg === 'ok' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.12)', border: `1px solid ${uploadMsg === 'ok' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, color: uploadMsg === 'ok' ? C.primary : C.danger }}>{uploadMsg === 'ok' ? '✅ Cập nhật ảnh thành công!' : uploadMsg.replace(/^err:/, '❌ ')}</div>}
     </div>
   );
 }
@@ -741,13 +825,24 @@ function StatsBarDesktop({ stats, setStats, T }) {
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const items = [ { label: 'Lịch trình', value: stats.schedules }, { label: 'Đã lưu', value: stats.savedPlaces }, { label: 'Yêu thích', value: stats.favorites }, { label: 'Tìm kiếm', value: stats.searches } ];
+  const items = [
+    { label: 'Lịch trình', value: stats.schedules,  icon: <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+    { label: 'Đã lưu',     value: stats.savedPlaces, icon: <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>,                  color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+    { label: 'Yêu thích',  value: stats.favorites,   icon: <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>, color: '#f87171', bg: 'rgba(248,113,113,0.10)'  },
+    { label: 'Tìm kiếm',   value: stats.searches,    icon: <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>, color: '#fbbf24', bg: 'rgba(251,191,36,0.10)' },
+  ];
   return (
-    <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
       {items.map(item => (
-        <div key={item.label} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
-          <div style={{ fontSize: 22, fontWeight: 900, color: C.primary }}>{item.value}</div>
-          <div style={{ fontSize: 11, color: T.muted, fontWeight: 600, marginTop: 2 }}>{item.label}</div>
+        <div key={item.label} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 20, padding: '16px 14px', textAlign: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', transition: 'transform 0.2s, box-shadow 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 6px 20px rgba(0,0,0,0.14)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 2px 12px rgba(0,0,0,0.08)'; }}
+        >
+          <div style={{ width: 38, height: 38, borderRadius: 12, background: item.bg, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', border: `1px solid ${item.color}26` }}>
+            {item.icon}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: item.color, lineHeight: 1 }}>{item.value}</div>
+          <div style={{ fontSize: 11, color: T.muted, fontWeight: 700, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{item.label}</div>
         </div>
       ))}
     </div>
@@ -829,7 +924,7 @@ const MOCK_SCHEDULES = [
 ];
 
 const TYPE_ICON = {
-  food:    { emoji: '🍜', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  food:    { emoji: '🍜', color: '#fbbf24', bg: 'rgba(251,191,36,0.10)' },
   hotel:   { emoji: '🏨', color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
   explore: { emoji: '🗺️', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
   camera:  { emoji: '📸', color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
@@ -903,7 +998,7 @@ function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
         @keyframes modalIn    { from{opacity:0;transform:scale(0.95) translateY(16px)} to{opacity:1;transform:scale(1) translateY(0)} }
         @keyframes overlayIn  { from{opacity:0} to{opacity:1} }
         @keyframes slideRight { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
-        .day-tab:hover { background: rgba(16,185,129,0.1) !important; color: #10b981 !important; }
+        .day-tab:hover { background: rgba(16,185,129,0.10) !important; color: #10b981 !important; }
         .act-row:hover { background: ${T?.rowBorder || 'rgba(255,255,255,0.05)'} !important; }
         .sm-btn:hover  { opacity: 0.8; transform: translateY(-1px); }
         .sm-btn        { transition: all 0.2s; }
@@ -914,7 +1009,7 @@ function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
 
       {/* Modal container */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', pointerEvents: 'none' }}>
-        <div onClick={e => e.stopPropagation()} style={{ pointerEvents: 'auto', width: '100%', maxWidth: 760, maxHeight: '90vh', background: T?.card || 'linear-gradient(145deg, #0f1e35 0%, #0d1a2e 100%)', border: `1px solid ${T?.cardBorder || 'rgba(16,185,129,0.2)'}`, borderRadius: 28, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 40px 100px rgba(0,0,0,0.6)', animation: 'modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}>
+        <div onClick={e => e.stopPropagation()} style={{ pointerEvents: 'auto', width: '100%', maxWidth: 760, maxHeight: '90vh', background: T?.card || 'linear-gradient(145deg, #0f1e35 0%, #0d1a2e 100%)', border: `1px solid ${T?.cardBorder || 'rgba(16,185,129,0.15)'}`, borderRadius: 28, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 40px 100px rgba(0,0,0,0.6)', animation: 'modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}>
 
           {/* Header */}
           <div style={{ background: T?.headerBg || 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.08) 100%)', borderBottom: `1px solid ${T?.cardBorder || 'rgba(16,185,129,0.15)'}`, padding: '24px 28px 20px', position: 'relative', flexShrink: 0 }}>
@@ -923,14 +1018,14 @@ function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
             </button>
 
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-              <div style={{ width: 56, height: 56, borderRadius: 18, flexShrink: 0, overflow: 'hidden', border: '2px solid rgba(16,185,129,0.4)', background: 'linear-gradient(135deg, rgba(16,185,129,0.3), rgba(5,150,105,0.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 18, flexShrink: 0, overflow: 'hidden', border: '2px solid rgba(16,185,129,0.25)', background: 'linear-gradient(135deg, rgba(16,185,129,0.20), rgba(5,150,105,0.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>
                 {getProvinceAvatar(schedule.location)
                   ? <img src={getProvinceAvatar(schedule.location)} alt={schedule.location} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display='none'; e.target.parentNode.innerHTML = '🗺️'; }} />
                   : '🗺️'
                 }
               </div>
               <div style={{ flex: 1, paddingRight: 40 }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: T?.text || '#f8fafc', marginBottom: 6, lineHeight: 1.2 }}>{schedule.title}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: T?.text || '#f1f5f9', marginBottom: 6, lineHeight: 1.2 }}>{schedule.title}</div>
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10 }}>
                   <span style={{ fontSize: 13, color: C.primary, display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.map} {schedule.location}</span>
                   <span style={{ fontSize: 13, color: T?.muted || '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.plane} {schedule.days} ngày</span>
@@ -940,9 +1035,9 @@ function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
             </div>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-              {searchData.budget && <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 99, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 12, fontWeight: 700, color: '#f59e0b' }}>💰 ~{Number(String(searchData.budget).replace(/\D/g,'')).toLocaleString('vi-VN')}đ</div>}
+              {searchData.budget && <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 99, background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.15)', fontSize: 12, fontWeight: 700, color: '#fbbf24' }}>💰 ~{Number(String(searchData.budget).replace(/\D/g,'')).toLocaleString('vi-VN')}đ</div>}
               {searchData.passengers && <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', fontSize: 12, fontWeight: 700, color: '#a5b4fc' }}>👥 {searchData.passengers} người</div>}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 99, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', fontSize: 12, fontWeight: 700, color: C.primary }}>📅 {schedule.days} ngày · {days.reduce((acc, d) => acc + (d.activities?.length || 0), 0)} hoạt động</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 99, background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.15)', fontSize: 12, fontWeight: 700, color: C.primary }}>📅 {schedule.days} ngày · {days.reduce((acc, d) => acc + (d.activities?.length || 0), 0)} hoạt động</div>
             </div>
           </div>
 
@@ -968,16 +1063,16 @@ function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
             {days.length > 0 && (
               <div key={activeDay} style={{ animation: 'slideRight 0.25s ease' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 11, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: C.primary, fontSize: 14 }}>{currentDay.day}</div>
+                  <div style={{ width: 36, height: 36, borderRadius: 11, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.20)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: C.primary, fontSize: 14 }}>{currentDay.day}</div>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: T?.text || '#f8fafc' }}>{currentDay.title || `Ngày ${currentDay.day}`}</div>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: T?.text || '#f1f5f9' }}>{currentDay.title || `Ngày ${currentDay.day}`}</div>
                     <div style={{ fontSize: 12, color: T?.muted || '#94a3b8' }}>{activities.length} hoạt động</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   {[
-                    { slot: 'morning',   label: '🌅 Buổi sáng',  color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.2)'  },
-                    { slot: 'afternoon', label: '☀️ Buổi chiều', color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)' },
+                    { slot: 'morning',   label: '🌅 Buổi sáng',  color: '#fbbf24', bg: 'rgba(251,191,36,0.08)',  border: 'rgba(251,191,36,0.15)'  },
+                    { slot: 'afternoon', label: '☀️ Buổi chiều', color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.15)' },
                     { slot: 'evening',   label: '🌙 Buổi tối',   color: '#818cf8', bg: 'rgba(129,140,248,0.08)', border: 'rgba(129,140,248,0.2)' },
                   ].map(({ slot, label, color, bg, border }) => {
                     const slotActs = activities.filter(a => a.slot === slot);
@@ -1004,7 +1099,7 @@ function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
                                     <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 5, background: T?.btnBg || 'rgba(255,255,255,0.06)', color: T?.muted || '#94a3b8', flexShrink: 0 }}>{cfg.emoji} {act.type === 'food' ? 'Ăn uống' : 'Tham quan'}</span>
-                                    {act.rating && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700, flexShrink: 0 }}>⭐ {act.rating}</span>}
+                                    {act.rating && <span style={{ fontSize: 11, color: '#fbbf24', fontWeight: 700, flexShrink: 0 }}>⭐ {act.rating}</span>}
                                   </div>
                                   <div style={{ fontSize: 14, fontWeight: 800, color: T?.text || '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>{act.name}</div>
                                   {act.note && <div style={{ fontSize: 12, color: T?.muted || '#94a3b8', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{act.note}</div>}
@@ -1023,7 +1118,7 @@ function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
 
           {/* Footer */}
           <div style={{ borderTop: `1px solid ${T?.rowBorder || 'rgba(255,255,255,0.07)'}`, padding: '14px 24px', background: T?.inputBg || 'rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
-            <button className="sm-btn" onClick={(e) => onLoadToMain(schedule, e)} style={{ padding: '12px 32px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 16px rgba(16,185,129,0.3)' }}>
+            <button className="sm-btn" onClick={(e) => onLoadToMain(schedule, e)} style={{ padding: '12px 32px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 16px rgba(16,185,129,0.20)' }}>
               Xem lịch trình đầy đủ {Icon.arrow}
             </button>
           </div>
@@ -1082,9 +1177,9 @@ function SavedSchedules({ T, onLoadSchedule }) {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.primary }}>{Icon.calendar}</div>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.primary }}>{Icon.calendar}</div>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: (T||{}).text || '#f8fafc' }}>Lịch trình đã lưu</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: (T||{}).text || '#f1f5f9' }}>Lịch trình đã lưu</div>
             {schedules.length > 0 && <div style={{ fontSize: 13, color: C.primary, fontWeight: 700 }}>{schedules.length} mục</div>}
           </div>
         </div>
@@ -1099,7 +1194,7 @@ function SavedSchedules({ T, onLoadSchedule }) {
       {!loading && schedules.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
           <div style={{ fontSize: 56, marginBottom: 16 }}>🗓️</div>
-          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8, color: (T||{}).text || '#f8fafc' }}>Chưa có lịch trình nào được lưu</div>
+          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8, color: (T||{}).text || '#f1f5f9' }}>Chưa có lịch trình nào được lưu</div>
           <div style={{ fontSize: 13 }}>Tạo lịch trình và bấm "Lưu lịch trình" để thấy ở đây</div>
         </div>
       )}
@@ -1115,7 +1210,7 @@ function SavedSchedules({ T, onLoadSchedule }) {
               }
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: (T||{}).text || '#f8fafc' }}>{s.title}</div>
+              <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: (T||{}).text || '#f1f5f9' }}>{s.title}</div>
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 13, color: C.primary, display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.map} {s.location}</span>
                 <span style={{ fontSize: 13, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.plane} {s.days} ngày</span>
@@ -1123,7 +1218,7 @@ function SavedSchedules({ T, onLoadSchedule }) {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-              <button className="sp-del" onClick={(e) => handleDelete(s.id, e)} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'rgba(239,68,68,0.08)', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+              <button className="sp-del" onClick={(e) => handleDelete(s.id, e)} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'rgba(248,113,113,0.08)', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
                 {Icon.trash}
               </button>
               <div style={{ color: C.primary }}>{Icon.arrow}</div>
@@ -1170,6 +1265,15 @@ const FILTER_TABS = [
   { id: 'drink', label: 'Đồ uống',   emoji: '🧋' },
   { id: 'specialty', label: 'Đặc sản',   emoji: '🛍️' },
 ];
+
+// Thứ tự hiển thị địa điểm khớp với FILTER_TABS (bỏ 'all')
+const TYPE_ORDER = ['hotel', 'tour', 'food', 'drink', 'specialty', 'default'];
+const sortByTypeOrder = (arr) =>
+  [...arr].sort((a, b) => {
+    const ia = TYPE_ORDER.indexOf(normalizeType(a.type) || 'default');
+    const ib = TYPE_ORDER.indexOf(normalizeType(b.type) || 'default');
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
 
 function LocationGroup({ locationName, items, T, accentColor, children }) {
   const [open, setOpen] = useState(true);
@@ -1241,7 +1345,7 @@ function PlaceItemCard({ item, tabType, onRemove, T, removeColor, i }) {
       </div>
       <div style={{ padding: '14px 16px' }}>
         <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 6, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
-        {item.rating && <span style={{ fontSize: 13, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>{Icon.star} {item.rating}</span>}
+        {item.rating && <span style={{ fontSize: 13, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>{Icon.star} {item.rating}</span>}
       </div>
     </div>
   );
@@ -1315,7 +1419,7 @@ function FilterBar({ current, onChange, items = [], T }) {
           return (
             <button
               key={f.id}
-              onClick={() => onChange(f.id)}
+              onClick={() => onChange(current === f.id && f.id !== 'all' ? 'all' : f.id)}
               style={{
                 height: '42px',
                 padding: '0 16px', borderRadius: 24,
@@ -1409,7 +1513,7 @@ function SavedPlaces({ T, onResetFilter, resetSignal, onCountChange }) {
       
       {!loading && locations.map(loc => (
         <LocationGroup key={loc} locationName={loc} items={grouped[loc]} T={T} accentColor={C.warn}>
-          {grouped[loc].map((item, i) => (
+          {sortByTypeOrder(grouped[loc]).map((item, i) => (
             <PlaceItemCard key={item.id} item={item} tabType="saved" onRemove={handleRemove} T={T} removeColor="#fbbf24" i={i} />
             ))}
         </LocationGroup>
@@ -1482,7 +1586,7 @@ function Favorites({ T, resetSignal, onCountChange }) {
       
       {!loading && locations.map(loc => (
         <LocationGroup key={loc} locationName={loc} items={grouped[loc]} T={T} accentColor={C.danger}>
-          {grouped[loc].map((item, i) => (
+          {sortByTypeOrder(grouped[loc]).map((item, i) => (
             <PlaceItemCard key={item.id} item={item} tabType="favorite" onRemove={handleRemove} T={T} removeColor="#f87171" i={i} />
             ))}
         </LocationGroup>
@@ -1527,13 +1631,13 @@ function SearchHistory({ T, onSearch, onBack }) {
   };
 
   return (
-    <Section title="Lịch sử tìm kiếm" icon={Icon.search} count={history.length} action={history.length > 0 && ( <button onClick={handleClearAll} className="sp-btn" style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: C.danger, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}> Xoá tất cả </button> )}>
+    <Section title="Lịch sử tìm kiếm" icon={Icon.search} count={history.length} action={history.length > 0 && ( <button onClick={handleClearAll} className="sp-btn" style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(248,113,113,0.20)', background: 'rgba(248,113,113,0.10)', color: C.danger, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}> Xoá tất cả </button> )}>
       {loading && <Skeleton />}
       {!loading && history.length === 0 && <Empty icon="🔍" text="Chưa có lịch sử tìm kiếm" sub="Các chuyến đi bạn đã tìm kiếm sẽ hiện ở đây" />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {history.map((h, i) => (
           <div key={h.id} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, animation: `fadeUp 0.3s ease ${i * 0.05}s both` }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🔍</div>
+            <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: 'rgba(16,185,129,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🔍</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{h.origin} → <span style={{ color: C.primary }}>{h.location || h.destination}</span></div>
               <div style={{ fontSize: 12, color: T.muted, marginTop: 3, display: 'flex', gap: 12 }}>
@@ -1563,7 +1667,7 @@ function SearchHistory({ T, onSearch, onBack }) {
 function StatusMsg({ status, okText }) {
   const isErr = status.startsWith('err:');
   return (
-    <div style={{ marginTop: 10, padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: isErr ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.15)', border: `1px solid ${isErr ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`, color: isErr ? C.danger : C.primary }}>
+    <div style={{ marginTop: 10, padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: isErr ? 'rgba(248,113,113,0.10)' : 'rgba(16,185,129,0.15)', border: `1px solid ${isErr ? 'rgba(248,113,113,0.20)' : 'rgba(16,185,129,0.20)'}`, color: isErr ? C.danger : C.primary }}>
       {isErr ? `❌ ${status.slice(4)}` : okText}
     </div>
   );
@@ -1642,7 +1746,7 @@ function Settings({ user, onUpdate, T, onLogout }) {
         <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 18, padding: '22px 24px', opacity: user.google_id ? 0.45 : 1, pointerEvents: user.google_id ? 'none' : 'auto', position: 'relative' }}>
           <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8, color: T.text }}>🔒 Đổi mật khẩu</div>
           {user.google_id && (
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#065f46', background: 'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(5,150,105,0.12))', border: '1.5px solid rgba(16,185,129,0.55)', borderRadius: 12, padding: '13px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 2px 8px rgba(16,185,129,0.12)' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#065f46', background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.12))', border: '1.5px solid rgba(16,185,129,0.30)', borderRadius: 12, padding: '13px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 2px 8px rgba(16,185,129,0.12)' }}>
               <span style={{ fontSize: 20, flexShrink: 0 }}>🔗</span>
               <span style={{ lineHeight: 1.5 }}>Tài khoản đăng nhập qua Google — đổi mật khẩu tại{' '}
                 <a href="https://myaccount.google.com" target="_blank" rel="noreferrer"
@@ -1664,7 +1768,7 @@ function Settings({ user, onUpdate, T, onLogout }) {
         </div>
 
         {/* Xóa tài khoản */}
-        <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 18, padding: '22px 24px' }}>
+        <div style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.15)', borderRadius: 18, padding: '22px 24px' }}>
           <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, color: C.danger }}>
             ⚠️ Vùng nguy hiểm
           </div>
@@ -1674,7 +1778,7 @@ function Settings({ user, onUpdate, T, onLogout }) {
           <button
             className="sp-btn"
             onClick={() => { setConfirmDelete(true); }}
-            style={{ padding: '11px 24px', borderRadius: 12, border: `1.5px solid rgba(239,68,68,0.5)`, background: 'rgba(239,68,68,0.1)', color: C.danger, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}
+            style={{ padding: '11px 24px', borderRadius: 12, border: `1.5px solid rgba(248,113,113,0.35)`, background: 'rgba(248,113,113,0.10)', color: C.danger, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}
           >
             🗑️ Xóa tài khoản
           </button>
@@ -1684,10 +1788,10 @@ function Settings({ user, onUpdate, T, onLogout }) {
       {/* Modal xác nhận xóa tài khoản */}
       {confirmDelete && (
         <div onClick={() => setConfirmDelete(false)} style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, background: 'linear-gradient(145deg, #1a0a0a, #200d0d)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 24, padding: '32px 28px', boxShadow: '0 32px 80px rgba(0,0,0,0.7)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, background: 'linear-gradient(145deg, #0f1825, #0f1825)', border: '1px solid rgba(248,113,113,0.20)', borderRadius: 24, padding: '32px 28px', boxShadow: '0 32px 80px rgba(0,0,0,0.7)' }}>
             <div style={{ textAlign: 'center', marginBottom: 28 }}>
-              <div style={{ width: 68, height: 68, borderRadius: 20, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, margin: '0 auto 16px' }}>💀</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#f8fafc', marginBottom: 10 }}>Xóa tài khoản vĩnh viễn?</div>
+              <div style={{ width: 68, height: 68, borderRadius: 20, background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.20)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, margin: '0 auto 16px' }}>💀</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#f1f5f9', marginBottom: 10 }}>Xóa tài khoản vĩnh viễn?</div>
               <div style={{ fontSize: 15, color: '#94a3b8', lineHeight: 1.7 }}>
                 Toàn bộ dữ liệu của bạn — lịch trình, địa điểm đã lưu, yêu thích và lịch sử tìm kiếm — sẽ bị xóa ngay lập tức và <strong style={{ color: C.danger }}>không thể khôi phục</strong>.
               </div>
@@ -1702,7 +1806,7 @@ function Settings({ user, onUpdate, T, onLogout }) {
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleteLoading}
-                style={{ flex: 1, padding: '13px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', fontWeight: 800, fontSize: 15, cursor: deleteLoading ? 'not-allowed' : 'pointer', opacity: deleteLoading ? 0.7 : 1, transition: '0.2s' }}
+                style={{ flex: 1, padding: '13px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #f87171, #ef4444)', color: 'white', fontWeight: 800, fontSize: 15, cursor: deleteLoading ? 'not-allowed' : 'pointer', opacity: deleteLoading ? 0.7 : 1, transition: '0.2s' }}
               >
                 {deleteLoading ? '⏳ Đang xóa...' : '🗑️ Xóa vĩnh viễn'}
               </button>
