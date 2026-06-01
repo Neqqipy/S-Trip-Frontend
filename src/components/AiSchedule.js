@@ -9,7 +9,7 @@ import {
   faBookmark as faBookmarkSolid,
   faHeart as faHeartSolid,
   faMugHot, faChevronLeft, faChevronRight,
-  faArrowUp,
+  faArrowUp, faTriangleExclamation
 } from '@fortawesome/free-solid-svg-icons';
 import { 
   faCalendar as faRegularCalendar,
@@ -17,7 +17,7 @@ import {
   faHeart as faHeartRegular,
   faClock
  } from '@fortawesome/free-regular-svg-icons';
-import { fetchReviews, fetchImages, fetchWeather } from '../services/api';
+import { fetchReviews, fetchImages, fetchWeather, fetchAutocomplete } from '../services/api';
 import { BASE_URL } from '../config';
 
 // ═════════════════════════════════════════════════════════════
@@ -1322,9 +1322,10 @@ const getAirlineLogo = (name = '', url = '') => {
 };
 
 // 🎨 PlaceCard
-const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit, guestCount, isDark }) => {
+const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShowMap, onEdit, onEditDuration, onRemove, guestCount, isDark, draggable, onDragStart }) => {
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [isHovered,   setIsHovered]   = useState(false);
+  const [isDragging,  setIsDragging]  = useState(false);
 
   const placeType = type === 'Khách sạn' ? 'hotel' : type === 'Điểm tham quan' ? 'tour' : type === 'Địa điểm ăn uống' ? 'food' : 'default';
 
@@ -1390,9 +1391,17 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
   return (
     <div
       className="ais-place-card"
+      draggable={draggable}
+      onDragStart={(e) => {
+        setIsDragging(true);
+        if (onDragStart) onDragStart(e);
+      }}
+      onDragEnd={() => setIsDragging(false)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{
+        opacity: isDragging ? 0.5 : 1,
+        cursor: draggable ? (isDragging ? 'grabbing' : 'grab') : 'default',
         backgroundColor: isDark ? '#22252a' : 'white',
         borderRadius: '20px', padding: '18px 20px',
         display: 'flex', gap: '16px',
@@ -1462,8 +1471,15 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
       <div className="ais-place-card-content" style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
           {data.timeLabel && (
-            <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: isDark ? '#374151' : '#f1f5f9', color: isDark ? '#f8fafc' : '#475569', padding: '3px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span 
+              onClick={onEditDuration}
+              style={{ fontSize: '11px', fontWeight: '800', backgroundColor: isDark ? '#374151' : '#f1f5f9', color: isDark ? '#f8fafc' : '#475569', padding: '3px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', cursor: onEditDuration ? 'pointer' : 'default', transition: '0.2s', border: onEditDuration ? `1px solid ${isDark ? '#4b5563' : '#cbd5e1'}` : '1px solid transparent' }}
+              title={onEditDuration ? 'Nhấn để điều chỉnh thời gian' : ''}
+              onMouseEnter={(e) => { if (onEditDuration) e.currentTarget.style.backgroundColor = isDark ? '#4b5563' : '#e2e8f0'; }}
+              onMouseLeave={(e) => { if (onEditDuration) e.currentTarget.style.backgroundColor = isDark ? '#374151' : '#f1f5f9'; }}
+            >
               <FontAwesomeIcon icon={faClock} /> {data.timeLabel}
+              {onEditDuration && <FontAwesomeIcon icon={faPenToSquare} style={{ fontSize: '10px', marginLeft: '2px', opacity: 0.7 }} />}
             </span>
           )}
           <span style={{ fontSize: '11px', fontWeight: '800', color: mainColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{type}</span>
@@ -1522,6 +1538,11 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
           {onEdit && (
             <button onClick={onEdit} style={{ padding: '7px 12px', borderRadius: '10px', border: `1.5px solid ${mainColor}`, color: mainColor, backgroundColor: isDark ? '#111827' : 'white', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <FontAwesomeIcon icon={faPenToSquare} style={{ fontSize: '10px' }} /> Đổi
+            </button>
+          )}
+          {onRemove && (
+            <button onClick={onRemove} style={{ padding: '7px 12px', borderRadius: '10px', border: `1.5px solid #ef4444`, color: '#ef4444', backgroundColor: isDark ? '#111827' : 'white', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <FontAwesomeIcon icon={faXmark} style={{ fontSize: '10px' }} /> Xóa
             </button>
           )}
           {isFlight && (
@@ -2314,6 +2335,9 @@ const parseMoney = (str) => {
 
 const BudgetDashboard = ({ initialData, currentHotel, dailyPlans, numDays, isDark }) => {
   const [showDetails, setShowDetails] = React.useState(false);
+  const [pos, setPos] = React.useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = React.useState(false);
+  const dragRef = React.useRef({ startX: 0, startY: 0, initX: 0, initY: 0, hasMoved: false });
 
   // Mặc định 5 triệu nếu ko nhập
   const budget = parseMoney(initialData.budget) || 5000000; 
@@ -2359,6 +2383,74 @@ const BudgetDashboard = ({ initialData, currentHotel, dailyPlans, numDays, isDar
     return { hotelCost: hCost, flightCost: fCost, foodTourCost: actCost, totalCost: total, remaining: budget - total, transportLabel: tLabel };
   }, [currentHotel, dailyPlans, initialData, numDays, budget, passengers]);
 
+  const handlePointerDown = (e) => {
+    if (e.target.closest('.budget-popover')) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = { startX: e.clientX, startY: e.clientY, initX: pos.x, initY: pos.y, hasMoved: false };
+    setIsDragging(true);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragRef.current.hasMoved = true;
+    
+    const screenW = window.innerWidth;
+    const screenH = window.innerHeight;
+    
+    const maxDragRight = 175;
+    const maxDragLeft = -(screenW - 175);
+    const maxDragBottom = screenH - 124 - 40;
+    const maxDragTop = -14 - 100; // Cho phép kéo lố lên trên để tạo độ nhún
+    
+    let newX = dragRef.current.initX + dx;
+    let newY = dragRef.current.initY + dy;
+    
+    if (newX > maxDragRight) newX = maxDragRight;
+    if (newX < maxDragLeft) newX = maxDragLeft;
+    if (newY > maxDragBottom) newY = maxDragBottom;
+    if (newY < maxDragTop) newY = maxDragTop;
+    
+    setPos({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = (e) => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    
+    let finalX = dragRef.current.initX + (e.clientX - dragRef.current.startX);
+    let finalY = dragRef.current.initY + (e.clientY - dragRef.current.startY);
+    
+    const screenW = window.innerWidth;
+    const screenH = window.innerHeight;
+    
+    let snapRight = 0; // margin 30px (do CSS default là right 30px)
+    let snapLeft = -(screenW - 350 - 60); // margin 30px
+    if (snapLeft > snapRight) {
+      const margin = (screenW - 350) / 2;
+      snapRight = 30 - margin;
+      snapLeft = 30 - margin;
+    }
+    const snapBottom = screenH - 124 - 80 - 30; // margin dưới 30px
+    const snapTop = -14; // sát Navbar
+    
+    if (finalX > snapRight) finalX = snapRight;
+    if (finalX < snapLeft) finalX = snapLeft;
+    if (finalY > snapBottom) finalY = snapBottom;
+    if (finalY < snapTop) finalY = snapTop;
+
+    const dist = Math.sqrt(finalX * finalX + finalY * finalY);
+    if (dist < 150) { // snap radius = 150px
+      setPos({ x: 0, y: 0 });
+    } else {
+      setPos({ x: finalX, y: finalY });
+    }
+    if (!dragRef.current.hasMoved) setShowDetails(prev => !prev);
+  };
+
   return (
     <>
       <style>
@@ -2372,15 +2464,21 @@ const BudgetDashboard = ({ initialData, currentHotel, dailyPlans, numDays, isDar
       </style>
       {/* Backdrop (chỉ dùng để đóng chi tiết khi click ra ngoài) */}
       {showDetails && (
-        <div onClick={() => setShowDetails(false)} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'transparent' }} />
+        <div onClick={() => setShowDetails(false)} style={{ position: 'fixed', inset: 0, zIndex: 989, background: 'transparent' }} />
       )}
       
       <div 
-        onClick={() => setShowDetails(!showDetails)}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         style={{
-          position: 'fixed', top: '100px', right: '30px', zIndex: 9999,
+          position: 'fixed', top: '124px', right: '30px', zIndex: 990,
+          transform: `translate(${pos.x}px, ${pos.y}px)`,
+          transition: isDragging ? 'none' : 'transform 0.5s cubic-bezier(0.34, 1.8, 0.64, 1)',
           display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
-          cursor: 'pointer'
+          cursor: isDragging ? 'grabbing' : 'grab',
+          touchAction: 'none'
         }}
       >
         {/* The Text Above the Bar */}
@@ -2420,7 +2518,7 @@ const BudgetDashboard = ({ initialData, currentHotel, dailyPlans, numDays, isDar
 
         {/* The Details Popover */}
         {showDetails && (
-          <div style={{
+          <div className="budget-popover" style={{
             position: 'absolute', top: '100%', right: 0, marginTop: '14px',
             width: '320px',
             background: isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.95)',
@@ -2490,12 +2588,272 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
   const [dailyPlans,  setDailyPlans]  = useState([]);
   const [mapQuery,    setMapQuery]    = useState(() => { const h = (initialData.realHotels || [])[0]; return h ? `${h.name} ${initialData.location || ''}`.trim() : (initialData.location || ''); });
   const [modal,       setModal]       = useState({ show: false, type: '', day: null, session: '', subType: '' });
+  const [addModal,    setAddModal]    = useState({ show: false, day: null, session: '', query: '', results: [], loading: false, selectedPlace: null, replaceTarget: 'new' });
   const [mapModal,    setMapModal]    = useState({ show: false, query: '', placeName: '', placeId: '', lat: null, lng: null });
+
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [dragOverSession, setDragOverSession] = useState(null);
+  const [dragHoverItem, setDragHoverItem] = useState(null);
+  const [durationEdit, setDurationEdit] = useState(null);
+  const [customDuration, setCustomDuration] = useState('');
+  const [customStartTime, setCustomStartTime] = useState('');
+
+  useEffect(() => {
+    const handleDragEndGlobal = () => {
+      setDragOverSession(null);
+      setDragHoverItem(null);
+      setDraggedItem(null);
+    };
+    window.addEventListener('dragend', handleDragEndGlobal);
+    return () => window.removeEventListener('dragend', handleDragEndGlobal);
+  }, []);
+
+  const closeAddModal = () => setAddModal({ show: false, day: null, session: '', query: '', results: [], loading: false, selectedPlace: null, replaceTarget: 'new' });
+
   const contentRef = useRef(null);
+
+  const getSortedItems = (sessionData) => {
+    if (!sessionData) return [];
+    const items = [];
+    if (sessionData.food) items.push({ key: 'food', act: sessionData.food, index: null, typeLabel: 'Địa điểm ăn uống', subType: 'food' });
+    if (sessionData.tour) items.push({ key: 'tour', act: sessionData.tour, index: null, typeLabel: 'Điểm tham quan', subType: 'tour' });
+    if (sessionData.extras) sessionData.extras.forEach((ex, i) => items.push({ key: 'extras', index: i, act: ex, typeLabel: 'Điểm đến thêm', subType: 'extras' }));
+    
+    items.forEach((item, idx) => {
+      if (typeof item.act._order !== 'number') item.act._order = idx;
+    });
+
+    items.sort((a, b) => a.act._order - b.act._order);
+    return items;
+  };
+
+  const renderSessionCards = (d, sessionName) => {
+    let items = getSortedItems(d[sessionName]);
+
+    return items.map((item, idx) => {
+      const isBeingDragged = draggedItem && draggedItem.day === d.day && draggedItem.session === sessionName && draggedItem.subType === item.subType && draggedItem.index === item.index;
+      const isHoveredHere = dragHoverItem?.day === d.day && dragHoverItem?.session === sessionName && dragHoverItem?.order === item.act._order;
+      const showPlaceholderBefore = isHoveredHere && dragHoverItem?.position === 'before' && draggedItem;
+      const showPlaceholderAfter = isHoveredHere && dragHoverItem?.position === 'after' && draggedItem;
+      
+      const placeholder = (
+        <div 
+          style={{
+            width: '100%',
+            borderRadius: '20px',
+            backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.05)',
+            border: '2px dashed #3b82f6',
+            animation: 'expandDown 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
+          }} 
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        />
+      );
+
+      return (
+        <React.Fragment key={`${item.key}-${item.index !== null ? item.index : '0'}`}>
+          {showPlaceholderBefore && placeholder}
+          <div 
+            style={{ 
+              display: isBeingDragged ? 'none' : 'flex',
+              flex: 1,
+              width: '100%',
+            }}
+            onDragOver={(e) => handleDragOverCard(e, d.day, sessionName, item.act._order)}
+          >
+            <PlaceCard 
+              draggable={true} 
+              onDragStart={(e) => handleDragStart(e, d.day, sessionName, item.subType, item.index, item.act)} 
+              type={item.typeLabel} 
+              sessionLabel={sessionName === 'morning' ? 'Sáng' : sessionName === 'afternoon' ? 'Chiều' : 'Tối'}
+              data={item.act} 
+              locationName={initialData.location} 
+              onShowMap={handleShowMap} 
+              onEdit={item.key !== 'extras' ? () => setModal({ show: true, type: item.typeLabel, day: d.day, session: sessionName, subType: item.subType }) : undefined} 
+              onEditDuration={() => {
+                let startMatch = '';
+                const t = item.act.timeLabel || item.act.time;
+                if (t) startMatch = t.split('-')[0].trim();
+                setDurationEdit({ day: d.day, session: sessionName, act: item.act, key: item.key, index: item.index, currentDuration: item.duration });
+                setCustomDuration('');
+                setCustomStartTime(startMatch);
+              }}
+              onRemove={item.key === 'extras' ? () => handleRemoveExtraActivity(d.day, sessionName, item.index) : undefined} 
+              isDark={isDark} 
+            />
+          </div>
+          {showPlaceholderAfter && placeholder}
+        </React.Fragment>
+      );
+    });
+  };
+
+  const handleDragStart = (e, day, session, subType, index, data) => {
+    setTimeout(() => {
+      setDraggedItem({ day, session, subType, index, data });
+      setDragHoverItem({ day, session, order: data._order, position: 'before' });
+    }, 0);
+  };
+
+  const handleDragOverCard = (e, day, session, order) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!draggedItem) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isBottomHalf = e.clientY > rect.top + rect.height / 2;
+    const position = isBottomHalf ? 'after' : 'before';
+
+    if (dragOverSession?.day !== day || dragOverSession?.session !== session) {
+      setDragOverSession({ day, session });
+    }
+    if (dragHoverItem?.day !== day || dragHoverItem?.session !== session || dragHoverItem?.order !== order || dragHoverItem?.position !== position) {
+      setDragHoverItem({ day, session, order, position });
+    }
+  };
+
+  const handleDragOver = (e, day, session) => {
+    e.preventDefault(); // Necessary to allow dropping
+    if (!draggedItem) return;
+    
+    if (dragHoverItem && (dragHoverItem.day !== day || dragHoverItem.session !== session)) {
+      setDragHoverItem(null);
+    }
+
+    if (dragOverSession?.day !== day || dragOverSession?.session !== session) {
+      setDragOverSession({ day, session });
+    }
+  };
+
+  const handleDrop = (e, targetDay, targetSession) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const insertAtOrder = dragHoverItem ? dragHoverItem.order : Infinity;
+
+    setDragOverSession(null);
+    setDragHoverItem(null);
+
+    if (!draggedItem) return;
+
+    setDailyPlans(prev => {
+      const next = prev.map(d => ({ ...d })); 
+      
+      const sourceDayObj = next.find(d => d.day === draggedItem.day);
+      const targetDayObj = next.find(d => d.day === targetDay);
+      if (!sourceDayObj || !targetDayObj) return prev;
+
+      if (draggedItem.day === targetDay && draggedItem.session === targetSession) {
+        // Reordering within the same session
+        const sessData = { ...targetDayObj[targetSession] };
+        let items = getSortedItems(sessData);
+        
+        const draggedIdx = items.findIndex(i => i.subType === draggedItem.subType && i.index === draggedItem.index);
+        if (draggedIdx === -1) return prev;
+        
+        const [removed] = items.splice(draggedIdx, 1);
+        
+        let insertIdx = items.length;
+        if (insertAtOrder !== Infinity) {
+          if (insertAtOrder === draggedItem.data._order) {
+            insertIdx = draggedIdx;
+          } else {
+            const hoverIdx = items.findIndex(i => i.act._order === insertAtOrder);
+            if (hoverIdx !== -1) {
+              insertIdx = dragHoverItem.position === 'after' ? hoverIdx + 1 : hoverIdx;
+            }
+          }
+        }
+        
+        items.splice(insertIdx, 0, removed);
+        items.forEach((item, idx) => { item.act._order = idx; });
+        
+        targetDayObj[targetSession] = recalculateSessionTimes(sessData, targetSession);
+      } else {
+        // Moving across sessions
+        const sourceSession = { ...sourceDayObj[draggedItem.session] };
+        if (draggedItem.subType === 'food') sourceSession.food = null;
+        else if (draggedItem.subType === 'tour') sourceSession.tour = null;
+        else if (draggedItem.subType === 'extras' && sourceSession.extras) {
+          sourceSession.extras = sourceSession.extras.filter((_, i) => i !== draggedItem.index);
+        }
+        sourceDayObj[draggedItem.session] = recalculateSessionTimes(sourceSession, draggedItem.session);
+
+        const targetSessionData = { ...targetDayObj[targetSession] };
+        targetSessionData.extras = targetSessionData.extras ? [...targetSessionData.extras] : [];
+        targetSessionData.extras.push(draggedItem.data);
+        
+        let targetItems = getSortedItems(targetSessionData);
+        const newItemWrapperIdx = targetItems.findIndex(i => i.act === draggedItem.data);
+        const [removedWrapper] = targetItems.splice(newItemWrapperIdx, 1);
+
+        let insertIdx = targetItems.length;
+        if (insertAtOrder !== Infinity) {
+          const hoverIdx = targetItems.findIndex(i => i.act._order === insertAtOrder);
+          if (hoverIdx !== -1) {
+            insertIdx = dragHoverItem.position === 'after' ? hoverIdx + 1 : hoverIdx;
+          }
+        }
+        
+        targetItems.splice(insertIdx, 0, removedWrapper);
+        targetItems.forEach((item, idx) => { item.act._order = idx; });
+
+        targetDayObj[targetSession] = recalculateSessionTimes(targetSessionData, targetSession);
+        sourceDayObj[draggedItem.session] = recalculateSessionTimes(sourceSession, draggedItem.session);
+        Object.assign(sourceDayObj, recalculateDay(sourceDayObj));
+        Object.assign(targetDayObj, recalculateDay(targetDayObj));
+      }
+
+      if (onPlanChange) onPlanChange(next);
+      return next;
+    });
+
+    setDraggedItem(null);
+  };
 
   // 💾 Trạng thái lưu lịch trình — đồng bộ nút trong và ngoài action panel
   const [scheduleSaved,      setScheduleSaved]      = useState(false);
   const [scheduleSaveLoading, setScheduleSaveLoading] = useState(false);
+
+  const handleSaveDuration = (newDuration, newStartTime = null) => {
+    if (!durationEdit) return;
+    const { day, session, key, index } = durationEdit;
+    
+    let parsedStartMins = undefined;
+    if (newStartTime) {
+       const [h, m] = newStartTime.split(':').map(Number);
+       if (!isNaN(h) && !isNaN(m)) parsedStartMins = h * 60 + m;
+    }
+    
+    setDailyPlans(prev => {
+      const next = prev.map(d => {
+        if (d.day === day) {
+          const sessionData = { ...d[session] };
+          
+          const applyCustom = (act) => {
+            const updated = { ...act, userDurationMins: newDuration };
+            if (parsedStartMins !== undefined) updated.userStartTimeMins = parsedStartMins;
+            return updated;
+          };
+          
+          if (key === 'food') {
+            sessionData.food = applyCustom(sessionData.food);
+          } else if (key === 'tour') {
+            sessionData.tour = applyCustom(sessionData.tour);
+          } else if (key === 'extras' && sessionData.extras) {
+            sessionData.extras = sessionData.extras.map((ex, i) => i === index ? applyCustom(ex) : ex);
+          }
+          
+          return recalculateDay({ ...d, [session]: sessionData });
+        }
+        return d;
+      });
+      if (onPlanChange) onPlanChange(next);
+      return next;
+    });
+    setDurationEdit(null);
+    setCustomDuration('');
+    setCustomStartTime('');
+  };
 
   const handleSaveSchedule = async () => {
     if (scheduleSaveLoading || scheduleSaved) return;
@@ -2799,8 +3157,251 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
     setModal({ show: false, type: '', day: null, session: '', subType: '' });
   };
 
+  useEffect(() => {
+    if (!addModal.show || !addModal.query.trim()) {
+      setAddModal(prev => ({ ...prev, results: [], loading: false }));
+      return;
+    }
+    const delay = setTimeout(async () => {
+      setAddModal(prev => ({ ...prev, loading: true }));
+      try {
+        const data = await fetchAutocomplete(addModal.query);
+        setAddModal(prev => ({ ...prev, results: data || [], loading: false }));
+      } catch (e) {
+        setAddModal(prev => ({ ...prev, results: [], loading: false }));
+      }
+    }, 500);
+    return () => clearTimeout(delay);
+  }, [addModal.query, addModal.show]);
+
+  const handleSelectAddActivity = (placeName) => {
+    if (!placeName.trim()) return;
+    setAddModal(prev => ({ ...prev, selectedPlace: placeName }));
+  };
+
+  const recalculateSessionTimes = (sessionData, sessionType, minStartMins = null) => {
+    const items = [];
+    if (sessionData.food) items.push({ key: 'food', act: sessionData.food });
+    if (sessionData.tour) items.push({ key: 'tour', act: sessionData.tour });
+    if (sessionData.extras) sessionData.extras.forEach((ex, i) => items.push({ key: 'extras', index: i, act: ex }));
+
+    if (items.length === 0) return sessionData;
+
+    // Ensure all items have an _order property
+    items.forEach((item, idx) => {
+      if (typeof item.act._order !== 'number') item.act._order = idx;
+    });
+
+    // Sort by _order
+    items.sort((a, b) => a.act._order - b.act._order);
+
+    const parseTime = (timeStr) => {
+      if (!timeStr) return null;
+      const parts = timeStr.split('-');
+      if (parts.length !== 2) return null;
+      const parseHHMM = (str) => {
+        const [h, m] = str.trim().split(':').map(Number);
+        if (isNaN(h) || isNaN(m)) return null;
+        return h * 60 + m;
+      };
+      const start = parseHHMM(parts[0]);
+      const end = parseHHMM(parts[1]);
+      if (start === null || end === null) return null;
+      return { start, end, duration: end - start };
+    };
+
+    let sessionStartMins = Infinity;
+    items.forEach(item => {
+      const t = parseTime(item.act.time);
+      if (t) {
+        if (sessionType === 'morning' && t.start >= 7 * 60 && t.start <= 11 * 60) sessionStartMins = Math.min(sessionStartMins, t.start);
+        if (sessionType === 'afternoon' && t.start >= 13 * 60 && t.start <= 17 * 60) sessionStartMins = Math.min(sessionStartMins, t.start);
+        if (sessionType === 'evening' && t.start >= 18 * 60 && t.start <= 23 * 60) sessionStartMins = Math.min(sessionStartMins, t.start);
+      }
+      
+      let duration = t && t.duration > 0 ? t.duration : 120;
+      if (item.act.userDurationMins) {
+        duration = item.act.userDurationMins;
+      } else if (item.key === 'food' || item.act.type === 'food' || item.subType === 'food') {
+        duration = 60; // Food is strictly 1 hour
+      } else if (duration > 180) {
+        duration = 120; // Cap corrupted durations
+      }
+      item.duration = duration;
+    });
+
+    // Enforce stricter default starts if it was messed up by bugs
+    if (sessionStartMins === Infinity || sessionStartMins > 24 * 60) {
+      if (sessionType === 'morning') sessionStartMins = 7 * 60 + 30; // 07:30
+      else if (sessionType === 'afternoon') sessionStartMins = 13 * 60 + 30; // 13:30
+      else sessionStartMins = 18 * 60 + 30; // 18:30
+    }
+
+    if (minStartMins !== null && minStartMins > sessionStartMins) {
+      sessionStartMins = minStartMins;
+    }
+
+    const formatTime = (mins) => {
+      const h = Math.floor(mins / 60);
+      const m = Math.round(mins % 60);
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    };
+
+    let currentStart = sessionStartMins;
+    const applyTime = (item, isLast, isFirst) => {
+      if (item.act.userStartTimeMins) {
+        if (isFirst) currentStart = Math.max(sessionStartMins, item.act.userStartTimeMins);
+        else currentStart = Math.max(currentStart, item.act.userStartTimeMins);
+      }
+      const startStr = formatTime(currentStart);
+      currentStart += item.duration;
+      const endStr = formatTime(currentStart);
+      if (!isLast) currentStart += (items.length >= 3 ? 15 : 30); // Giảm thời gian di chuyển nếu có nhiều địa điểm
+      return { ...item.act, timeLabel: `${startStr} - ${endStr}`, time: `${startStr} - ${endStr}` };
+    };
+
+    const newData = { ...sessionData, extras: sessionData.extras ? [...sessionData.extras] : [] };
+    items.forEach((item, finalIndex) => {
+      const isLast = finalIndex === items.length - 1;
+      const isFirst = finalIndex === 0;
+      const updatedAct = applyTime(item, isLast, isFirst);
+      updatedAct._order = finalIndex; // Normalize order 0, 1, 2...
+      if (item.key === 'food') newData.food = updatedAct;
+      else if (item.key === 'tour') newData.tour = updatedAct;
+      else newData.extras[item.index] = updatedAct;
+    });
+
+    return newData;
+  };
+
+  const getSessionEndMins = (sessionData) => {
+    if (!sessionData) return null;
+    const items = [];
+    if (sessionData.food) items.push(sessionData.food);
+    if (sessionData.tour) items.push(sessionData.tour);
+    if (sessionData.extras) items.push(...sessionData.extras);
+    if (items.length === 0) return null;
+    
+    let maxEnd = 0;
+    items.forEach(act => {
+      if (!act.time) return;
+      const parts = act.time.split('-');
+      if (parts.length === 2) {
+        const [h, m] = parts[1].trim().split(':').map(Number);
+        if (!isNaN(h) && !isNaN(m)) maxEnd = Math.max(maxEnd, h * 60 + m);
+      }
+    });
+    return maxEnd;
+  };
+
+  const recalculateDay = (dayObj) => {
+    const newDay = { ...dayObj };
+    newDay.morning = recalculateSessionTimes(newDay.morning, 'morning', null);
+    let end = getSessionEndMins(newDay.morning);
+    newDay.afternoon = recalculateSessionTimes(newDay.afternoon, 'afternoon', end !== null ? end + 15 : null);
+    end = getSessionEndMins(newDay.afternoon);
+    newDay.evening = recalculateSessionTimes(newDay.evening, 'evening', end !== null ? end + 15 : null);
+    return newDay;
+  };
+
+  const checkDuplicatePlace = (placeName) => {
+    let duplicateInfo = null;
+    dailyPlans.forEach(d => {
+      ['morning', 'afternoon', 'evening'].forEach(sess => {
+        const sd = d[sess];
+        if (!sd) return;
+        const check = (act) => act && act.name && act.name.toLowerCase() === placeName.toLowerCase();
+        if (check(sd.food) || check(sd.tour) || (sd.extras && sd.extras.some(check))) {
+          duplicateInfo = `Ngày ${d.day}, Buổi ${sess === 'morning' ? 'sáng' : sess === 'afternoon' ? 'chiều' : 'tối'}`;
+        }
+      });
+    });
+    return duplicateInfo;
+  };
+
+  useEffect(() => {
+    const handleAIUpdate = (e) => {
+      const { day, session, place } = e.detail;
+      setDailyPlans(prev => {
+        const next = prev.map(d => {
+          if (d.day === day) {
+            const sessionData = { ...d[session] };
+            const newActivity = { name: place, desc: 'Địa điểm được Trợ lý AI thêm vào', price: 'Tùy chọn', time: 'Tùy chọn' };
+            // Replace tour if available, else food, else extras
+            if (sessionData.tour) {
+               sessionData.tour = newActivity;
+            } else if (sessionData.food) {
+               sessionData.food = newActivity;
+            } else {
+               if (!sessionData.extras) sessionData.extras = [];
+               sessionData.extras = [...sessionData.extras, newActivity];
+            }
+            return recalculateDay({ ...d, [session]: sessionData });
+          }
+          return d;
+        });
+        if (onPlanChange) onPlanChange(next);
+        return next;
+      });
+    };
+    window.addEventListener('AI_UPDATE_SCHEDULE', handleAIUpdate);
+    return () => window.removeEventListener('AI_UPDATE_SCHEDULE', handleAIUpdate);
+  }, [onPlanChange, dailyPlans]);
+
+
+  const handleConfirmAddActivity = () => {
+    const { day, session, selectedPlace, replaceTarget } = addModal;
+    setDailyPlans(prev => {
+      const next = prev.map(d => {
+        if (d.day === day) {
+          const newActivity = { name: selectedPlace, desc: 'Địa điểm do bạn thêm vào', price: 'Tùy chọn', time: 'Tùy chọn' };
+          const sessionData = { ...d[session] };
+          
+          if (replaceTarget === 'food') {
+             sessionData.food = newActivity;
+          } else if (replaceTarget === 'tour') {
+             sessionData.tour = newActivity;
+          } else {
+             if (!sessionData.extras) sessionData.extras = [];
+             sessionData.extras = [...sessionData.extras, newActivity];
+          }
+          return recalculateDay({ ...d, [session]: sessionData });
+        }
+        return d;
+      });
+      if (onPlanChange) onPlanChange(next);
+      return next;
+    });
+    closeAddModal();
+  };
+
+  const handleRemoveExtraActivity = (day, session, idx) => {
+    setDailyPlans(prev => {
+      const next = prev.map(d => {
+        if (d.day === day) {
+          const sessionData = { ...d[session] };
+          if (sessionData.extras) {
+            sessionData.extras = sessionData.extras.filter((_, i) => i !== idx);
+          }
+          return recalculateDay({ ...d, [session]: sessionData });
+        }
+        return d;
+      });
+      if (onPlanChange) onPlanChange(next);
+      return next;
+    });
+  };
+
+
   return (
     <>
+      <style>{`
+        @keyframes expandDown {
+          from { height: 0; opacity: 0; margin: 0; border-width: 0; }
+          to { height: 110px; opacity: 1; margin: 0; border-width: 2px; }
+        }
+      `}</style>
+
     <BudgetDashboard 
       initialData={initialData} 
       currentHotel={currentHotel} 
@@ -2939,6 +3540,121 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
           onClose={() => setSpecialtiesOpen(false)}
           isDark={isDark}
         />
+      )}
+
+      {/* MODAL THÊM ĐỊA ĐIỂM */}
+      {addModal.show && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={closeAddModal}>
+          <div
+            style={{ backgroundColor: isDark ? '#1e293b' : 'white', borderRadius: '35px', width: '550px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ padding: '24px 30px', borderBottom: isDark ? '1px solid #334155' : '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: '900', color: isDark ? '#f8fafc' : '#111827' }}>
+                📍 Thêm địa điểm vào {addModal.session === 'morning' ? 'Buổi sáng' : addModal.session === 'afternoon' ? 'Buổi chiều' : 'Buổi tối'}
+              </div>
+              <FontAwesomeIcon icon={faXmark} style={{ cursor: 'pointer', fontSize: '24px', color: '#9ca3af' }} onClick={closeAddModal} />
+            </div>
+            
+            <div style={{ padding: '24px 30px', flex: 1, overflowY: 'auto' }}>
+              {!addModal.selectedPlace ? (
+                <>
+                  <input
+                    autoFocus
+                    value={addModal.query}
+                    onChange={e => setAddModal(prev => ({ ...prev, query: e.target.value }))}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleSelectAddActivity(addModal.query);
+                    }}
+                    placeholder="Nhập tên địa điểm..."
+                    style={{
+                      width: '100%', padding: '16px 20px', borderRadius: '16px', border: isDark ? '2px solid #334155' : '2px solid #e2e8f0',
+                      fontSize: '16px', outline: 'none', backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? 'white' : 'black', marginBottom: '16px'
+                    }}
+                  />
+                  {addModal.loading && (
+                    <div style={{ textAlign: 'center', color: '#64748b', padding: '20px 0' }}>
+                      <FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: '8px' }} /> Đang tìm kiếm...
+                    </div>
+                  )}
+                  {!addModal.loading && addModal.results.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {addModal.results.map((r, i) => (
+                        <div
+                          key={i}
+                          onClick={() => handleSelectAddActivity(r)}
+                          style={{ padding: '14px 16px', borderRadius: '12px', border: isDark ? '1px solid #334155' : '1px solid #e2e8f0', cursor: 'pointer', fontWeight: '600', color: isDark ? '#e2e8f0' : '#1e293b' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? '#334155' : '#f1f5f9'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          <FontAwesomeIcon icon={faLocationArrow} style={{ marginRight: '10px', color: '#10b981' }} /> {r}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {!addModal.loading && addModal.query.trim() && addModal.results.length === 0 && (
+                    <div
+                      onClick={() => handleSelectAddActivity(addModal.query)}
+                      style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid #10b981', cursor: 'pointer', fontWeight: '600', color: '#10b981', backgroundColor: isDark ? 'rgba(16,185,129,0.1)' : '#ecfdf5', textAlign: 'center' }}
+                    >
+                      <FontAwesomeIcon icon={faLocationArrow} style={{ marginRight: '10px' }} />
+                      Thêm "{addModal.query}" ngay
+                    </div>
+                  )}
+                </>
+              ) : (
+                (() => {
+                  const d = dailyPlans.find(p => p.day === addModal.day);
+                  const sessionData = d ? d[addModal.session] : null;
+                  const dupInfo = checkDuplicatePlace(addModal.selectedPlace);
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      {dupInfo && (
+                        <div style={{ padding: '12px 16px', borderRadius: '12px', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', color: '#ef4444', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <FontAwesomeIcon icon={faTriangleExclamation} />
+                          <span><b>Cảnh báo:</b> Địa điểm này đã có trong lịch trình ({dupInfo}). Bạn có chắc chắn muốn thêm?</span>
+                        </div>
+                      )}
+                      <div style={{ fontSize: '16px', color: isDark ? '#f8fafc' : '#111827', fontWeight: '700' }}>
+                        Bạn muốn thêm "{addModal.selectedPlace}" vào lịch trình như thế nào?
+                      </div>
+                      
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', borderRadius: '12px', border: addModal.replaceTarget === 'new' ? '2px solid #10b981' : (isDark ? '2px solid #334155' : '2px solid #e2e8f0'), backgroundColor: addModal.replaceTarget === 'new' ? (isDark ? 'rgba(16,185,129,0.1)' : '#ecfdf5') : 'transparent' }}>
+                        <input type="radio" name="replaceTarget" value="new" checked={addModal.replaceTarget === 'new'} onChange={() => setAddModal(prev => ({ ...prev, replaceTarget: 'new' }))} style={{ width: '18px', height: '18px', accentColor: '#10b981' }} />
+                        <span style={{ fontSize: '15px', color: isDark ? '#e2e8f0' : '#334155', fontWeight: '600' }}>Thêm thành hoạt động mới (Điểm đến thứ 3)</span>
+                      </label>
+
+                      {sessionData?.food && (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', borderRadius: '12px', border: addModal.replaceTarget === 'food' ? '2px solid #f59e0b' : (isDark ? '2px solid #334155' : '2px solid #e2e8f0'), backgroundColor: addModal.replaceTarget === 'food' ? (isDark ? 'rgba(245,158,11,0.1)' : '#fffbeb') : 'transparent' }}>
+                          <input type="radio" name="replaceTarget" value="food" checked={addModal.replaceTarget === 'food'} onChange={() => setAddModal(prev => ({ ...prev, replaceTarget: 'food' }))} style={{ width: '18px', height: '18px', accentColor: '#f59e0b' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '15px', color: isDark ? '#e2e8f0' : '#334155', fontWeight: '600' }}>Thay thế Quán ăn</span>
+                            <span style={{ fontSize: '13px', color: '#64748b' }}>Đang có: {sessionData.food.name}</span>
+                          </div>
+                        </label>
+                      )}
+
+                      {sessionData?.tour && (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', borderRadius: '12px', border: addModal.replaceTarget === 'tour' ? '2px solid #3b82f6' : (isDark ? '2px solid #334155' : '2px solid #e2e8f0'), backgroundColor: addModal.replaceTarget === 'tour' ? (isDark ? 'rgba(59,130,246,0.1)' : '#eff6ff') : 'transparent' }}>
+                          <input type="radio" name="replaceTarget" value="tour" checked={addModal.replaceTarget === 'tour'} onChange={() => setAddModal(prev => ({ ...prev, replaceTarget: 'tour' }))} style={{ width: '18px', height: '18px', accentColor: '#3b82f6' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '15px', color: isDark ? '#e2e8f0' : '#334155', fontWeight: '600' }}>Thay thế Điểm tham quan</span>
+                            <span style={{ fontSize: '13px', color: '#64748b' }}>Đang có: {sessionData.tour.name}</span>
+                          </div>
+                        </label>
+                      )}
+                      
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
+                        <button onClick={() => setAddModal(prev => ({ ...prev, selectedPlace: null, replaceTarget: 'new' }))} style={{ padding: '12px 24px', borderRadius: '12px', backgroundColor: 'transparent', border: 'none', color: '#64748b', fontWeight: '700', cursor: 'pointer' }}>Quay lại</button>
+                        <button onClick={handleConfirmAddActivity} style={{ padding: '12px 24px', borderRadius: '12px', backgroundColor: '#10b981', color: 'white', border: 'none', fontWeight: '800', cursor: 'pointer' }}>Xác nhận Thêm</button>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* MODAL ĐỔI LỰA CHỌN */}
@@ -3290,28 +4006,124 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
             
             {/* SÁNG */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div style={{ fontWeight: '800', color: '#f59e0b', fontSize: '14px' }}><FontAwesomeIcon icon={faSun} /> BUỔI SÁNG</div>
-              <div className="ais-session-row" style={{ display: 'flex', gap: '25px' }}>
-                {d.morning.food && <PlaceCard type="Địa điểm ăn uống" sessionLabel="Sáng" data={d.morning.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'morning', subType: 'food' })} isDark={isDark} />}
-                {d.morning.tour && <PlaceCard type="Điểm tham quan" sessionLabel="Sáng" data={d.morning.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'morning', subType: 'tour' })} isDark={isDark} />}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontWeight: '800', color: '#f59e0b', fontSize: '14px' }}><FontAwesomeIcon icon={faSun} /> BUỔI SÁNG</div>
+                <button onClick={() => setAddModal({ show: true, day: d.day, session: 'morning', query: '', results: [], loading: false, selectedPlace: null, replaceTarget: 'new' })} style={{ background: 'none', border: 'none', color: '#10b981', fontWeight: '800', cursor: 'pointer', fontSize: '13px' }}>+ Thêm hoạt động</button>
+              </div>
+              {(!d.morning.food && !d.morning.tour && (!d.morning.extras || d.morning.extras.length === 0)) && (
+                <div style={{ fontSize: '13px', color: '#10b981', padding: '10px', background: isDark ? 'rgba(16,185,129,0.1)' : '#ecfdf5', borderRadius: '10px' }}>
+                  💡 Buổi sáng đang trống. Hãy kéo thả địa điểm vào đây hoặc thêm mới nhé!
+                </div>
+              )}
+              {((d.morning.food ? 1 : 0) + (d.morning.tour ? 1 : 0) + (d.morning.extras ? d.morning.extras.length : 0)) >= 3 && (
+                <div style={{ fontSize: '13px', color: '#f59e0b', padding: '10px', background: isDark ? 'rgba(245,158,11,0.1)' : '#fef3c7', borderRadius: '10px' }}>
+                  ⚠️ Cảnh báo: Lịch trình buổi sáng đang khá dày đặc, AI đã tự động rút ngắn thời gian tham quan mỗi điểm!
+                </div>
+              )}
+              <div className="ais-session-row" 
+                onDragOver={(e) => handleDragOver(e, d.day, 'morning')}
+                onDrop={(e) => handleDrop(e, d.day, 'morning')}
+                style={{ 
+                  display: 'flex', gap: '25px', flexWrap: 'wrap', 
+                  flexDirection: ((d.morning.food ? 1 : 0) + (d.morning.tour ? 1 : 0) + (d.morning.extras ? d.morning.extras.length : 0) + (dragOverSession?.day === d.day && dragOverSession?.session === 'morning' && draggedItem && (draggedItem.day !== d.day || draggedItem.session !== 'morning') ? 1 : 0)) >= 3 ? 'column' : 'row',
+                  minHeight: '100px', padding: '10px', borderRadius: '24px',
+                  border: '2px dashed transparent',
+                  backgroundColor: 'transparent',
+                  transition: 'all 0.2s'
+                }}>
+                {renderSessionCards(d, 'morning')}
+                {dragOverSession?.day === d.day && dragOverSession?.session === 'morning' && draggedItem && (dragHoverItem?.day !== d.day || dragHoverItem?.session !== 'morning') && (
+                  <div style={{
+                    width: '100%',
+                    borderRadius: '20px',
+                    backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.05)',
+                    border: '2px dashed #3b82f6',
+                    animation: 'expandDown 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                    pointerEvents: 'none'
+                  }} />
+                )}
               </div>
             </div>
             
             {/* CHIỀU */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div style={{ fontWeight: '800', color: '#3b82f6', fontSize: '14px' }}><FontAwesomeIcon icon={faCloudSun} /> BUỔI CHIỀU</div>
-              <div className="ais-session-row" style={{ display: 'flex', gap: '25px' }}>
-                {d.afternoon.food && <PlaceCard type="Địa điểm ăn uống" sessionLabel="Chiều" data={d.afternoon.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'afternoon', subType: 'food' })} isDark={isDark} />}
-                {d.afternoon.tour && <PlaceCard type="Điểm tham quan" sessionLabel="Chiều" data={d.afternoon.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'afternoon', subType: 'tour' })} isDark={isDark} />}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontWeight: '800', color: '#3b82f6', fontSize: '14px' }}><FontAwesomeIcon icon={faCloudSun} /> BUỔI CHIỀU</div>
+                <button onClick={() => setAddModal({ show: true, day: d.day, session: 'afternoon', query: '', results: [], loading: false, selectedPlace: null, replaceTarget: 'new' })} style={{ background: 'none', border: 'none', color: '#10b981', fontWeight: '800', cursor: 'pointer', fontSize: '13px' }}>+ Thêm hoạt động</button>
+              </div>
+              {(!d.afternoon.food && !d.afternoon.tour && (!d.afternoon.extras || d.afternoon.extras.length === 0)) && (
+                <div style={{ fontSize: '13px', color: '#10b981', padding: '10px', background: isDark ? 'rgba(16,185,129,0.1)' : '#ecfdf5', borderRadius: '10px' }}>
+                  💡 Buổi chiều đang trống. Hãy kéo thả địa điểm vào đây hoặc thêm mới nhé!
+                </div>
+              )}
+              {((d.afternoon.food ? 1 : 0) + (d.afternoon.tour ? 1 : 0) + (d.afternoon.extras ? d.afternoon.extras.length : 0)) >= 3 && (
+                <div style={{ fontSize: '13px', color: '#f59e0b', padding: '10px', background: isDark ? 'rgba(245,158,11,0.1)' : '#fef3c7', borderRadius: '10px' }}>
+                  ⚠️ Cảnh báo: Lịch trình buổi chiều đang khá dày đặc, AI đã tự động rút ngắn thời gian tham quan mỗi điểm!
+                </div>
+              )}
+              <div className="ais-session-row" 
+                onDragOver={(e) => handleDragOver(e, d.day, 'afternoon')}
+                onDrop={(e) => handleDrop(e, d.day, 'afternoon')}
+                style={{ 
+                  display: 'flex', gap: '25px', flexWrap: 'wrap', 
+                  flexDirection: ((d.afternoon.food ? 1 : 0) + (d.afternoon.tour ? 1 : 0) + (d.afternoon.extras ? d.afternoon.extras.length : 0) + (dragOverSession?.day === d.day && dragOverSession?.session === 'afternoon' && draggedItem && (draggedItem.day !== d.day || draggedItem.session !== 'afternoon') ? 1 : 0)) >= 3 ? 'column' : 'row',
+                  minHeight: '100px', padding: '10px', borderRadius: '24px',
+                  border: '2px dashed transparent',
+                  backgroundColor: 'transparent',
+                  transition: 'all 0.2s'
+                }}>
+                {renderSessionCards(d, 'afternoon')}
+                {dragOverSession?.day === d.day && dragOverSession?.session === 'afternoon' && draggedItem && (dragHoverItem?.day !== d.day || dragHoverItem?.session !== 'afternoon') && (
+                  <div style={{
+                    width: '100%',
+                    borderRadius: '20px',
+                    backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.05)',
+                    border: '2px dashed #3b82f6',
+                    animation: 'expandDown 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                    pointerEvents: 'none'
+                  }} />
+                )}
               </div>
             </div>
             
             {/* TỐI */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div style={{ fontWeight: '800', color: '#8b5cf6', fontSize: '14px' }}><FontAwesomeIcon icon={faMoon} /> BUỔI TỐI</div>
-              <div className="ais-session-row" style={{ display: 'flex', gap: '25px' }}>
-                {d.evening.food && <PlaceCard type="Địa điểm ăn uống" sessionLabel="Tối" data={d.evening.food} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Địa điểm ăn uống', day: d.day, session: 'evening', subType: 'food' })} isDark={isDark} />}
-                {d.evening.tour && <PlaceCard type="Điểm tham quan" sessionLabel="Tối" data={d.evening.tour} locationName={initialData.location} onShowMap={handleShowMap} onEdit={() => setModal({ show: true, type: 'Điểm tham quan', day: d.day, session: 'evening', subType: 'tour' })} isDark={isDark} />}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontWeight: '800', color: '#8b5cf6', fontSize: '14px' }}><FontAwesomeIcon icon={faMoon} /> BUỔI TỐI</div>
+                <button onClick={() => setAddModal({ show: true, day: d.day, session: 'evening', query: '', results: [], loading: false, selectedPlace: null, replaceTarget: 'new' })} style={{ background: 'none', border: 'none', color: '#10b981', fontWeight: '800', cursor: 'pointer', fontSize: '13px' }}>+ Thêm hoạt động</button>
+              </div>
+              {(!d.evening.food && !d.evening.tour && (!d.evening.extras || d.evening.extras.length === 0)) && (
+                <div style={{ fontSize: '13px', color: '#10b981', padding: '10px', background: isDark ? 'rgba(16,185,129,0.1)' : '#ecfdf5', borderRadius: '10px' }}>
+                  💡 Buổi tối đang trống. Hãy kéo thả địa điểm vào đây hoặc thêm mới nhé!
+                </div>
+              )}
+              {((d.evening.food ? 1 : 0) + (d.evening.tour ? 1 : 0) + (d.evening.extras ? d.evening.extras.length : 0)) >= 3 && (
+                <div style={{ fontSize: '13px', color: '#f59e0b', padding: '10px', background: isDark ? 'rgba(245,158,11,0.1)' : '#fef3c7', borderRadius: '10px' }}>
+                  ⚠️ Cảnh báo: Lịch trình buổi tối đang khá dày đặc, AI đã tự động rút ngắn thời gian tham quan mỗi điểm!
+                </div>
+              )}
+              <div className="ais-session-row" 
+                onDragOver={(e) => handleDragOver(e, d.day, 'evening')}
+                onDrop={(e) => handleDrop(e, d.day, 'evening')}
+                style={{ 
+                  display: 'flex', gap: '25px', flexWrap: 'wrap', 
+                  flexDirection: ((d.evening.food ? 1 : 0) + (d.evening.tour ? 1 : 0) + (d.evening.extras ? d.evening.extras.length : 0) + (dragOverSession?.day === d.day && dragOverSession?.session === 'evening' && draggedItem && (draggedItem.day !== d.day || draggedItem.session !== 'evening') ? 1 : 0)) >= 3 ? 'column' : 'row',
+                  minHeight: '100px', padding: '10px', borderRadius: '24px',
+                  border: '2px dashed transparent',
+                  backgroundColor: 'transparent',
+                  transition: 'all 0.2s'
+                }}>
+                {renderSessionCards(d, 'evening')}
+                {dragOverSession?.day === d.day && dragOverSession?.session === 'evening' && draggedItem && (dragHoverItem?.day !== d.day || dragHoverItem?.session !== 'evening') && (
+                  <div style={{
+                    width: '100%',
+                    borderRadius: '20px',
+                    backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.05)',
+                    border: '2px dashed #3b82f6',
+                    animation: 'expandDown 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                    pointerEvents: 'none'
+                  }} />
+                )}
               </div>
             </div>
 
@@ -3319,6 +4131,50 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
         </div>
         );
       })}
+      {/* GREETING & BRANDING FOOTER */}
+      <div style={{
+        textAlign: 'center',
+        padding: '30px 20px 20px',
+        color: isDark ? '#94a3b8' : '#64748b',
+        fontSize: '48px',
+        fontWeight: '900',
+        letterSpacing: '0.02em',
+        textTransform: 'uppercase',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '8px',
+        opacity: 0.9,
+        lineHeight: '1.2'
+      }}>
+        <div style={{ fontSize: '56px' }}>✨✈️✨</div>
+        Chúc bạn có một chuyến đi thật tuyệt vời!
+        
+        <div 
+          className="screenshot-watermark"
+          style={{
+          marginTop: '40px',
+          padding: '16px 36px',
+          background: isDark ? 'rgba(15,23,42,0.8)' : 'rgba(255,255,255,0.9)',
+          border: isDark ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(16,185,129,0.4)',
+          boxShadow: '0 8px 32px rgba(16,185,129,0.2), 0 0 15px rgba(16,185,129,0.1)',
+          borderRadius: '100px',
+          fontSize: '24px',
+          fontWeight: '800',
+          color: isDark ? '#f8fafc' : '#1e293b',
+          position: 'absolute',
+          visibility: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          textTransform: 'none',
+          letterSpacing: '0'
+        }}>
+          Lịch trình được thiết kế thông minh bởi <strong style={{ color: '#10b981', marginRight: '4px' }}>S-Trip</strong>
+          <img src="S.jpg" alt="S-Trip Logo" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #10b981' }} />
+        </div>
+      </div>
+
       </div>{/* end contentRef */}
 
       {/* ── ACTION SPEED DIAL ── */}
@@ -3358,6 +4214,127 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
         <FontAwesomeIcon icon={faArrowUp} style={{ fontSize: '15px' }} />
       </button>
     )}
+      {/* MODAL EDIT DURATION */}
+      {durationEdit && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={() => { setDurationEdit(null); setCustomDuration(''); setCustomStartTime(''); }}>
+          <div
+            style={{ backgroundColor: isDark ? '#1e293b' : 'white', borderRadius: '25px', width: '380px', padding: '25px', display: 'flex', flexDirection: 'column' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <style>{`
+              .duration-btn {
+                flex: 1 1 calc(50% - 4px);
+                padding: 12px 0;
+                border-radius: 12px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                border: 1px solid ${isDark ? '#334155' : '#e2e8f0'};
+                background-color: transparent;
+                color: ${isDark ? '#f8fafc' : '#1e293b'};
+              }
+              .duration-btn:hover {
+                background-color: ${isDark ? '#334155' : '#f1f5f9'};
+                border-color: ${isDark ? '#475569' : '#cbd5e1'};
+              }
+              .duration-btn.active {
+                border-color: #3b82f6;
+                background-color: ${isDark ? 'rgba(59,130,246,0.2)' : 'rgba(59,130,246,0.1)'};
+                color: #3b82f6;
+                box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+              }
+              .duration-input {
+                flex: 1;
+                padding: 10px 15px;
+                border-radius: 10px;
+                border: 1px solid ${isDark ? '#334155' : '#e2e8f0'};
+                background-color: ${isDark ? '#0f172a' : 'white'};
+                color: ${isDark ? 'white' : 'black'};
+                font-size: 14px;
+                outline: none;
+                transition: all 0.2s;
+              }
+              .duration-input:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+              }
+            `}</style>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '900', margin: 0, color: isDark ? 'white' : 'black' }}>Đổi Giờ & Thời Lượng</h2>
+              <FontAwesomeIcon icon={faXmark} style={{ cursor: 'pointer', fontSize: '20px', color: '#9ca3af' }} onClick={() => { setDurationEdit(null); setCustomDuration(''); setCustomStartTime(''); }} />
+            </div>
+            
+            <div style={{ backgroundColor: isDark ? '#334155' : '#f8fafc', padding: '12px 15px', borderRadius: '12px', marginBottom: '20px' }}>
+              <p style={{ fontSize: '13px', color: isDark ? '#94a3b8' : '#64748b', margin: '0 0 4px 0' }}>Địa điểm đang chọn:</p>
+              <strong style={{ fontSize: '15px', color: isDark ? 'white' : '#0f172a', display: 'block' }}>{durationEdit.act.name || durationEdit.act.airline}</strong>
+            </div>
+
+            <div style={{ marginBottom: '20px', display: 'flex', gap: '15px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: isDark ? '#cbd5e1' : '#475569', display: 'block', marginBottom: '6px' }}>Giờ bắt đầu</label>
+                <input 
+                  type="time" 
+                  className="duration-input" 
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                  value={customStartTime} 
+                  onChange={(e) => setCustomStartTime(e.target.value)} 
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: isDark ? '#cbd5e1' : '#475569', display: 'block', marginBottom: '6px' }}>Kết thúc (tuỳ chỉnh)</label>
+                <input 
+                  type="number" 
+                  min="5" 
+                  step="5"
+                  className="duration-input"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                  placeholder="Vd: 75 phút" 
+                  value={customDuration} 
+                  onChange={(e) => setCustomDuration(e.target.value)} 
+                />
+              </div>
+            </div>
+            
+            <label style={{ fontSize: '13px', fontWeight: '700', color: isDark ? '#cbd5e1' : '#475569', display: 'block', marginBottom: '10px' }}>Hoặc chọn nhanh thời lượng:</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+              {[30, 45, 60, 90, 120, 150, 180, 240].map(mins => (
+                <button
+                  key={mins}
+                  onClick={() => handleSaveDuration(mins, customStartTime)}
+                  className={`duration-btn ${durationEdit.currentDuration === mins ? 'active' : ''}`}
+                >
+                  {mins >= 60 ? `${Math.floor(mins / 60)}h${mins % 60 ? mins % 60 : ''}` : `${mins} phút`}
+                </button>
+              ))}
+            </div>
+
+            <button 
+              onClick={() => {
+                const val = parseInt(customDuration, 10);
+                handleSaveDuration(val && val > 0 ? val : durationEdit.currentDuration, customStartTime);
+              }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: '12px',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                fontWeight: '800',
+                fontSize: '15px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              Cập nhật thời gian
+            </button>
+          </div>
+        </div>
+      )}
   </>
   );
 };
@@ -3493,6 +4470,13 @@ const ScreenshotButtonNew = ({ contentRef, location, isDark }) => {
           // Ẩn iframe bản đồ (không render được), hiện placeholder
           _doc.querySelectorAll('iframe').forEach(f => { f.style.display = 'none'; });
           _doc.querySelectorAll('.map-screenshot-overlay').forEach(d => { d.style.display = 'flex'; });
+          
+          // Hiện watermark ẩn
+          cloneEl.querySelectorAll('.screenshot-watermark').forEach(d => { 
+            d.style.position = 'static';
+            d.style.visibility = 'visible';
+            d.style.display = 'flex';
+          });
           // Bỏ transform hover để layout không bị lệch
           _doc.querySelectorAll('button, [style*="transform"]').forEach(b => {
             b.style.transform = 'none';
@@ -3789,8 +4773,8 @@ const ActionSpeedDial = ({
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: '160px',
-        marginBottom: '16px',
+        marginTop: '20px',
+        marginBottom: '0px',
       }}>
         {/* Container relative để bubble có thể absolute */}
         <div style={{ position: 'relative', width: 72, height: 72, zIndex: 100 }}>

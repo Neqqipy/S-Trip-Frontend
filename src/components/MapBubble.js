@@ -420,14 +420,26 @@ async function getDirectionsOSRM(fromLat, fromLng, toLat, toLng) {
 const MapPanel = ({ data, editedPlans, currentHotel, onClose, isDark }) => {
   const numDays = parseInt(data.days?.toString().split(' ')[0]) || 3;
   const allDays = (editedPlans && editedPlans.length > 0)
-    ? editedPlans.map(d => [
-        { ...d.morning.food,   type:'food', session:'Sáng',  sessionColor:'#f59e0b', sessionIcon:SESSION_META[0].icon },
-        { ...d.morning.tour,   type:'tour', session:'Sáng',  sessionColor:'#f59e0b', sessionIcon:SESSION_META[0].icon },
-        { ...d.afternoon.food, type:'food', session:'Chiều', sessionColor:'#3b82f6', sessionIcon:SESSION_META[1].icon },
-        { ...d.afternoon.tour, type:'tour', session:'Chiều', sessionColor:'#3b82f6', sessionIcon:SESSION_META[1].icon },
-        { ...d.evening.food,   type:'food', session:'Tối',   sessionColor:'#8b5cf6', sessionIcon:SESSION_META[2].icon },
-        { ...d.evening.tour,   type:'tour', session:'Tối',   sessionColor:'#8b5cf6', sessionIcon:SESSION_META[2].icon },
-      ])
+    ? editedPlans.map(d => {
+        const dayItems = [];
+        const processSession = (sessionData, sessionName, color, icon) => {
+          if (!sessionData) return;
+          const items = [];
+          if (sessionData.food) items.push({ ...sessionData.food, type: 'food', session: sessionName, sessionColor: color, sessionIcon: icon });
+          if (sessionData.tour) items.push({ ...sessionData.tour, type: 'tour', session: sessionName, sessionColor: color, sessionIcon: icon });
+          if (sessionData.extras) {
+            sessionData.extras.forEach(ex => {
+              items.push({ ...ex, type: 'tour', session: sessionName, sessionColor: color, sessionIcon: icon });
+            });
+          }
+          items.sort((a, b) => (a._order || 0) - (b._order || 0));
+          dayItems.push(...items);
+        };
+        processSession(d.morning, 'Sáng', '#f59e0b', SESSION_META[0].icon);
+        processSession(d.afternoon, 'Chiều', '#3b82f6', SESSION_META[1].icon);
+        processSession(d.evening, 'Tối', '#8b5cf6', SESSION_META[2].icon);
+        return dayItems.filter(item => item && (item.name || item.airline));
+      })
     : buildDayPlaces(data);
   const [selectedDay, setSelectedDay] = useState(0);
   const [mapHtml,     setMapHtml]     = useState('');

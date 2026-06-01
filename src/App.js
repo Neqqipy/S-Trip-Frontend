@@ -480,7 +480,9 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
           } />
         </Routes>
 
-        <MapBubble targetOffset={800} data={searchData} editedPlans={editedPlans} isDark={isDark} />
+        {activeSection !== 'dashboard' && (
+          <MapBubble targetOffset={800} data={searchData} editedPlans={editedPlans} isDark={isDark} />
+        )}
         <ChatAI tripData={searchData} isDark={isDark}/>
       </div>
 

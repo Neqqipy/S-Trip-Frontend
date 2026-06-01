@@ -63,10 +63,11 @@ const proxyImage = (url) => {
 };
 
 // Hook thông minh khử mờ ảnh: Tự gọi API lấy ảnh nét và UPDATE lưu đè vĩnh viễn vào DB
-const useCrispImageProfile = (item, tabType, T) => {
+const useCrispImageProfile = (item, tabType, T, isVisible = true) => {
   const [imgUrl, setImgUrl] = useState(item?.thumbnail || null);
 
   useEffect(() => {
+    if (!isVisible) return;
     if (!item?.thumbnail) return;
     
     const initialThumbnail = item.thumbnail;
@@ -1328,12 +1329,26 @@ function LocationGroup({ locationName, items, T, accentColor, children }) {
 }
 
 function PlaceItemCard({ item, tabType, onRemove, T, removeColor, i }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef();
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '200px' });
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
   const normalizedType = normalizeType(item.type);
   const config = TYPE_CONFIG[normalizedType] || TYPE_CONFIG.default;
-  const crispImg = useCrispImageProfile(item, tabType, T);
+  const crispImg = useCrispImageProfile(item, tabType, T, isVisible);
 
   return (
-    <div className="sp-card" style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
+    <div ref={ref} className="sp-card" style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
       <div className="sp-place-img" style={{ aspectRatio: '4/3', position: 'relative', overflow: 'hidden', background: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44 }}>
         {crispImg ? (
           <img src={proxyImage(crispImg)} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} onError={e => { e.target.style.display = 'none'; }} />

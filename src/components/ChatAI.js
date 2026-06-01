@@ -19,12 +19,23 @@ const TypingIndicator = ({ isDark }) => (
 
 const ChatAI = ({ tripData, isDark }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showHintBubble, setShowHintBubble] = useState(false);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'ai', text: 'Chào bạn! Mình là trợ lý S-Trip 🌏\nBạn muốn hỏi gì về chuyến đi sắp tới không? ✨' }
+    { role: 'ai', text: 'Chào bạn! Mình là trợ lý S-Trip 🌴\nBạn muốn hỏi gì về chuyến đi sắp tới không? 😊' }
   ]);
   const msgEndRef = useRef(null);
+
+  useEffect(() => {
+    if (tripData) {
+      setShowHintBubble(true);
+      const timer = setTimeout(() => {
+        setShowHintBubble(false);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [tripData]);
 
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -40,7 +51,26 @@ const ChatAI = ({ tripData, isDark }) => {
     const apiMessages = updated.slice(1).map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text }));
     const result = await sendChatMessage(apiMessages, { location: tripData?.location || '', budget: tripData?.budget || '', days: tripData?.days || '' });
     setIsLoading(false);
-    setMessages(prev => [...prev, { role: 'ai', text: result.success ? result.text : '😓 Xin lỗi, mình đang gặp sự cố. Bạn thử lại sau nhé!', isError: !result.success }]);
+    
+    let aiText = result.success ? result.text : '😓 Xin lỗi, mình đang gặp sự cố. Bạn thử lại sau nhé!';
+    let isError = !result.success;
+
+    if (result.success) {
+      const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/```\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        try {
+          const actionObj = JSON.parse(jsonMatch[1]);
+          if (actionObj && actionObj.action === 'UPDATE_SCHEDULE') {
+            window.dispatchEvent(new CustomEvent('AI_UPDATE_SCHEDULE', { detail: actionObj }));
+          }
+          aiText = aiText.replace(jsonMatch[0], '').trim();
+        } catch (e) {
+          console.error("Lỗi parse JSON từ AI:", e);
+        }
+      }
+    }
+
+    setMessages(prev => [...prev, { role: 'ai', text: aiText, isError: isError }]);
   };
 
   const handleKeyDown = (e) => {
@@ -136,10 +166,78 @@ const ChatAI = ({ tripData, isDark }) => {
       {/* OVERLAY */}
       <div className={`chat-overlay${isOpen ? ' is-open' : ''}`} onClick={() => setIsOpen(false)} />
 
+      {/* FLOATING HINT BUBBLE */}
+      {showHintBubble && !isOpen && (
+        <div 
+          className="chat-hint-bubble"
+          onClick={() => { setShowHintBubble(false); setIsOpen(true); }}
+          style={{
+            position: 'fixed',
+            bottom: '76px', // Align with the center of the FAB
+            right: '145px',
+            backgroundColor: isDark ? '#1e293b' : 'white',
+            color: isDark ? '#f8fafc' : '#0f172a',
+            padding: '12px 18px',
+            borderRadius: '16px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            fontSize: '14px',
+            zIndex: 1999,
+            cursor: 'pointer',
+            animation: 'slideInRight 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+            border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px'
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ fontWeight: '800', color: '#10b981', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>💡 Hint</span>
+            <span style={{ whiteSpace: 'nowrap' }}>Kéo thả sắp xếp, đổi giờ ✏️, và thêm địa điểm tuỳ thích!</span>
+          </div>
+          <FontAwesomeIcon 
+            icon={faXmark} 
+            style={{ color: '#94a3b8', cursor: 'pointer', fontSize: '16px', padding: '2px', marginTop: '-2px' }} 
+            onClick={(e) => { e.stopPropagation(); setShowHintBubble(false); }}
+          />
+          <style>{`
+            /* Chat bubble tail */
+            .chat-hint-bubble::after {
+              content: '';
+              position: absolute;
+              top: 50%;
+              right: -6px;
+              transform: translateY(-50%) rotate(45deg);
+              width: 12px;
+              height: 12px;
+              background-color: ${isDark ? '#1e293b' : 'white'};
+              border-top: 1px solid ${isDark ? '#334155' : '#e2e8f0'};
+              border-right: 1px solid ${isDark ? '#334155' : '#e2e8f0'};
+            }
+            @keyframes slideInRight {
+              from { transform: translateX(50px); opacity: 0; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+            @media (max-width: 768px) {
+              .chat-hint-bubble {
+                bottom: 105px !important;
+                right: 20px !important;
+                whiteSpace: normal !important;
+              }
+              .chat-hint-bubble::after {
+                top: auto;
+                bottom: -6px;
+                right: 24px;
+                transform: rotate(135deg);
+              }
+            }
+          `}</style>
+        </div>
+      )}
+
       {/* FLOATING BUTTON */}
       <button
         className={`chat-fab${isOpen ? ' is-open' : ''}`}
-        onClick={() => setIsOpen(true)}
+        onClick={() => { setShowHintBubble(false); setIsOpen(true); }}
         aria-label="Mở chat AI"
       >
         <FontAwesomeIcon icon={faCompass} />
@@ -209,6 +307,23 @@ const ChatAI = ({ tripData, isDark }) => {
           ))}
           {isLoading && <TypingIndicator isDark={isDark} />}
           <div ref={msgEndRef} />
+        </div>
+
+        {/* Inline Hint */}
+        <div style={{
+          padding: '10px 20px',
+          backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+          borderTop: isDark ? '1px solid #1e293b' : '1px solid #e2e8f0',
+          fontSize: '13px',
+          color: isDark ? '#f8fafc' : '#1e293b',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '8px',
+          flexShrink: 0
+        }}>
+          <span style={{ color: '#10b981', fontWeight: '900', letterSpacing: '0.05em' }}>💡 HINT:</span>
+          <span>Kéo thả thẻ, đổi giờ ✏️, và thêm địa điểm tuỳ thích!</span>
         </div>
 
         {/* Input area */}
