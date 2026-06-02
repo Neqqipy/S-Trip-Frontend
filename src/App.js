@@ -10,12 +10,14 @@ import MapBubble from './components/MapBubble';
 import Footer from './components/Footer';
 import ProfilePage from './components/Profilepage';
 import SkeletonLoader from './components/SkeletonLoader';
+import AboutPage from './components/AboutPage';
 import Toast from './components/Toast';
 import { fetchTripPlan, saveSearchHistory } from './services/api';
 import ResetPassword from './components/ResetPassword';
 import SplashScreen from './components/SplashScreen';
 import { enrichPlacesWithCoords } from './services/geocodeUtils';
 import { BASE_URL } from './config';
+import ExploreVietnam from './components/ExploreVietnam/ExploreVietnam';
 import './App.css';
 
 // ----------------------------------------------------------------
@@ -169,49 +171,69 @@ const HomePage = ({
         <Hero onSearch={handleSearch} isDark={isDark} />
       </div>
       
-      <div id="itinerary-section" style={{ scrollMarginTop: '110px' }}>
-        {isLoading && <SkeletonLoader isDark={isDark} />}
+      <div style={{ position: 'relative', overflow: 'hidden' }}>
+        {/* BACKGROUND HỌA TIẾT TRỐNG ĐỒNG BỌC CẢ 2 PHẦN (Cho cả Sáng lẫn Tối) */}
         {searchData && !isLoading && (
-          <AiSchedule 
-            data={searchData} 
-            onPlanChange={setEditedPlans}
-            isDark={isDark}
-            onSave={async () => {
-              if (!user) {
-                if (window.confirm("Hãy đăng nhập để thực hiện hành động này. Bạn có muốn đăng nhập ngay?")) {
-                  window.dispatchEvent(new Event('openAuthModal'));
-                }
-                throw new Error("Not authenticated");
-              }
-              try {
-                const res = await fetch(`${BASE_URL}/api/schedules/save`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({
-                    title: `Khám phá ${searchData.location}`,
-                    location: searchData.location,
-                    days: parseInt(String(searchData.days || '3').split(' ')[0]),
-                    data_json: { searchData, editedPlans }
-                  })
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                  setToast({ show: true, message: 'Đã lưu thành công vào Hồ sơ của bạn!', type: 'success' });
-                } else {
-                  setToast({ show: true, message: data.error || 'Lỗi khi lưu!', type: 'error' });
-                }
-              } catch (err) {
-                setToast({ show: true, message: 'Lỗi kết nối đến máy chủ', type: 'error' });
-              }
-            }}
-          />
+          <div style={{
+            position: 'absolute',
+            top: 0, bottom: 0,
+            left: '50%', width: '100vw', transform: 'translateX(-50%)',
+            backgroundImage: "url('/dong-son-drum.png')",
+            backgroundSize: 'auto 100%',
+            backgroundPosition: 'center center',
+            backgroundRepeat: 'no-repeat',
+            opacity: 0.15,
+            zIndex: 0,
+            pointerEvents: 'none',
+            // Phục chế chính xác màu vàng nguyên bản của ảnh mẫu: Vàng nhẹ, ấm, không bị sậm đen hay chói
+            filter: `sepia(100%) saturate(250%) hue-rotate(350deg) brightness(${isDark ? 1.1 : 0.85}) contrast(1.2)`
+          }} />
         )}
-      </div>
 
-      <div id="featured-section" style={{ scrollMarginTop: '110px' }}>
-        <FeaturedDestinations onNavigate={scrollToSection} isDark={isDark} />
+        <div id="itinerary-section" style={{ scrollMarginTop: '110px', position: 'relative', zIndex: 1 }}>
+          {isLoading && <SkeletonLoader isDark={isDark} />}
+          {searchData && !isLoading && (
+            <AiSchedule 
+              data={searchData} 
+              onPlanChange={setEditedPlans}
+              isDark={isDark}
+              onSave={async () => {
+                if (!user) {
+                  if (window.confirm("Hãy đăng nhập để thực hiện hành động này. Bạn có muốn đăng nhập ngay?")) {
+                    window.dispatchEvent(new Event('openAuthModal'));
+                  }
+                  throw new Error("Not authenticated");
+                }
+                try {
+                  const res = await fetch(`${BASE_URL}/api/schedules/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                      title: `Khám phá ${searchData.location}`,
+                      location: searchData.location,
+                      days: parseInt(String(searchData.days || '3').split(' ')[0]),
+                      data_json: { searchData, editedPlans }
+                    })
+                  });
+                  const data = await res.json();
+                  
+                  if (data.success) {
+                    setToast({ show: true, message: 'Đã lưu thành công vào Hồ sơ của bạn!', type: 'success' });
+                  } else {
+                    setToast({ show: true, message: data.error || 'Lỗi khi lưu!', type: 'error' });
+                  }
+                } catch (err) {
+                  setToast({ show: true, message: 'Lỗi kết nối đến máy chủ', type: 'error' });
+                }
+              }}
+            />
+          )}
+        </div>
+
+        <div id="featured-section" style={{ scrollMarginTop: '110px', position: 'relative', zIndex: 1 }}>
+          <FeaturedDestinations onNavigate={scrollToSection} isDark={isDark} />
+        </div>
       </div>
     </>
   );
@@ -229,6 +251,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
   const setIsDark = setIsDarkProp;
   const user    = userProp;
   const setUser = setUserProp;
+
 
   useEffect(() => {
     localStorage.setItem('sTripTheme', isDark ? 'dark' : 'light');
@@ -471,7 +494,17 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
             )
           } />
 
+          <Route path="/about" element={
+            <AboutPage isDark={isDark} onNavigate={scrollToSection} />
+          } />
+
           <Route path="/reset-password" element={<ResetPassword isDark={isDark} />} />
+
+          <Route path="/explore" element={
+            <div style={{ paddingTop: '100px', height: '100vh' }}>
+              <ExploreVietnam />
+            </div>
+          } />
 
           <Route path="/destinations" element={
             <div style={{ paddingTop: '100px' }}>
@@ -480,7 +513,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
           } />
         </Routes>
 
-        {activeSection !== 'dashboard' && (
+        {activeSection !== 'dashboard' && location.pathname !== '/about' && (
           <MapBubble targetOffset={800} data={searchData} editedPlans={editedPlans} isDark={isDark} />
         )}
         <ChatAI tripData={searchData} isDark={isDark}/>
@@ -489,7 +522,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
       {toast.show && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} isDark={isDark} />
       )}
-      <Footer onNavigate={scrollToSection} />
+      <Footer onNavigate={scrollToSection} noMarginTop={location.pathname === '/about'} />
     </div>
   );
 }

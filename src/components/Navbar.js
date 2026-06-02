@@ -162,15 +162,26 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
     window.location.href = '/';
   };
 
-  const handleHomeClick = () => { if (onNavigate) onNavigate('hero-section'); };
+  const handleNavigate = (sectionId) => {
+    if (window.location.hash.includes('/explore') || window.location.hash.includes('/about') || window.location.hash.includes('/reset-password')) {
+      window.location.href = '/#/';
+      setTimeout(() => {
+        if (onNavigate) onNavigate(sectionId);
+      }, 100);
+    } else {
+      if (onNavigate) onNavigate(sectionId);
+    }
+  };
+
+  const handleHomeClick = () => handleNavigate('hero-section');
 
   const handleItineraryClick = () => {
-    if (!hasItinerary) {
+    if (isItineraryLocked) {
       setShowLockTip(true);
-      setTimeout(() => setShowLockTip(false), 2200);
-      return;
+      setTimeout(() => setShowLockTip(false), 3000);
+    } else {
+      handleNavigate('itinerary-section');
     }
-    if (onNavigate) onNavigate('itinerary-section');
   };
 
   const styles = {
@@ -386,7 +397,14 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
         <div style={styles.container} className="s-navbar-container">
 
           {/* LOGO */}
-          <div style={styles.logoContainer} className="s-navbar-logo" onClick={onRefresh}>
+          <div style={styles.logoContainer} className="s-navbar-logo" onClick={() => {
+            if (window.location.hash.includes('/explore') || window.location.hash.includes('/about') || window.location.hash.includes('/reset-password')) {
+              window.location.href = '/#/';
+              setTimeout(onRefresh, 100);
+            } else {
+              onRefresh();
+            }
+          }}>
             <img src='/S.jpg' alt="S-Trip Logo" style={styles.logoImage} className="s-navbar-logo-img" />
             <div style={styles.brandTextContainer}>
               <span style={styles.brandTitle} className="s-navbar-brand-title">S-Trip</span>
@@ -425,7 +443,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
                       <div style={{ fontWeight: 800, fontSize: 15, color: isDark ? '#f8fafc' : '#111827' }}>{user.name}</div>
                       <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{user.email}</div>
                     </div>
-                    <button onClick={() => { if (onNavigate) onNavigate('dashboard'); setMenuOpen(false); }}
+                    <button onClick={() => { handleNavigate('dashboard'); setMenuOpen(false); }}
                       style={{ width: '100%', padding: '14px 20px', border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700, color: isDark ? '#f8fafc' : '#111827', textAlign: 'left' }}
                       onMouseEnter={e => e.currentTarget.style.background = isDark ? '#334155' : '#f1f5f9'}
                       onMouseLeave={e => e.currentTarget.style.background = 'none'}
@@ -468,17 +486,23 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
 
           {/* DESKTOP NAV */}
           <nav style={styles.nav} className="navbar-desktop">
-            <div style={styles.link(activeSection === 'home', false)} onClick={handleHomeClick}>
+            <div style={styles.link(window.location.hash.includes('/about') || window.location.hash.includes('/explore'), false)} onClick={() => { window.location.href = '/#/about'; }}>
+              <span style={{ fontSize: '18px', marginRight: '4px' }}>✨</span>
+              Giới thiệu
+              {(window.location.hash.includes('/about') || window.location.hash.includes('/explore')) && <div style={styles.underline} />}
+            </div>
+
+            <div style={styles.link(activeSection === 'home' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about'), false)} onClick={handleHomeClick}>
               <FontAwesomeIcon icon={faHouse} style={{ fontSize: '18px', marginRight: '8px' }} />
               Trang chủ
-              {activeSection === 'home' && <div style={styles.underline} />}
+              {activeSection === 'home' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about') && <div style={styles.underline} />}
             </div>
 
             <div style={{ position: 'relative' }}>
-              <div style={styles.link(isScheduleActive, isItineraryLocked)} onClick={handleItineraryClick}>
+              <div style={styles.link(isScheduleActive && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about'), isItineraryLocked)} onClick={handleItineraryClick}>
                 {isItineraryLocked ? <FontAwesomeIcon icon={faLock} style={{ fontSize: '18px' }} /> : <FontAwesomeIcon icon={faMapLocationDot} style={{ fontSize: '18px', marginRight: '6px' }} />}
                 Lịch trình
-                {isScheduleActive && !isItineraryLocked && <div style={styles.underline} />}
+                {isScheduleActive && !isItineraryLocked && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about') && <div style={styles.underline} />}
               </div>
               {showLockTip && (
                 <div style={styles.lockTooltip}>
@@ -489,10 +513,10 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
               )}
             </div>
 
-            <div style={styles.link(activeSection === 'featured', false)} onClick={() => onNavigate('featured-section')}>
+            <div style={styles.link(activeSection === 'featured' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about'), false)} onClick={() => handleNavigate('featured-section')}>
               <FontAwesomeIcon icon={faEarthAsia} style={{ fontSize: '18px', marginRight: '4px' }} />
               Khám phá
-              {activeSection === 'featured' && <div style={styles.underline} />}
+              {activeSection === 'featured' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about') && <div style={styles.underline} />}
             </div>
 
             <div onClick={onToggleTheme} className={`theme-toggle-track ${isDark ? 'is-dark' : ''}`} title={isDark ? 'Chuyển sang sáng' : 'Chuyển sang tối'}>
@@ -525,7 +549,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
                       <div style={{ fontWeight: 800, fontSize: 16, color: isDark ? '#f8fafc' : '#111827' }}>{user.name}</div>
                       <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{user.email}</div>
                     </div>
-                    <button onClick={() => { if (onNavigate) onNavigate('dashboard'); setMenuOpen(false); }}
+                    <button onClick={() => { handleNavigate('dashboard'); setMenuOpen(false); }}
                       style={{ width: '100%', padding: '14px 20px', border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700, color: isDark ? '#f8fafc' : '#111827', textAlign: 'left' }}
                       onMouseEnter={e => e.currentTarget.style.background = isDark ? '#334155' : '#f1f5f9'}
                       onMouseLeave={e => e.currentTarget.style.background = 'none'}
@@ -556,28 +580,38 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
         {isMobileMenuOpen && (
           <div style={styles.mobileMenu} className="s-mobile-menu">
 
+            {/* Giới thiệu */}
+            <div style={{ ...styles.mobileMenuItem, ...((window.location.hash.includes('/about') || window.location.hash.includes('/explore')) ? styles.mobileMenuItemActive : {}) }}
+              onClick={() => { window.location.href = '/#/about'; setIsMobileMenuOpen(false); }}>
+              ✨ Giới thiệu
+            </div>
+
             {/* Trang chủ */}
-            <div style={{ ...styles.mobileMenuItem, ...(activeSection === 'home' ? styles.mobileMenuItemActive : {}) }}
+            <div style={{ ...styles.mobileMenuItem, ...(activeSection === 'home' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about') ? styles.mobileMenuItemActive : {}) }}
               onClick={() => { handleHomeClick(); setIsMobileMenuOpen(false); }}>
               <FontAwesomeIcon icon={faHouse} /> Trang chủ
             </div>
 
             {/* Lịch trình */}
-            <div style={{ ...styles.mobileMenuItem, ...(isScheduleActive ? styles.mobileMenuItemActive : {}), ...(isItineraryLocked ? { color: 'rgba(128,128,128,0.6)' } : {}) }}
+            <div style={{ ...styles.mobileMenuItem, ...(isScheduleActive && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about') ? styles.mobileMenuItemActive : {}), ...(isItineraryLocked ? { color: 'rgba(128,128,128,0.6)' } : {}) }}
               onClick={() => { handleItineraryClick(); if (!isItineraryLocked) setIsMobileMenuOpen(false); }}>
               <FontAwesomeIcon icon={isItineraryLocked ? faLock : faMapLocationDot} />
               Lịch trình {isItineraryLocked && <span style={{ fontSize: '13px', fontWeight: '600' }}>(Tìm kiếm trước)</span>}
             </div>
 
             {/* Khám phá */}
-            <div style={{ ...styles.mobileMenuItem, ...(activeSection === 'featured' ? styles.mobileMenuItemActive : {}) }}
-              onClick={() => { onNavigate('featured-section'); setIsMobileMenuOpen(false); }}>
+            <div style={{ ...styles.mobileMenuItem, ...(activeSection === 'featured' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about') ? styles.mobileMenuItemActive : {}) }}
+              onClick={() => { handleNavigate('featured-section'); setIsMobileMenuOpen(false); }}>
               <FontAwesomeIcon icon={faEarthAsia} /> Khám phá
             </div>
 
             {/* User section */}
             {user ? (
               <>
+                <div style={{ ...styles.mobileMenuItem, ...(activeSection === 'dashboard' ? styles.mobileMenuItemActive : {}) }}
+                  onClick={() => { handleNavigate('dashboard'); setIsMobileMenuOpen(false); }}>
+                  <FontAwesomeIcon icon={faUser} /> Hồ sơ cá nhân
+                </div>
                 <div style={{ ...styles.mobileMenuItem, borderBottom: 'none' }} onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>
                   <FontAwesomeIcon icon={faSignOutAlt} style={{ color: '#ef4444' }} />
                   <span style={{ color: '#ef4444' }}>Đăng xuất</span>

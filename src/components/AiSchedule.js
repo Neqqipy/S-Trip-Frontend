@@ -3396,7 +3396,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
 
 
   return (
-    <>
+    <div style={{ position: 'relative' }}>
       <style>{`
         @keyframes expandDown {
           from { height: 0; opacity: 0; margin: 0; border-width: 0; }
@@ -3411,8 +3411,15 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       numDays={numDays} 
       isDark={isDark} 
     />
+    
+    {/* (Background họa tiết trống đồng đã được dời lên App.js để bọc cả FeaturedDestinations) */}
+    
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px', marginTop: isGlassMode ? '-40px' : '0', position: 'relative', zIndex: 2 }} className="ais-root">
       <style>{`
+        /* Làm trong suốt nền của phần Destination để lộ mặt trống đồng */
+        #featured-section > div {
+          background-color: transparent !important;
+        }
         /* ═══════════════════════════════════════
            📱 AiSchedule — Mobile responsive
         ═══════════════════════════════════════ */
@@ -3693,7 +3700,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       )}
 
       {/* HEADER — bọc từ đây đến hết dailyPlans bằng contentRef để chụp ảnh */}
-      <div ref={contentRef} id="itinerary-content" data-screenshot="itinerary" className={isGlassMode ? 'glass-mode-active' : ''}>
+      <div ref={contentRef} id="itinerary-content" data-screenshot="itinerary" className={isGlassMode ? 'glass-mode-active' : ''} style={{ position: 'relative', zIndex: 1 }}>
       
       {isGlassMode && (
         <style>{`
@@ -4431,7 +4438,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
           </div>
         </div>
       )}
-  </>
+    </div>
   );
 };
 

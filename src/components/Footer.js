@@ -3,9 +3,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope, faPhone } from '@fortawesome/free-solid-svg-icons';
 import { faFacebook, faInstagram, faGithub, faGoogle } from '@fortawesome/free-brands-svg-icons';
 
-const Footer = ({ onNavigate }) => {
+const Footer = ({ onNavigate, noMarginTop }) => {
   const styles = {
-    footer: { backgroundColor: '#111827', color: 'white', paddingTop: '60px', paddingBottom: '40px', marginTop: '100px', width: '100%' },
+    footer: { backgroundColor: '#111827', color: 'white', paddingTop: '60px', paddingBottom: '40px', marginTop: noMarginTop ? '0' : '100px', width: '100%' },
     logo: { fontSize: '28px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' },
     heading: { fontSize: '18px', fontWeight: '700', marginBottom: '20px', color: '#10b981' },
     linkList: { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' },
