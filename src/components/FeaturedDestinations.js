@@ -81,6 +81,7 @@ const DestinationCard = ({ item, compact = false, onClick }) => {
   return (
     <div style={{ padding: '8px 4px 12px', boxSizing: 'border-box', width: '100%' }}>
       <div
+        className="fd-dest-card"
         onClick={() => onClick && onClick(item)}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -487,7 +488,7 @@ const MobileDestCard = ({ item, onClick }) => {
         transition: 'transform 0.12s ease',
       }}
     >
-      <div style={{
+      <div className="fd-dest-card" style={{
         borderRadius: '18px',
         overflow: 'hidden',
         background: isDark ? '#0f172a' : '#ffffff',

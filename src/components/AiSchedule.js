@@ -1586,6 +1586,7 @@ const TransportCard = ({ opt, isCombined, isDark, noTickets }) => {
 
   return (
     <div
+      className="ais-transport-card"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -1722,7 +1723,7 @@ const TransportCard = ({ opt, isCombined, isDark, noTickets }) => {
               <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'white', border: '2px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', flexShrink: 0 }}>
                 {leg.icon}
               </div>
-              <div style={{ background: isDark ? '#334155' : '#f8fafc', padding: '12px 14px', borderRadius: '14px', flex: 1, border: `1px solid ${isDark ? '#475569' : '#f1f5f9'}` }}>
+              <div className="ais-transport-leg" style={{ background: isDark ? '#334155' : '#f8fafc', padding: '12px 14px', borderRadius: '14px', flex: 1, border: `1px solid ${isDark ? '#475569' : '#f1f5f9'}` }}>
                 <div style={{ fontSize: '11px', fontWeight: '800', color: isDark ? '#9ca3af' : '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>Chặng {leg.step}</div>
                 <div style={{ fontSize: '14px', fontWeight: '800', color: isDark ? '#ffffff' : '#1e293b', marginBottom: '4px' }}>{leg.label}</div>
                 <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '700' }}>{leg.duration} • {leg.price_range}</div>
@@ -2597,6 +2598,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
   const [durationEdit, setDurationEdit] = useState(null);
   const [customDuration, setCustomDuration] = useState('');
   const [customStartTime, setCustomStartTime] = useState('');
+  const [isGlassMode, setIsGlassMode] = useState(false);
 
   useEffect(() => {
     const handleDragEndGlobal = () => {
@@ -3409,7 +3411,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       numDays={numDays} 
       isDark={isDark} 
     />
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px' }} className="ais-root">
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px', marginTop: isGlassMode ? '-40px' : '0', position: 'relative', zIndex: 2 }} className="ais-root">
       <style>{`
         /* ═══════════════════════════════════════
            📱 AiSchedule — Mobile responsive
@@ -3691,13 +3693,106 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       )}
 
       {/* HEADER — bọc từ đây đến hết dailyPlans bằng contentRef để chụp ảnh */}
-      <div ref={contentRef} id="itinerary-content" data-screenshot="itinerary">
-      <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-        <h1 style={{ fontSize: '80px', fontWeight: '900' }}>
+      <div ref={contentRef} id="itinerary-content" data-screenshot="itinerary" className={isGlassMode ? 'glass-mode-active' : ''}>
+      
+      {isGlassMode && (
+        <style>{`
+          /* --- GLASSMORPHISM MODE --- */
+          .glass-mode-active {
+            position: relative;
+            z-index: 1;
+            padding: 20px;
+            border-radius: 40px;
+          }
+          /* Animated Gradient Background */
+          /* Global Glassmorphism Background */
+          ${isGlassMode ? `
+          body {
+            background: ${isDark ? 'linear-gradient(135deg, #020617, #1e1b4b, #0f172a, #064e3b)' : 'linear-gradient(135deg, #fbcfe8, #bfdbfe, #e9d5ff, #a7f3d0)'} !important;
+            background-size: 400% 400% !important;
+            animation: glassGradient 4s ease infinite !important;
+            background-attachment: fixed !important;
+          }
+          .theme-dark, .theme-light {
+            background-color: transparent !important;
+          }
+          #featured-section > div {
+            background-color: transparent !important;
+          }
+          .fd-dest-card {
+            background-color: ${isDark ? 'rgba(30, 41, 59, 0.25) !important' : 'rgba(255, 255, 255, 0.3) !important'};
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: ${isDark ? '1px solid rgba(255, 255, 255, 0.1) !important' : '1px solid rgba(255, 255, 255, 0.4) !important'};
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05) !important;
+          }
+          ` : ''}
+          @keyframes glassGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          .glass-mode-active .ais-day-block,
+          .glass-mode-active .ais-place-card,
+          .glass-mode-active .ais-transport-card,
+          .glass-mode-active .ais-transport-leg,
+          .glass-mode-active .ais-hotel-wrap {
+            background-color: ${isDark ? 'rgba(30, 41, 59, 0.2) !important' : 'rgba(255, 255, 255, 0.25) !important'};
+            background-image: none !important;
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: ${isDark ? '1px solid rgba(255, 255, 255, 0.1) !important' : '1px solid rgba(255, 255, 255, 0.4) !important'};
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05) !important;
+          }
+          .glass-mode-active .ais-place-card-img {
+            background-color: transparent !important;
+          }
+          /* Adjust Text Colors for Glass */
+          .glass-mode-active .ais-big-title,
+          .glass-mode-active h1,
+          .glass-mode-active h2,
+          .glass-mode-active h3,
+          .glass-mode-active .place-name {
+            color: ${isDark ? '#ffffff !important' : '#0f172a !important'};
+            text-shadow: ${isDark ? '0 2px 10px rgba(0,0,0,0.5)' : 'none'};
+          }
+          /* Fix spacing */
+          .glass-mode-active .ais-day-block {
+            margin-bottom: 50px !important;
+          }
+        `}</style>
+      )}
+
+      <div style={{ textAlign: 'center', marginBottom: '60px', position: 'relative' }}>
+        <h1 style={{ fontSize: '80px', fontWeight: '900' }} className="ais-big-title">
           <FontAwesomeIcon icon={faMapLocationDot} style={{ color: '#10b981', marginRight: '18px' }} />
           Hành trình tại <span style={{ color: '#10b981' }}>{initialData.location}</span>
         </h1>
-        <p style={{ fontSize: '28px', color: '#64748b' }}>Hành trình {numDays} ngày {numDays - 1} đêm của bạn sẵn sàng ✨</p>
+        <p style={{ fontSize: '28px', color: isDark ? '#94a3b8' : '#64748b' }}>Hành trình {numDays} ngày {numDays - 1} đêm của bạn sẵn sàng ✨</p>
+        
+        {/* Toggle Glassmorphism Button */}
+        <button 
+          onClick={() => setIsGlassMode(!isGlassMode)}
+          style={{
+            marginTop: '25px',
+            padding: '12px 26px',
+            borderRadius: '24px',
+            background: isGlassMode ? 'linear-gradient(135deg, #8b5cf6, #3b82f6)' : (isDark ? '#1e293b' : 'white'),
+            color: isGlassMode ? 'white' : (isDark ? '#e2e8f0' : '#475569'),
+            border: isGlassMode ? 'none' : (isDark ? '2px solid #334155' : '2px solid #e2e8f0'),
+            fontSize: '16px',
+            fontWeight: '800',
+            cursor: 'pointer',
+            boxShadow: isGlassMode ? '0 10px 25px rgba(59, 130, 246, 0.4)' : '0 4px 12px rgba(0,0,0,0.05)',
+            transition: 'all 0.3s ease',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}
+        >
+          <FontAwesomeIcon icon={faStar} style={{ color: isGlassMode ? '#fbbf24' : '#94a3b8' }} />
+          {isGlassMode ? 'Tắt chế độ Kính mờ (Glassmorphism)' : 'Bật chế độ Kính mờ (Glassmorphism)'}
+        </button>
       </div>
 
       {/* 🌤️ THỜI TIẾT */}
@@ -4188,6 +4283,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
         currentHotel={currentHotel}
         contentRef={contentRef}
         plan={plan}
+        isGlassMode={isGlassMode}
       />
 
     </div>
@@ -4363,7 +4459,7 @@ const ICalButtonNew = ({ dailyPlans, initialData, currentHotel }) => {
   );
 };
 
-const ScreenshotButtonNew = ({ contentRef, location, isDark }) => {
+const ScreenshotButtonNew = ({ contentRef, location, isDark, isGlassMode }) => {
   const [status, setStatus] = React.useState('idle');
   const [prog, setProg]     = React.useState('');
 
@@ -4486,6 +4582,20 @@ const ScreenshotButtonNew = ({ contentRef, location, isDark }) => {
           _doc.querySelectorAll('.sd-fab, .sd-bubble, .sd-overlay, [class*="ap-card"]').forEach(el => {
             el.style.display = 'none';
           });
+
+          // Sửa lỗi nền trong suốt khi xuất ảnh ở chế độ Kính mờ
+          if (isGlassMode) {
+            cloneEl.style.background = isDark 
+              ? 'linear-gradient(135deg, #020617, #1e1b4b, #0f172a, #064e3b)' 
+              : 'linear-gradient(135deg, #fbcfe8, #bfdbfe, #e9d5ff, #a7f3d0)';
+            cloneEl.style.backgroundSize = '100% 100%';
+            cloneEl.style.backgroundRepeat = 'no-repeat';
+            
+            // Tăng độ đục của các thẻ lên vì html2canvas KHÔNG hỗ trợ backdrop-filter (blur)
+            _doc.querySelectorAll('.ais-day-block, .ais-place-card, .ais-transport-card, .ais-transport-leg, .ais-hotel-wrap').forEach(c => {
+               c.style.setProperty('background-color', isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.85)', 'important');
+            });
+          }
         },
       });
 
@@ -4636,7 +4746,7 @@ const ShareButtonNew = ({ dailyPlans, initialData, currentHotel, plan, isDark })
 // ─────────────────────────────────────────────────────────────
 const ActionSpeedDial = ({
   isDark, handleSaveSchedule, scheduleSaveLoading, scheduleSaved,
-  dailyPlans, initialData, currentHotel, contentRef, plan,
+  dailyPlans, initialData, currentHotel, contentRef, plan, isGlassMode
 }) => {
   const [open, setOpen] = React.useState(false);
 
@@ -4668,7 +4778,7 @@ const ActionSpeedDial = ({
       sub: 'Tải về ảnh PNG chất lượng cao',
       bg: 'linear-gradient(135deg,#7c3aed,#6d28d9)',
       shadow: 'rgba(124,58,237,0.5)',
-      renderCustom: (key) => <ScreenshotButtonNew key={key} asSpeedDialItem contentRef={contentRef} location={initialData.location} isDark={isDark} />,
+      renderCustom: (key) => <ScreenshotButtonNew key={key} asSpeedDialItem contentRef={contentRef} location={initialData.location} isDark={isDark} isGlassMode={isGlassMode} />,
     },
     {
       id: 'share',
@@ -4830,7 +4940,7 @@ const ActionSpeedDial = ({
 
           {/* Hidden trigger wrappers cho các nút có nội bộ state */}
           <ICalTrigger dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} />
-          <ScreenshotTrigger contentRef={contentRef} location={initialData.location} isDark={isDark} />
+          <ScreenshotTrigger contentRef={contentRef} location={initialData.location} isDark={isDark} isGlassMode={isGlassMode} />
           <ShareTrigger dailyPlans={dailyPlans} initialData={initialData} currentHotel={currentHotel} plan={plan} isDark={isDark} />
 
           {/* FAB chính */}
@@ -4875,9 +4985,9 @@ const ICalTrigger = ({ dailyPlans, initialData, currentHotel }) => {
   );
 };
 
-const ScreenshotTrigger = ({ contentRef, location, isDark }) => (
+const ScreenshotTrigger = ({ contentRef, location, isDark, isGlassMode }) => (
   <div style={{ position:'absolute', opacity:0, pointerEvents:'none', width:0, height:0, overflow:'hidden' }} id="sd-screenshot-hidden">
-    <ScreenshotButtonNew contentRef={contentRef} location={location} isDark={isDark} />
+    <ScreenshotButtonNew contentRef={contentRef} location={location} isDark={isDark} isGlassMode={isGlassMode} />
   </div>
 );
 
