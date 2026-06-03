@@ -172,24 +172,6 @@ const HomePage = ({
       </div>
       
       <div style={{ position: 'relative', overflow: 'hidden' }}>
-        {/* BACKGROUND HỌA TIẾT TRỐNG ĐỒNG BỌC CẢ 2 PHẦN (Cho cả Sáng lẫn Tối) */}
-        {searchData && !isLoading && (
-          <div style={{
-            position: 'absolute',
-            top: 0, bottom: 0,
-            left: '50%', width: '100vw', transform: 'translateX(-50%)',
-            backgroundImage: "url('/dong-son-drum.png')",
-            backgroundSize: 'auto 100%',
-            backgroundPosition: 'center center',
-            backgroundRepeat: 'no-repeat',
-            opacity: 0.15,
-            zIndex: 0,
-            pointerEvents: 'none',
-            // Phục chế chính xác màu vàng nguyên bản của ảnh mẫu: Vàng nhẹ, ấm, không bị sậm đen hay chói
-            filter: `sepia(100%) saturate(250%) hue-rotate(350deg) brightness(${isDark ? 1.1 : 0.85}) contrast(1.2)`
-          }} />
-        )}
-
         <div id="itinerary-section" style={{ scrollMarginTop: '110px', position: 'relative', zIndex: 1 }}>
           {isLoading && <SkeletonLoader isDark={isDark} />}
           {searchData && !isLoading && (
@@ -440,7 +422,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
   const hasItinerary = !!searchData || isLoading;
 
   return (
-    <div className={isDark ? 'theme-dark' : 'theme-light'} style={{ backgroundColor: isDark ? '#1a1a1a' : '#f9fafb', color: isDark ? '#e8e8e8' : '#111827', minHeight: '100vh', margin: 0, padding: 0, transition: 'background-color 0.3s ease, color 0.3s ease' }}>
+    <div className={isDark ? 'theme-dark' : 'theme-light'} style={{ backgroundColor: isDark ? '#050914' : '#f9fafb', color: isDark ? '#f8fafc' : '#111827', minHeight: '100vh', margin: 0, padding: 0, transition: 'background-color 0.3s ease, color 0.3s ease' }}>
       <Navbar 
         activeSection={activeSection} 
         onNavigate={scrollToSection} 

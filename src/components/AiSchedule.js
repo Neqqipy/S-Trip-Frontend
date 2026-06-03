@@ -1402,12 +1402,12 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
       style={{
         opacity: isDragging ? 0.5 : 1,
         cursor: draggable ? (isDragging ? 'grabbing' : 'grab') : 'default',
-        backgroundColor: isDark ? '#22252a' : 'white',
+        backgroundColor: isDark ? '#0f172a' : 'white',
         borderRadius: '20px', padding: '18px 20px',
         display: 'flex', gap: '16px',
-        border: isDark ? '1px solid #3e4451' : '1px solid #f1f5f9',
+        border: isDark ? (isHovered ? '1px solid #10b981' : '1px solid #1e293b') : (isHovered ? '1px solid #059669' : '1px solid #f1f5f9'),
         flex: 1,
-        boxShadow: isHovered ? (isDark ? '0 15px 35px rgba(0,0,0,0.4)' : '0 15px 35px rgba(0,0,0,0.12)') : '0 2px 8px rgba(0,0,0,0.06)',
+        boxShadow: isHovered ? (isDark ? '0 10px 25px -5px rgba(16, 185, 129, 0.15)' : '0 15px 35px rgba(5, 150, 105, 0.15)') : '0 2px 8px rgba(0,0,0,0.06)',
         alignItems: 'center',
         transform: isHovered ? 'translateY(-10px)' : 'translateY(0)',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1590,14 +1590,14 @@ const TransportCard = ({ opt, isCombined, isDark, noTickets }) => {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        backgroundColor: isDark ? '#22252a' : 'white', borderRadius: '24px', padding: '24px',
+        backgroundColor: isDark ? '#0f172a' : 'white', borderRadius: '24px', padding: '24px',
         border: (noTickets && isFlight)
           ? '2px solid #ef4444'
           : opt.recommended
             ? '2.5px solid #10b981'
-            : hovered ? '2px solid #cbd5e1' : '2px solid #f1f5f9',
+            : hovered ? (isDark ? '2px solid #10b981' : '2px solid #059669') : (isDark ? '2px solid #1e293b' : '2px solid #f1f5f9'),
         boxShadow: hovered
-          ? '0 32px 64px rgba(0,0,0,0.18)'
+          ? (isDark ? '0 10px 25px -5px rgba(16, 185, 129, 0.15)' : '0 32px 64px rgba(5, 150, 105, 0.15)')
           : opt.recommended
             ? '0 12px 30px rgba(16,185,129,0.15)'
             : '0 4px 12px rgba(0,0,0,0.03)',
@@ -1621,7 +1621,7 @@ const TransportCard = ({ opt, isCombined, isDark, noTickets }) => {
           return logoSrc && (
             <div style={{ 
               width: '50px', height: '50px', borderRadius: '12px', flexShrink: 0, overflow: 'hidden',
-              backgroundColor: isDark ? '#2e333d' : '#f8fafc',
+              backgroundColor: isDark ? '#1e293b' : '#f8fafc',
               border: `1px solid ${isDark ? '#4b5563' : '#e2e8f0'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '0'
@@ -1784,10 +1784,10 @@ const WeatherWidget = ({ location, isDark, externalData, departureDate }) => {
   const { current, forecast, travel_advice } = weather;
 
   return (
-    <div style={{ marginBottom: 55, borderRadius: 32, overflow: 'hidden', border, boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(59,130,246,0.10)' }}>
+    <div style={{ marginBottom: 55, borderRadius: 32, overflow: 'hidden', border, boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(59,130,246,0.10)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}>
 
-      {/* Header gradient */}
-      <div className="weather-header" style={{ background: isDark ? 'linear-gradient(135deg, #1e3a5f 0%, #162032 100%)' : 'linear-gradient(135deg, #bae6fd 0%, #dbeafe 100%)', padding: '20px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      {/* Header gradient - Bán trong suốt */}
+      <div className="weather-header" style={{ background: isDark ? 'linear-gradient(135deg, rgba(30,58,95,0.65) 0%, rgba(22,32,50,0.65) 100%)' : 'linear-gradient(135deg, rgba(186,230,253,0.35) 0%, rgba(219,234,254,0.35) 100%)', padding: '20px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
 
         {/* Thời tiết hiện tại — bên trái */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
@@ -1818,7 +1818,7 @@ const WeatherWidget = ({ location, isDark, externalData, departureDate }) => {
             { label: '🌞 UV',        val: current.uv_index      != null ? `${current.uv_index}`          : '--' },
             { label: '👁️ Tầm nhìn', val: current.visibility_km != null ? `${current.visibility_km} km` : '--' },
           ].map(({ label, val }) => (
-            <div key={label} style={{ background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '8px 12px', minWidth: 72, textAlign: 'center', flex: '1 1 72px', maxWidth: 110 }}>
+            <div key={label} style={{ background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.6)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '8px 12px', minWidth: 72, textAlign: 'center', flex: '1 1 72px', maxWidth: 110 }}>
               <div style={{ fontSize: 10, color: isDark ? '#7dd3fc' : '#1d4ed8', fontWeight: 700, whiteSpace: 'nowrap' }}>{label}</div>
               <div style={{ fontSize: 14, fontWeight: 900, color: isDark ? '#e2e8f0' : '#1e3a8a', marginTop: 2 }}>{val}</div>
             </div>
@@ -1826,22 +1826,22 @@ const WeatherWidget = ({ location, isDark, externalData, departureDate }) => {
         </div>
       </div>
 
-      {/* Lời khuyên du lịch */}
+      {/* Lời khuyên du lịch - Bán trong suốt */}
       {travel_advice && (
-        <div style={{ padding: '10px 24px', background: isDark ? '#0f172a' : '#dbeafe', borderTop: isDark ? '1px solid #334155' : '1px solid #93c5fd', fontSize: 13, fontWeight: 700, color: isDark ? '#94a3b8' : '#1e3a8a' }}>
+        <div style={{ padding: '10px 24px', background: isDark ? 'rgba(15,23,42,0.65)' : 'rgba(219,234,254,0.3)', borderTop: isDark ? '1px solid rgba(51,65,85,0.5)' : '1px solid rgba(147,197,253,0.3)', fontSize: 13, fontWeight: 700, color: isDark ? '#94a3b8' : '#1e3a8a' }}>
           {travel_advice}
         </div>
       )}
 
-      {/* Dự báo — grid tự co vừa khung, không tràn */}
+      {/* Dự báo — grid tự co vừa khung - Bán trong suốt */}
       {forecast && forecast.length > 0 && (
-        <div style={{ padding: '16px 24px 20px', background: cardBg }}>
+        <div style={{ padding: '16px 24px 20px', background: isDark ? 'rgba(30,41,59,0.65)' : 'rgba(255,255,255,0.4)' }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: textSub, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
             📅 Dự báo thời tiết {forecast[0]?.date}–{forecast[forecast.length-1]?.date}
           </div>
           <div style={{ display: 'flex', overflowX: 'auto', gap: 8, paddingBottom: 4, scrollbarWidth: 'none' }}>
             {forecast.map((day, i) => (
-              <div key={i} style={{ flex: '1 0 65px', background: isDark ? '#0f172a' : '#eff6ff', border: isDark ? '1px solid #1e293b' : '1px solid #bfdbfe', borderRadius: 14, padding: '10px 6px', textAlign: 'center' }}>
+              <div key={i} style={{ flex: '1 0 65px', background: isDark ? 'rgba(15,23,42,0.45)' : 'rgba(239,246,255,0.4)', border: isDark ? '1px solid rgba(30,41,59,0.5)' : '1px solid rgba(191,219,254,0.4)', borderRadius: 14, padding: '10px 6px', textAlign: 'center' }}>
                 <div style={{ fontSize: 10, fontWeight: 800, color: textSub, marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{day.day || `N${i+1}`}</div>
                 <div style={{ fontSize: 22, marginBottom: 3 }}>{day.icon}</div>
                 <div style={{ fontSize: 13, fontWeight: 900, color: textMain }}>{day.high_c !== null ? `${day.high_c}°` : '--'}</div>
@@ -2591,6 +2591,38 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
   const [modal,       setModal]       = useState({ show: false, type: '', day: null, session: '', subType: '' });
   const [addModal,    setAddModal]    = useState({ show: false, day: null, session: '', query: '', results: [], loading: false, selectedPlace: null, replaceTarget: 'new' });
   const [mapModal,    setMapModal]    = useState({ show: false, query: '', placeName: '', placeId: '', lat: null, lng: null });
+
+  const [drumDataUrl, setDrumDataUrl] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imgData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
+        // Chuyển màu trắng thành trong suốt hoàn toàn
+        const alpha = 255 - brightness; 
+        if (isDark) {
+          data[i] = 255; data[i+1] = 220; data[i+2] = 100; // Vàng sáng cho Dark Mode
+        } else {
+          data[i] = 40; data[i+1] = 40; data[i+2] = 40; // Xám đậm cho Light Mode
+        }
+        data[i+3] = alpha;
+      }
+      ctx.putImageData(imgData, 0, 0);
+      if (active) setDrumDataUrl(canvas.toDataURL('image/png'));
+    };
+    img.src = '/hoa-tiet-trong-dong.jpg';
+    return () => { active = false; };
+  }, [isDark]);
 
   const [draggedItem, setDraggedItem] = useState(null);
   const [dragOverSession, setDragOverSession] = useState(null);
@@ -3402,8 +3434,46 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
           from { height: 0; opacity: 0; margin: 0; border-width: 0; }
           to { height: 110px; opacity: 1; margin: 0; border-width: 2px; }
         }
+        @keyframes spinSlowly {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .mdigi-drum {
+          position: absolute;
+          top: -1040px; /* Tâm trống dịch lên đúng 40px bằng với padding của section để chia làm 2 mảnh hoàn hảo */
+          left: 50%;
+          width: 2000px;
+          height: 2000px;
+          background-image: url('${drumDataUrl || '/hoa-tiet-trong-dong.jpg'}');
+          background-size: contain;
+          background-repeat: no-repeat;
+          background-position: center;
+          /* Tinh chỉnh opacity cho Light mode (xám nhạt) và Dark mode */
+          opacity: ${isDark ? 0.3 : 0.25};
+          pointer-events: none;
+          z-index: -1; /* Đưa trống đồng ra phía sau các thẻ nội dung */
+          animation: spinSlowly 240s linear infinite;
+          
+          /* Nới rộng tâm mask để không bị cắt xén (40% rõ, 70% mờ dần) */
+          mask-image: radial-gradient(circle at center, black 40%, transparent 70%);
+          -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 70%);
+          
+          /* Lưu ý: mix-blend-mode và filter đã được gỡ bỏ vì ảnh đã được process thành PNG trong suốt bằng JS ở trên, giúp html2canvas chụp hoàn hảo! */
+        }
+        @keyframes spinSlowly {
+          from { transform: translateX(-50%) rotate(0deg); }
+          to { transform: translateX(-50%) rotate(360deg); }
+        }
+        @media (max-width: 1024px) {
+          .mdigi-drum { width: 1400px; height: 1400px; top: -740px; }
+        }
+        @media (max-width: 768px) {
+          .mdigi-drum { width: 900px; height: 900px; top: -466px; opacity: ${isDark ? 0.15 : 0.03}; }
+        }
       `}</style>
 
+      {/* TRỐNG ĐỒNG XOAY 360 & MỜ DẦN (MDigi Style) */}
+      
     <BudgetDashboard 
       initialData={initialData} 
       currentHotel={currentHotel} 
@@ -3412,7 +3482,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       isDark={isDark} 
     />
     
-    {/* (Background họa tiết trống đồng đã được dời lên App.js để bọc cả FeaturedDestinations) */}
+    {/* (Background họa tiết trống đồng mờ dần xoay vòng đã được thiết kế lại) */}
     
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px', marginTop: isGlassMode ? '-40px' : '0', position: 'relative', zIndex: 2 }} className="ais-root">
       <style>{`
@@ -3700,7 +3770,8 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       )}
 
       {/* HEADER — bọc từ đây đến hết dailyPlans bằng contentRef để chụp ảnh */}
-      <div ref={contentRef} id="itinerary-content" data-screenshot="itinerary" className={isGlassMode ? 'glass-mode-active' : ''} style={{ position: 'relative', zIndex: 1 }}>
+      <div ref={contentRef} id="itinerary-content" data-screenshot="itinerary" className={isGlassMode ? 'glass-mode-active' : ''} style={{ position: 'relative', zIndex: 1, paddingTop: '0.1px' }}>
+        <div className="mdigi-drum" />
       
       {isGlassMode && (
         <style>{`

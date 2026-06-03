@@ -12,7 +12,7 @@
 /* ═══════════════════════════════════════
    DARK MODE
    ═══════════════════════════════════════ */
-.theme-dark { background-color: #1a1a1a !important; color: #e8e8e8 !important; }
+.theme-dark { background-color: #050914 !important; color: #f8fafc !important; }
 
 .theme-dark [style*="background-color: white"],
 .theme-dark [style*="background-color: #fff"],
@@ -22,7 +22,17 @@
 .theme-dark [style*="backgroundColor: '#ffffff'"],
 .theme-dark [style*="backgroundColor:'white'"],
 .theme-dark [style*="backgroundColor: \"white\""] {
-  background-color: #2a2a2a !important; color: #e8e8e8 !important;
+  background-color: #0f172a !important; 
+  color: #f8fafc !important;
+  border: 1px solid #1e293b !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3) !important;
+}
+
+.theme-dark [style*="background-color: white"]:hover,
+.theme-dark [style*="background-color: #fff"]:hover,
+.theme-dark [style*="background-color: #ffffff"]:hover {
+  border-color: #10b981 !important;
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.1), 0 8px 10px -6px rgba(16, 185, 129, 0.1) !important;
 }
 
 .theme-dark [style*="background-color: #f9fafb"],
@@ -31,7 +41,7 @@
 .theme-dark [style*="background-color: #f1f5f9"],
 .theme-dark [style*="background-color: #f0f4f8"],
 .theme-dark [style*="background-color: #f8f9fa"] {
-  background-color: #222222 !important;
+  background-color: #1e293b !important;
 }
 
 .theme-dark [style*="background-color: #e2e8f0"],
@@ -39,7 +49,7 @@
 .theme-dark [style*="background-color: #ebebeb"],
 .theme-dark [style*="background-color: #eee"],
 .theme-dark [style*="background-color: #eeeeee"] {
-  background-color: #333333 !important;
+  background-color: #334155 !important;
 }
 
 .theme-dark [style*="color: #111827"],
@@ -48,14 +58,14 @@
 .theme-dark [style*="color: #000000"],
 .theme-dark [style*="color: #000"],
 .theme-dark [style*="color: black"] {
-  color: #e8e8e8 !important;
+  color: #f8fafc !important;
 }
 
 .theme-dark [style*="color: #374151"],
 .theme-dark [style*="color: #4b5563"],
 .theme-dark [style*="color: #555"],
 .theme-dark [style*="color: #333"] {
-  color: #cccccc !important;
+  color: #e2e8f0 !important;
 }
 
 .theme-dark [style*="color: #6b7280"],
@@ -63,33 +73,33 @@
 .theme-dark [style*="color: #888"],
 .theme-dark [style*="color: #999"],
 .theme-dark [style*="color: #aaa"] {
-  color: #999999 !important;
+  color: #94a3b8 !important;
 }
 
 .theme-dark input, .theme-dark textarea, .theme-dark select {
-  background-color: #333333 !important; color: #e8e8e8 !important; border-color: #444444 !important;
+  background-color: #0f172a !important; color: #f8fafc !important; border-color: #334155 !important;
 }
-.theme-dark input::placeholder, .theme-dark textarea::placeholder { color: #777777 !important; }
+.theme-dark input::placeholder, .theme-dark textarea::placeholder { color: #64748b !important; }
 
 .theme-dark [style*="background-color: #ecfdf5"],
-.theme-dark [style*="background-color: #d1fae5"] { background-color: #0d3326 !important; color: #34d399 !important; }
+.theme-dark [style*="background-color: #d1fae5"] { background-color: #064e3b !important; color: #34d399 !important; }
 .theme-dark [style*="background-color: #eff6ff"],
-.theme-dark [style*="background-color: #dbeafe"] { background-color: #0d1f3c !important; color: #60a5fa !important; }
+.theme-dark [style*="background-color: #dbeafe"] { background-color: #1e3a8a !important; color: #60a5fa !important; }
 .theme-dark [style*="background-color: #fef3c7"],
-.theme-dark [style*="background-color: #fde68a"] { background-color: #3b2a00 !important; color: #fbbf24 !important; }
+.theme-dark [style*="background-color: #fde68a"] { background-color: #451a03 !important; color: #fbbf24 !important; }
 .theme-dark [style*="background-color: #fee2e2"],
-.theme-dark [style*="background-color: #fecaca"] { background-color: #3b0d0d !important; color: #f87171 !important; }
-.theme-dark [style*="background-color: #fce7f3"] { background-color: #3b0d25 !important; color: #f472b6 !important; }
+.theme-dark [style*="background-color: #fecaca"] { background-color: #450a0a !important; color: #f87171 !important; }
+.theme-dark [style*="background-color: #fce7f3"] { background-color: #4c1d95 !important; color: #f472b6 !important; }
 
 .theme-dark [style*="background-color: #111827"],
 .theme-dark [style*="background-color: #0f172a"],
 .theme-dark [style*="background-color: #1e293b"],
-.theme-dark [style*="background-color: #111"] { background-color: #1f1f1f !important; }
+.theme-dark [style*="background-color: #111"] { background-color: #0f172a !important; }
 
 .theme-dark ::-webkit-scrollbar        { width: 8px; }
-.theme-dark ::-webkit-scrollbar-track  { background: #1a1a1a; }
-.theme-dark ::-webkit-scrollbar-thumb  { background: #444; border-radius: 4px; }
-.theme-dark ::-webkit-scrollbar-thumb:hover { background: #666; }
+.theme-dark ::-webkit-scrollbar-track  { background: #050914; }
+.theme-dark ::-webkit-scrollbar-thumb  { background: #1e293b; border-radius: 4px; }
+.theme-dark ::-webkit-scrollbar-thumb:hover { background: #334155; }
 
 /* ═══════════════════════════════════════
    ANIMATIONS
