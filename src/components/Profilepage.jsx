@@ -362,7 +362,7 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
   const T = isDark ? THEME.dark : THEME.light;
 
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, fontFamily: "'Segoe UI', sans-serif", color: T.text, transition: 'background 0.3s ease, color 0.3s ease' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: T.bg, fontFamily: "'Segoe UI', sans-serif", color: T.text, transition: 'background 0.3s ease, color 0.3s ease' }}>
       <style>{`
         @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
         @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.5} }

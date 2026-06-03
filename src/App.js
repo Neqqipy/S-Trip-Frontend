@@ -422,7 +422,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
   const hasItinerary = !!searchData || isLoading;
 
   return (
-    <div className={isDark ? 'theme-dark' : 'theme-light'} style={{ backgroundColor: isDark ? '#050914' : '#f9fafb', color: isDark ? '#f8fafc' : '#111827', minHeight: '100vh', margin: 0, padding: 0, transition: 'background-color 0.3s ease, color 0.3s ease' }}>
+    <div className={isDark ? 'theme-dark' : 'theme-light'} style={{ display: 'flex', flexDirection: 'column', backgroundColor: isDark ? '#050914' : '#f9fafb', color: isDark ? '#f8fafc' : '#111827', minHeight: '100vh', margin: 0, padding: 0, transition: 'background-color 0.3s ease, color 0.3s ease' }}>
       <Navbar 
         activeSection={activeSection} 
         onNavigate={scrollToSection} 
@@ -441,7 +441,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
         onUserChange={setUser}
       />
       
-      <div> 
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}> 
         <Routes>
           <Route path="/" element={
             activeSection !== 'dashboard' ? (
@@ -453,7 +453,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
                 isDark={isDark} user={user}
               />
             ) : (
-              <div style={{ paddingTop: '110px' }}>
+              <div style={{ paddingTop: '110px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                 {/* ✅ [THÊM MỚI] Truyền onUserChange để ProfilePage cập nhật avatar lên Navbar */}
                 <ProfilePage
                   onBack={() => setActiveSection('home')}
@@ -504,7 +504,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
       {toast.show && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} isDark={isDark} />
       )}
-      <Footer onNavigate={scrollToSection} noMarginTop={location.pathname === '/about'} />
+      <Footer onNavigate={scrollToSection} noMarginTop={location.pathname === '/about' || activeSection === 'dashboard'} />
     </div>
   );
 }

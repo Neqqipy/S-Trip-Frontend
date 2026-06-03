@@ -3771,32 +3771,30 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
 
       {/* HEADER — bọc từ đây đến hết dailyPlans bằng contentRef để chụp ảnh */}
       <div ref={contentRef} id="itinerary-content" data-screenshot="itinerary" className={isGlassMode ? 'glass-mode-active' : ''} style={{ position: 'relative', zIndex: 1, paddingTop: '0.1px' }}>
+        
         <div className="mdigi-drum" />
       
-      {isGlassMode && (
-        <style>{`
-          /* --- GLASSMORPHISM MODE --- */
-          .glass-mode-active {
-            position: relative;
-            z-index: 1;
-            padding: 20px;
-            border-radius: 40px;
-          }
-          /* Animated Gradient Background */
-          /* Global Glassmorphism Background */
-          ${isGlassMode ? `
-          body {
-            background: ${isDark ? 'linear-gradient(135deg, #020617, #1e1b4b, #0f172a, #064e3b)' : 'linear-gradient(135deg, #fbcfe8, #bfdbfe, #e9d5ff, #a7f3d0)'} !important;
-            background-size: 400% 400% !important;
-            animation: glassGradient 4s ease infinite !important;
-            background-attachment: fixed !important;
-          }
-          .theme-dark, .theme-light {
-            background-color: transparent !important;
-          }
-          #featured-section > div {
-            background-color: transparent !important;
-          }
+      <style>{`
+
+      ${isGlassMode ? `
+        /* --- GLASSMORPHISM MODE --- */
+        .glass-mode-active {
+          position: relative;
+          z-index: 1;
+          padding: 20px;
+          border-radius: 40px;
+        }
+        /* Animated Gradient Background */
+        /* Global Glassmorphism Background */
+        body {
+          background: ${isDark ? 'linear-gradient(135deg, #020617, #1e1b4b, #0f172a, #064e3b)' : 'linear-gradient(135deg, #fbcfe8, #bfdbfe, #e9d5ff, #a7f3d0)'} !important;
+          background-size: 400% 400% !important;
+          animation: glassGradient 4s ease infinite !important;
+          background-attachment: fixed !important;
+        }
+        .theme-dark, .theme-light {
+          background-color: transparent !important;
+        }
           .fd-dest-card {
             background-color: ${isDark ? 'rgba(30, 41, 59, 0.25) !important' : 'rgba(255, 255, 255, 0.3) !important'};
             backdrop-filter: blur(24px) saturate(180%);
@@ -3839,6 +3837,22 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
             margin-bottom: 50px !important;
           }
         `}</style>
+      
+      {/* Cảnh nền ánh sáng (Aura Edge Glows) bám sát rìa màn hình */}
+      {!isGlassMode && isDark && (
+        <div style={{
+          position: 'absolute',
+          top: -100, bottom: 0,
+          left: '50%', transform: 'translateX(-50%)',
+          width: '100vw',
+          zIndex: -1,
+          pointerEvents: 'none',
+          background: `
+            radial-gradient(ellipse 70% 30% at top, rgba(14, 165, 233, 0.12) 0%, transparent 100%),
+            radial-gradient(ellipse 30% 50% at left 30%, rgba(16, 185, 129, 0.08) 0%, transparent 100%),
+            radial-gradient(ellipse 30% 50% at right 70%, rgba(139, 92, 246, 0.08) 0%, transparent 100%)
+          `
+        }} />
       )}
 
       <div style={{ textAlign: 'center', marginBottom: '60px', position: 'relative' }}>
@@ -4666,7 +4680,7 @@ const ScreenshotButtonNew = ({ contentRef, location, isDark, isGlassMode }) => {
             cloneEl.style.background = isDark 
               ? 'linear-gradient(135deg, #020617, #1e1b4b, #0f172a, #064e3b)' 
               : 'linear-gradient(135deg, #fbcfe8, #bfdbfe, #e9d5ff, #a7f3d0)';
-            cloneEl.style.backgroundSize = '100% 100%';
+            cloneEl.style.backgroundSize = '400% 400%';
             cloneEl.style.backgroundRepeat = 'no-repeat';
             
             // Tăng độ đục của các thẻ lên vì html2canvas KHÔNG hỗ trợ backdrop-filter (blur)
