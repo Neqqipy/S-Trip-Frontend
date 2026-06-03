@@ -1,12 +1,20 @@
 // src/services/api.js
 import { BASE_URL } from '../config';
 
-export const fetchAutocomplete = async (query) => {
+export const fetchAutocomplete = async (query, location = '') => {
   try {
-    const res = await fetch(`${BASE_URL}/autocomplete?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`${BASE_URL}/autocomplete?q=${encodeURIComponent(query)}&location=${encodeURIComponent(location)}`);
     const result = await res.json();
     return result.success ? result.data : [];
   } catch (error) { return []; }
+};
+
+export const fetchPlaceDetails = async (name, location) => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/place-details?name=${encodeURIComponent(name)}&location=${encodeURIComponent(location)}`);
+    const result = await res.json();
+    return result.success ? result.data : null;
+  } catch (error) { return null; }
 };
 
 export const fetchTripPlan = async (location, budget, days, origin, passengers, departureDate) => {

@@ -17,7 +17,7 @@ import {
   faHeart as faHeartRegular,
   faClock
  } from '@fortawesome/free-regular-svg-icons';
-import { fetchReviews, fetchImages, fetchWeather, fetchAutocomplete } from '../services/api';
+import { fetchReviews, fetchImages, fetchWeather, fetchAutocomplete, fetchPlaceDetails } from '../services/api';
 import { BASE_URL } from '../config';
 
 // ═════════════════════════════════════════════════════════════
@@ -3383,12 +3383,28 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
   }, [onPlanChange, dailyPlans]);
 
 
-  const handleConfirmAddActivity = () => {
+  const handleConfirmAddActivity = async () => {
     const { day, session, selectedPlace, replaceTarget } = addModal;
+    
+    // Hiển thị trạng thái đang tải (dùng chung state loading của addModal)
+    setAddModal(prev => ({ ...prev, loading: true }));
+    
+    let newActivity = null;
+    try {
+      // Gọi API lấy thông tin chi tiết địa điểm (ảnh, giá, lat, lng,...)
+      const details = await fetchPlaceDetails(selectedPlace, initialData.location);
+      if (details) {
+         newActivity = details;
+      } else {
+         newActivity = { name: selectedPlace, desc: 'Địa điểm do bạn thêm vào', price: 'Tùy chọn', time: 'Tùy chọn' };
+      }
+    } catch (e) {
+      newActivity = { name: selectedPlace, desc: 'Địa điểm do bạn thêm vào', price: 'Tùy chọn', time: 'Tùy chọn' };
+    }
+
     setDailyPlans(prev => {
       const next = prev.map(d => {
         if (d.day === day) {
-          const newActivity = { name: selectedPlace, desc: 'Địa điểm do bạn thêm vào', price: 'Tùy chọn', time: 'Tùy chọn' };
           const sessionData = { ...d[session] };
           
           if (replaceTarget === 'food') {
@@ -3406,6 +3422,8 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       if (onPlanChange) onPlanChange(next);
       return next;
     });
+    
+    setAddModal(prev => ({ ...prev, loading: false }));
     closeAddModal();
   };
 
@@ -3673,11 +3691,9 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
                   )}
                   {!addModal.loading && addModal.query.trim() && addModal.results.length === 0 && (
                     <div
-                      onClick={() => handleSelectAddActivity(addModal.query)}
-                      style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid #10b981', cursor: 'pointer', fontWeight: '600', color: '#10b981', backgroundColor: isDark ? 'rgba(16,185,129,0.1)' : '#ecfdf5', textAlign: 'center' }}
+                      style={{ padding: '14px 16px', borderRadius: '12px', border: isDark ? '1px dashed #475569' : '1px dashed #cbd5e1', color: '#64748b', backgroundColor: isDark ? '#0f172a' : '#f8fafc', textAlign: 'center', fontSize: '15px' }}
                     >
-                      <FontAwesomeIcon icon={faLocationArrow} style={{ marginRight: '10px' }} />
-                      Thêm "{addModal.query}" ngay
+                      Không tìm thấy địa điểm phù hợp
                     </div>
                   )}
                 </>
@@ -3724,8 +3740,11 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
                       )}
                       
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-                        <button onClick={() => setAddModal(prev => ({ ...prev, selectedPlace: null, replaceTarget: 'new' }))} style={{ padding: '12px 24px', borderRadius: '12px', backgroundColor: 'transparent', border: 'none', color: '#64748b', fontWeight: '700', cursor: 'pointer' }}>Quay lại</button>
-                        <button onClick={handleConfirmAddActivity} style={{ padding: '12px 24px', borderRadius: '12px', backgroundColor: '#10b981', color: 'white', border: 'none', fontWeight: '800', cursor: 'pointer' }}>Xác nhận Thêm</button>
+                        <button disabled={addModal.loading} onClick={() => setAddModal(prev => ({ ...prev, selectedPlace: null, replaceTarget: 'new' }))} style={{ padding: '12px 24px', borderRadius: '12px', backgroundColor: 'transparent', border: 'none', color: '#64748b', fontWeight: '700', cursor: addModal.loading ? 'not-allowed' : 'pointer', opacity: addModal.loading ? 0.5 : 1 }}>Quay lại</button>
+                        <button disabled={addModal.loading} onClick={handleConfirmAddActivity} style={{ padding: '12px 24px', borderRadius: '12px', backgroundColor: '#10b981', color: 'white', border: 'none', fontWeight: '800', cursor: addModal.loading ? 'not-allowed' : 'pointer', opacity: addModal.loading ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {addModal.loading && <FontAwesomeIcon icon={faSpinner} spin />}
+                          {addModal.loading ? 'Đang thêm...' : 'Xác nhận Thêm'}
+                        </button>
                       </div>
                     </div>
                   );
