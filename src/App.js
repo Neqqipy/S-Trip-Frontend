@@ -172,7 +172,7 @@ const HomePage = ({
       </div>
       
       <div style={{ position: 'relative', overflow: 'hidden' }}>
-        <div id="itinerary-section" style={{ scrollMarginTop: '110px', position: 'relative', zIndex: 1 }}>
+        <div id="itinerary-section" style={{ scrollMarginTop: '110px', position: 'relative', zIndex: 10 }}>
           {isLoading && <SkeletonLoader isDark={isDark} />}
           {searchData && !isLoading && (
             <AiSchedule 
@@ -310,8 +310,12 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
       const featured = document.getElementById('featured-section');
 
       const isPastNavbar = (el) => el && el.getBoundingClientRect().top <= 150;
+      const isAtBottom = window.innerHeight + Math.round(window.scrollY) >= document.documentElement.scrollHeight - 50;
 
-      if (isPastNavbar(featured)) {
+      if (isAtBottom && featured) {
+        setActiveSection('featured');
+      }
+      else if (isPastNavbar(featured)) {
         setActiveSection('featured');
       } 
       else if (isPastNavbar(itinerary) && (searchDataRef.current || isLoadingRef.current)) {
@@ -495,7 +499,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
           } />
         </Routes>
 
-        {activeSection !== 'dashboard' && location.pathname !== '/about' && (
+        {searchData && (
           <MapBubble targetOffset={800} data={searchData} editedPlans={editedPlans} isDark={isDark} />
         )}
         <ChatAI tripData={searchData} isDark={isDark}/>

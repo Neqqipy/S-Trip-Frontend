@@ -5,7 +5,7 @@ import { faFacebook, faInstagram, faGithub, faGoogle } from '@fortawesome/free-b
 
 const Footer = ({ onNavigate, noMarginTop }) => {
   const styles = {
-    footer: { backgroundColor: '#111827', color: 'white', paddingTop: '60px', paddingBottom: '40px', marginTop: noMarginTop ? '0' : '100px', width: '100%' },
+    footer: { backgroundColor: '#111827', color: 'white', paddingTop: '40px', paddingBottom: '24px', marginTop: noMarginTop ? '0' : '40px', width: '100%' },
     logo: { fontSize: '28px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' },
     heading: { fontSize: '18px', fontWeight: '700', marginBottom: '20px', color: '#10b981' },
     linkList: { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' },
@@ -19,14 +19,14 @@ const Footer = ({ onNavigate, noMarginTop }) => {
         .footer-grid {
           width: 90%;
           max-width: 1400px;
-          margin: 0 auto 50px;
+          margin: 0 auto 32px;
           display: grid;
           grid-template-columns: 2fr 1fr 1fr 1.5fr;
           gap: 50px;
         }
         .footer-bottom {
           border-top: 1px solid rgba(255,255,255,0.1);
-          padding-top: 32px;
+          padding-top: 24px;
           text-align: center;
           color: #6b7280;
           font-size: 14px;
@@ -92,7 +92,7 @@ const Footer = ({ onNavigate, noMarginTop }) => {
           <ul style={styles.linkList}>
             <li style={styles.link} onClick={() => onNavigate('hero-section')}>Trang chủ</li>
             <li style={styles.link} onClick={() => onNavigate('itinerary-section')}>Lịch trình</li>
-            <li style={styles.link} onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})}>Địa điểm hot</li>
+            <li style={styles.link} onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})}>Khám phá</li>
           </ul>
         </div>
 
@@ -109,7 +109,7 @@ const Footer = ({ onNavigate, noMarginTop }) => {
         <div>
           <h3 style={styles.heading}>Liên hệ</h3>
           <ul style={styles.linkList}>
-            <li><a href="mailto:contact@s-trip.vn" style={{ ...styles.link, display: 'flex', alignItems: 'center', gap: '8px' }}><FontAwesomeIcon icon={faEnvelope} /> contact@s-trip.vn</a></li>
+            <li><a href="mailto:24120319@student.hcmus.edu.vn" style={{ ...styles.link, display: 'flex', alignItems: 'center', gap: '8px' }}><FontAwesomeIcon icon={faEnvelope} /> 24120319@student.hcmus.edu.vn</a></li>
             <li><a href="tel:+84789441629" style={{ ...styles.link, display: 'flex', alignItems: 'center', gap: '8px' }}><FontAwesomeIcon icon={faPhone} /> +84 7894 41629</a></li>
           </ul>
         </div>

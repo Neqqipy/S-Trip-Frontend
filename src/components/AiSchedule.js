@@ -3429,6 +3429,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
     };
     window.addEventListener('AI_UPDATE_SCHEDULE', handleAIUpdate);
     return () => window.removeEventListener('AI_UPDATE_SCHEDULE', handleAIUpdate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onPlanChange, dailyPlans, initialData.location]);
 
 

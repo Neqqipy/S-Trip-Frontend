@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
-import { Text, Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Mock data for provinces
@@ -150,7 +150,7 @@ function Province({ data, projection, color, isSelected, anySelected, onClick, o
   const emissiveIntensity = isSelected ? 0.6 : (hovered && !anySelected ? 0.4 : (isDimmed ? 0 : 0.15));
   const opacity = isDimmed ? 0.2 : (isSelected ? 1 : 0.95);
 
-  const initialPosition = useMemo(() => [center[0], center[1], 0], [center[0], center[1]]);
+  const initialPosition = useMemo(() => [center[0], center[1], 0], [center]);
   const initialScale = useMemo(() => [0.995, 0.995, 1], []);
 
   return (
@@ -369,7 +369,6 @@ function MapModel({ geojson, onSelectProvince, selectedProvince, isHero, positio
     return { mapCx: (minX + maxX) / 2, mapCy: (minY + maxY) / 2 };
   }, [geojson, projection]);
 
-  const [hoveredName, setHoveredName] = useState(null);
 
   useFrame(() => {
     if (groupRef.current) {
@@ -414,7 +413,7 @@ function MapModel({ geojson, onSelectProvince, selectedProvince, isHero, positio
                 onSelectProvince(d);
               }
             }}
-            onHover={setHoveredName}
+            onHover={() => {}}
             isHero={isHero}
             mapCx={mapCx}
             mapCy={mapCy}

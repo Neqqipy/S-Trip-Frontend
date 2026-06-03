@@ -993,7 +993,7 @@ const FeaturedDestinations = ({ isDark = false, onNavigate }) => {
 
   return (
     <ThemeContext.Provider value={isDark}>
-    <section style={{ padding: isMobile ? '20px 12px 32px' : '80px 40px', maxWidth: '1600px', margin: '0 auto' }}>
+    <section style={{ padding: isMobile ? '20px 12px 32px' : '80px 40px 40px', maxWidth: '1600px', margin: '0 auto' }}>
       <style>{`
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(40px) scale(0.97) } to { opacity: 1; transform: translateY(0) scale(1) } }
