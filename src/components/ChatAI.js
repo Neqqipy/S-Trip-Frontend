@@ -26,6 +26,7 @@ const ChatAI = ({ tripData, isDark }) => {
     { role: 'ai', text: 'Chào bạn! Mình là trợ lý S-Trip 🌴\nBạn muốn hỏi gì về chuyến đi sắp tới không? 😊' }
   ]);
   const msgEndRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     if (tripData) {
@@ -45,6 +46,7 @@ const ChatAI = ({ tripData, isDark }) => {
     if (!input.trim() || isLoading) return;
     const userText = input.trim();
     setInput('');
+    if (inputRef.current) inputRef.current.style.height = 'auto';
     const updated = [...messages, { role: 'user', text: userText }];
     setMessages(updated);
     setIsLoading(true);
@@ -103,7 +105,7 @@ const ChatAI = ({ tripData, isDark }) => {
         .chat-window {
           position: fixed;
           bottom: 50px; right: 50px;
-          width: 560px; height: 780px;
+          width: 450px; height: 700px;
           background-color: ${isDark ? '#0f172a' : 'white'};
           border-radius: 36px;
           box-shadow: ${isDark ? '0 24px 64px rgba(0,0,0,0.6)' : '0 24px 64px rgba(0,0,0,0.22)'};
@@ -287,7 +289,7 @@ const ChatAI = ({ tripData, isDark }) => {
         }}>
           {messages.map((msg, i) => (
             <div key={i} style={{
-              maxWidth: '85%', padding: '14px 20px', borderRadius: '22px', fontSize: '15px', lineHeight: '1.6', whiteSpace: 'pre-wrap',
+              maxWidth: '85%', padding: '14px 20px', borderRadius: '22px', fontSize: '17px', lineHeight: '1.6', whiteSpace: 'pre-wrap',
               alignSelf: msg.role === 'ai' ? 'flex-start' : 'flex-end',
               backgroundColor: msg.isError
                 ? (isDark ? '#7f1d1d' : '#fef2f2')
@@ -334,18 +336,25 @@ const ChatAI = ({ tripData, isDark }) => {
           backgroundColor: isDark ? '#0f172a' : 'white',
           flexShrink: 0,
         }}>
-          <input
+          <textarea
+            ref={inputRef}
             style={{
-              flex: 1, padding: '14px 20px', borderRadius: '99px',
+              flex: 1, padding: '14px 20px', borderRadius: '24px',
               border: `2px solid ${isLoading ? (isDark ? '#064e3b' : '#d1fae5') : (isDark ? '#334155' : '#f1f5f9')}`,
-              outline: 'none', fontSize: '15px',
+              outline: 'none', fontSize: '17px', fontFamily: 'inherit',
               color: isDark ? '#f8fafc' : '#111827',
               backgroundColor: isLoading ? (isDark ? '#022c22' : '#f0fdf4') : (isDark ? '#1e293b' : 'white'),
-              transition: '0.3s', minHeight: '48px',
+              transition: 'border 0.3s, background-color 0.3s', minHeight: '52px',
+              maxHeight: '120px', overflowY: 'auto', resize: 'none', lineHeight: '20px'
             }}
+            rows={1}
             placeholder={isLoading ? 'Đang trả lời...' : 'Hỏi AI về du lịch...'}
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={e => {
+              setInput(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = e.target.scrollHeight + 'px';
+            }}
             onKeyDown={handleKeyDown}
             disabled={isLoading}
           />

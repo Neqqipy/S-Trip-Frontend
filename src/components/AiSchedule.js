@@ -3354,21 +3354,22 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
   };
 
   useEffect(() => {
-    const handleAIUpdate = (e) => {
+    const handleAIUpdate = async (e) => {
       const { day, session, place } = e.detail;
+      
+      const placeholderActivity = { name: place, desc: 'Đang tải thông tin từ AI...', price: 'Đang tải...', time: 'Tùy chọn' };
+      
       setDailyPlans(prev => {
         const next = prev.map(d => {
           if (d.day === day) {
             const sessionData = { ...d[session] };
-            const newActivity = { name: place, desc: 'Địa điểm được Trợ lý AI thêm vào', price: 'Tùy chọn', time: 'Tùy chọn' };
-            // Replace tour if available, else food, else extras
             if (sessionData.tour) {
-               sessionData.tour = newActivity;
+               sessionData.tour = placeholderActivity;
             } else if (sessionData.food) {
-               sessionData.food = newActivity;
+               sessionData.food = placeholderActivity;
             } else {
                if (!sessionData.extras) sessionData.extras = [];
-               sessionData.extras = [...sessionData.extras, newActivity];
+               sessionData.extras = [...sessionData.extras, placeholderActivity];
             }
             return recalculateDay({ ...d, [session]: sessionData });
           }
@@ -3377,10 +3378,58 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
         if (onPlanChange) onPlanChange(next);
         return next;
       });
+
+      try {
+        const details = await fetchPlaceDetails(place, initialData.location);
+        if (details) {
+          setDailyPlans(prev => {
+            const next = prev.map(d => {
+              if (d.day === day) {
+                const sessionData = { ...d[session] };
+                if (sessionData.tour && sessionData.tour.name === place) {
+                   sessionData.tour = details;
+                } else if (sessionData.food && sessionData.food.name === place) {
+                   sessionData.food = details;
+                } else if (sessionData.extras) {
+                   const idx = sessionData.extras.findIndex(x => x.name === place);
+                   if (idx !== -1) sessionData.extras[idx] = details;
+                }
+                return recalculateDay({ ...d, [session]: sessionData });
+              }
+              return d;
+            });
+            if (onPlanChange) onPlanChange(next);
+            return next;
+          });
+        } else {
+          setDailyPlans(prev => {
+            const next = prev.map(d => {
+              if (d.day === day) {
+                const sessionData = { ...d[session] };
+                const fallbackActivity = { name: place, desc: 'Địa điểm được Trợ lý AI thêm vào', price: 'Tùy chọn', time: 'Tùy chọn' };
+                if (sessionData.tour && sessionData.tour.name === place) {
+                   sessionData.tour = fallbackActivity;
+                } else if (sessionData.food && sessionData.food.name === place) {
+                   sessionData.food = fallbackActivity;
+                } else if (sessionData.extras) {
+                   const idx = sessionData.extras.findIndex(x => x.name === place);
+                   if (idx !== -1) sessionData.extras[idx] = fallbackActivity;
+                }
+                return recalculateDay({ ...d, [session]: sessionData });
+              }
+              return d;
+            });
+            if (onPlanChange) onPlanChange(next);
+            return next;
+          });
+        }
+      } catch (e) {
+        console.error("AI fetch place error", e);
+      }
     };
     window.addEventListener('AI_UPDATE_SCHEDULE', handleAIUpdate);
     return () => window.removeEventListener('AI_UPDATE_SCHEDULE', handleAIUpdate);
-  }, [onPlanChange, dailyPlans]);
+  }, [onPlanChange, dailyPlans, initialData.location]);
 
 
   const handleConfirmAddActivity = async () => {
