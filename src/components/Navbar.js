@@ -41,6 +41,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [resendError,   setResendError]   = useState('');
+  const [isScrolled,    setIsScrolled]    = useState(false);
 
   const openModal = (loginMode = true) => {
     setIsLogin(loginMode);
@@ -58,6 +59,24 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
     window.addEventListener('openAuthModal', handleOpenAuth);
     return () => window.removeEventListener('openAuthModal', handleOpenAuth);
   }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const [currentHash, setCurrentHash] = useState(window.location.hash);
+  useEffect(() => {
+    const onHashChange = () => setCurrentHash(window.location.hash);
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const isHomePage = (currentHash === '' || currentHash === '#/' || currentHash.startsWith('#/?')) && activeSection !== 'dashboard';
+  const isSolidNav = isScrolled || !isHomePage;
 
   // Đóng dropdown khi click ra ngoài — dùng document listener thay vì overlay
   // để không chặn các nút khác (hamburger, nav links, v.v.)
@@ -186,31 +205,52 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
 
   const styles = {
     header: {
-      height: '110px', display: 'flex', justifyContent: 'center', alignItems: 'center',
-      position: 'fixed', top: 0, width: '100%', zIndex: 1000,
-      background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(10px)', boxSizing: 'border-box',
+      height: '90px', display: 'flex', justifyContent: 'center', alignItems: 'center',
+      position: 'fixed', top: isScrolled ? '4px' : '28px', width: '100%', zIndex: 1000,
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      pointerEvents: 'none',
     },
     container: {
-      width: '100%', display: 'flex',
-      justifyContent: 'space-between', alignItems: 'center', padding: '0 50px',
+      width: '92%', maxWidth: '1300px', display: 'flex',
+      justifyContent: 'space-between', alignItems: 'center', padding: '0 30px',
+      height: isScrolled ? '72px' : '80px',
+      background: isSolidNav 
+        ? (isDark ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.9)') 
+        : 'rgba(255, 255, 255, 0.1)',
+      border: isSolidNav 
+        ? (isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)') 
+        : '1px solid rgba(255, 255, 255, 0.2)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      boxShadow: isSolidNav ? '0 20px 40px -10px rgba(0, 0, 0, 0.3), 0 15px 15px -10px rgba(0, 0, 0, 0.2)' : '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
+      borderRadius: '9999px',
+      boxSizing: 'border-box',
+      transition: 'all 0.3s ease',
+      pointerEvents: 'auto',
     },
-    logoContainer: { display: 'flex', alignItems: 'center', gap: '18px', textDecoration: 'none', cursor: 'pointer' },
-    logoImage: { height: '88px', width: '88px', borderRadius: '50%', objectFit: 'cover', filter: 'drop-shadow(0 0 12px rgba(16, 185, 129, 0.9)) brightness(1.15)' },
+    logoContainer: { display: 'flex', alignItems: 'center', gap: '14px', textDecoration: 'none', cursor: 'pointer', flex: 1 },
+    logoImage: { height: '56px', width: '56px', borderRadius: '50%', objectFit: 'cover', filter: 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.6)) brightness(1.1)' },
     brandTextContainer: { display: 'flex', flexDirection: 'column', justifyContent: 'center' },
-    brandTitle: { fontSize: '38px', fontWeight: '900', color: 'white', textShadow: '0 0 4px rgba(255,255,255,0.6), 0 0 8px rgba(255,255,255,0.25)', lineHeight: '1.1' },
-    brandSubtitle: { fontSize: '15px', fontWeight: '700', color: '#34d399', letterSpacing: '3px', marginTop: '10px', textShadow: '0 0 6px rgba(16, 185, 129, 0.5)' },
-    brandLine: { height: '1px', width: '100%', backgroundColor: 'rgba(16, 185, 129, 0.4)', marginTop: '5px' },
-    nav: { display: 'flex', gap: '45px', alignItems: 'center' },
+    brandTitle: { fontSize: '28px', fontWeight: '900', color: isSolidNav && !isDark ? '#111827' : 'white', textShadow: isSolidNav && !isDark ? 'none' : '0 0 4px rgba(255,255,255,0.4)', lineHeight: '1.1', transition: 'color 0.3s' },
+    brandSubtitle: { fontSize: '15px', fontWeight: '700', color: '#34d399', letterSpacing: '3px', marginTop: '4px', textShadow: isSolidNav && !isDark ? 'none' : '0 0 6px rgba(16, 185, 129, 0.5)', whiteSpace: 'nowrap', textTransform: 'uppercase' }, 
+    brandLine: { height: '2px', width: '100%', backgroundColor: 'rgba(16, 185, 129, 0.6)', marginTop: '4px', borderRadius: '1px' },
+    navCenter: { display: 'flex', gap: '8px', alignItems: 'center', flex: 1, justifyContent: 'center' },
+    navRight: { display: 'flex', gap: '24px', alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
     link: (isActive, locked) => ({
-      color: locked ? 'rgba(255,255,255,0.35)' : (isActive ? '#10b981' : 'white'),
-      textDecoration: 'none', fontWeight: '700', fontSize: '22px',
+      color: locked 
+        ? ((!isSolidNav || isDark) ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)') 
+        : (isActive ? ((!isSolidNav || isDark) ? '#34d399' : '#059669') : ((!isSolidNav || isDark) ? '#ffffff' : '#374151')),
+      textDecoration: 'none', fontWeight: '800', fontSize: '18px',
       cursor: locked ? 'not-allowed' : 'pointer',
-      position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', transition: 'color 0.2s',
+      position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s',
+      whiteSpace: 'nowrap',
+      padding: '10px 24px',
+      borderRadius: '9999px',
+      backgroundColor: 'transparent',
     }),
-    underline: { position: 'absolute', bottom: '-8px', left: '0', width: '100%', height: '4px', backgroundColor: '#10b981', borderRadius: '2px' },
     lockTooltip: { position: 'absolute', top: '140%', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#1f2937', color: 'white', padding: '10px 20px', borderRadius: '12px', fontSize: '16px', whiteSpace: 'nowrap', boxShadow: '0 8px 20px rgba(0,0,0,0.3)', zIndex: 9999, animation: 'fadeInDown 0.2s ease', pointerEvents: 'none' },
-    tooltipArrow: { position: 'absolute', top: '-7px', left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderBottom: '8px solid #1f2937' },
-    loginBtn: { backgroundColor: '#10b981', color: 'white', padding: '16px 40px', borderRadius: '9999px', fontWeight: '800', fontSize: '20px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' },
+    tooltipArrow: { position: 'absolute', top: '-6px', left: '50%', transform: 'translateX(-50%) rotate(45deg)', width: '12px', height: '12px', backgroundColor: '#1f2937' },
+    loginBtn: { backgroundColor: '#3b82f6', color: 'white', padding: '12px 28px', borderRadius: '9999px', fontWeight: '700', fontSize: '17px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)', transition: 'background-color 0.2s' },
     overlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(15px)' },
     modal: { backgroundColor: isDark ? '#0f172a' : 'white', width: '560px', maxWidth: '92%', maxHeight: '90vh', overflowY: 'auto', borderRadius: '32px', padding: '44px 52px', position: 'relative', boxShadow: '0 40px 100px rgba(0,0,0,0.5)' },
     closeBtn: { position: 'absolute', top: '18px', right: '20px', background: 'none', border: 'none', fontSize: '32px', color: isDark ? '#64748b' : '#9ca3af', cursor: 'pointer' },
@@ -223,14 +263,13 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
     switchText: { textAlign: 'center', marginTop: '20px', fontSize: '15px', color: isDark ? '#94a3b8' : '#4b5563' },
     switchLink: { color: '#10b981', fontWeight: '800', cursor: 'pointer', textDecoration: 'underline', marginLeft: '8px' },
 
-    // 📱 HAMBURGER — hidden by default (desktop), shown via CSS on mobile
     hamburger: {
-      display: 'none',                        // ✅ ẨN trên desktop
+      display: 'none',
       background: 'none', border: 'none',
       color: 'white', fontSize: '28px',
       cursor: 'pointer', zIndex: 1001,
       padding: '10px', lineHeight: 1,
-      minWidth: '48px', minHeight: '48px',    // touch target
+      minWidth: '48px', minHeight: '48px',
       alignItems: 'center', justifyContent: 'center',
     },
     mobileMenu: {
@@ -259,15 +298,35 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
   const isScheduleActive = activeSection === 'schedule';
   const isItineraryLocked = !hasItinerary;
 
+  const [hoverStyle, setHoverStyle] = useState({ opacity: 0, left: 0, width: 0, height: 0 });
+  const handleMouseEnter = (e) => {
+    let el = e.currentTarget;
+    while (el && el.parentElement && !el.parentElement.classList.contains('navbar-desktop')) {
+      el = el.parentElement;
+    }
+    setHoverStyle({
+      opacity: 1,
+      left: el.offsetLeft,
+      width: el.offsetWidth,
+      height: el.offsetHeight || 42,
+    });
+  };
+  const handleMouseLeave = () => {
+    setHoverStyle(prev => ({ ...prev, opacity: 0 }));
+  };
+
   return (
     <>
       <style>{`
-        /* Prevent scrollbar-appear/disappear from shifting layout */
         html { overflow-y: scroll; }
 
         @keyframes fadeInDown {
-          from { opacity: 0; transform: translate(-50%, -6px); }
+          from { opacity: 0; transform: translate(-50%, -10px); }
           to   { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        .nav-link:hover {
+          color: ${(!isSolidNav || isDark) ? '#34d399' : '#059669'} !important;
         }
         @keyframes dropdownFadeIn {
           from { opacity: 0; transform: translateY(-6px); }
@@ -278,7 +337,6 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
           to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* ── Theme Toggle ── */
         .theme-toggle-track {
           width: 68px; height: 36px;
           background-color: rgba(255,255,255,0.25);
@@ -316,7 +374,6 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
         .theme-toggle-track.is-dark:active .theme-toggle-thumb { transform: translateX(22px); width: 34px; }
         .theme-toggle-track:hover .theme-toggle-icon { transform: scale(1.15) rotate(15deg); }
 
-        /* ── Dropdown user menu ── */
         .user-dropdown {
           position: absolute; top: calc(100% + 12px); right: 0;
           background: ${isDark ? '#1e293b' : 'white'};
@@ -327,33 +384,14 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
           animation: dropdownFadeIn 0.18s ease;
         }
 
-        /* ══════════════════════════════════════
-           📱 MOBILE — breakpoint 768px
-        ══════════════════════════════════════ */
         @media (max-width: 768px) {
-          /* Header height → 72px */
           .s-navbar-header { height: 72px !important; }
-
-          /* Container padding → 16px */
           .s-navbar-container { padding: 0 16px !important; }
-
-          /* Logo image → 52px */
           .s-navbar-logo-img { width: 52px !important; height: 52px !important; }
-
-          /* Brand title → 22px */
           .s-navbar-brand-title { font-size: 22px !important; }
-
-          /* Brand subtitle & line → hide */
-          .s-navbar-brand-subtitle,
-          .s-navbar-brand-line { display: none !important; }
-
-          /* Desktop nav → hide */
+          .s-navbar-brand-subtitle, .s-navbar-brand-line { display: none !important; }
           .navbar-desktop { display: none !important; }
-
-          /* Hamburger → show as flex */
           .navbar-hamburger { display: flex !important; }
-
-          /* Mobile auth (avatar/login) → show as flex, at far right */
           .navbar-mobile-auth { display: flex !important; order: 2; margin-left: 10px; }
           .navbar-mobile-toggle { display: flex !important; order: 1; margin-left: auto; }
           .navbar-mobile-toggle .theme-toggle-track { width: 48px !important; height: 28px !important; }
@@ -362,22 +400,9 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
           .navbar-mobile-toggle .theme-toggle-icon { font-size: 12px !important; }
           .s-navbar-logo { order: 0; }
           .navbar-hamburger { order: 3; margin-left: 10px; }
-
-          /* Mobile menu slide animation */
           .s-mobile-menu { animation: mobileSlideDown 0.22s ease; top: 72px !important; max-height: calc(100vh - 72px) !important; }
-
-          /* Modal → nearly full-width */
-          .s-auth-modal {
-            width: calc(100vw - 32px) !important;
-            max-width: 100% !important;
-            padding: 28px 20px !important;
-            border-radius: 24px !important;
-          }
-
-          /* Modal title */
+          .s-auth-modal { width: calc(100vw - 32px) !important; max-width: 100% !important; padding: 28px 20px !important; border-radius: 24px !important; }
           .s-auth-modal h2 { font-size: 24px !important; }
-
-          /* Inputs */
           .s-auth-modal input { font-size: 16px !important; }
         }
 
@@ -386,17 +411,12 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
           .s-navbar-logo-img { width: 44px !important; height: 44px !important; }
           .s-navbar-brand-title { font-size: 18px !important; }
           .s-mobile-menu { top: 64px !important; max-height: calc(100vh - 64px) !important; }
-          .s-auth-modal {
-            width: calc(100vw - 16px) !important;
-            padding: 20px 14px !important;
-          }
+          .s-auth-modal { width: calc(100vw - 16px) !important; padding: 20px 14px !important; }
         }
       `}</style>
 
       <header style={styles.header} className="s-navbar-header">
         <div style={styles.container} className="s-navbar-container">
-
-          {/* LOGO */}
           <div style={styles.logoContainer} className="s-navbar-logo" onClick={() => {
             if (window.location.hash.includes('/explore') || window.location.hash.includes('/about') || window.location.hash.includes('/reset-password')) {
               window.location.href = '/#/';
@@ -413,9 +433,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
             </div>
           </div>
 
-          {/* 📱 MOBILE TOGGLE — shown only on mobile, order 1 */}
-          <div className="navbar-mobile-toggle" style={{ display: 'none', alignItems: 'center' }}
-            onClick={onToggleTheme}>
+          <div className="navbar-mobile-toggle" style={{ display: 'none', alignItems: 'center' }} onClick={onToggleTheme}>
             <div className={`theme-toggle-track ${isDark ? 'is-dark' : ''}`}>
               <div className="theme-toggle-thumb">
                 <span className="theme-toggle-icon">{isDark ? '🌙' : '☀️'}</span>
@@ -423,102 +441,67 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
             </div>
           </div>
 
-          {/* 📱 MOBILE AUTH — avatar or login button, order 2 */}
           <div className="navbar-mobile-auth" style={{ display: 'none', alignItems: 'center' }}>
             {user ? (
-              <div
-                className="user-menu-wrapper"
-                onClick={() => { setMenuOpen(!menuOpen); setIsMobileMenuOpen(false); }}
-                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}
-              >
+              <div className="user-menu-wrapper" onClick={() => { setMenuOpen(!menuOpen); setIsMobileMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
                 {user.avatar
                   ? <img src={user.avatar} alt={user.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 2px rgba(16,185,129,0.7)' }} />
                   : <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#10b981,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: 'white' }}>
                       {(user.name || user.email || '?')[0].toUpperCase()}
                     </div>
                 }
-                {menuOpen && (
-                  <div className="user-dropdown" style={{ top: 'calc(100% + 8px)', right: 0, position: 'absolute' }}>
-                    <div style={{ padding: '16px 20px', borderBottom: isDark ? '1px solid #334155' : '1px solid #f1f5f9' }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: isDark ? '#f8fafc' : '#111827' }}>{user.name}</div>
-                      <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{user.email}</div>
-                    </div>
-                    <button onClick={() => { handleNavigate('dashboard'); setMenuOpen(false); }}
-                      style={{ width: '100%', padding: '14px 20px', border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700, color: isDark ? '#f8fafc' : '#111827', textAlign: 'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background = isDark ? '#334155' : '#f1f5f9'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                    >
-                      <FontAwesomeIcon icon={faUser} /> Hồ sơ cá nhân
-                    </button>
-                    <button onClick={handleLogout}
-                      style={{ width: '100%', padding: '14px 20px', border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#ef4444', textAlign: 'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                    >
-                      <FontAwesomeIcon icon={faSignOutAlt} /> Đăng xuất
-                    </button>
-                  </div>
-                )}
               </div>
             ) : (
-              <button
-                style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 16px', borderRadius: 9999, fontWeight: 800, fontSize: 15, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-                onClick={() => openModal(true)}
-              >
+              <button style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 16px', borderRadius: 9999, fontWeight: 800, fontSize: 15, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => openModal(true)}>
                 Đăng nhập <FontAwesomeIcon icon={faArrowRightToBracket} />
               </button>
             )}
           </div>
 
-          {/* 🍔 HAMBURGER — always in DOM, shown only on mobile via CSS */}
-          <button
-            style={styles.hamburger}
-            onClick={() => { setIsMobileMenuOpen(v => !v); setMenuOpen(false); }}
-            className="navbar-hamburger"
-            aria-label="Toggle menu"
-            aria-expanded={isMobileMenuOpen}
-          >
-            {isMobileMenuOpen
-              ? <FontAwesomeIcon icon={faXmark} />
-              : <FontAwesomeIcon icon={faBars} />
-            }
+          <button style={styles.hamburger} onClick={() => { setIsMobileMenuOpen(v => !v); setMenuOpen(false); }} className="navbar-hamburger" aria-label="Toggle menu" aria-expanded={isMobileMenuOpen}>
+            {isMobileMenuOpen ? <FontAwesomeIcon icon={faXmark} /> : <FontAwesomeIcon icon={faBars} />}
           </button>
 
-          {/* DESKTOP NAV */}
-          <nav style={styles.nav} className="navbar-desktop">
-            <div style={styles.link(window.location.hash.includes('/about') || window.location.hash.includes('/explore'), false)} onClick={() => { window.location.href = '/#/about'; }}>
-              <span style={{ fontSize: '18px', marginRight: '4px' }}>✨</span>
+          <nav style={{ ...styles.navCenter, position: 'relative' }} className="navbar-desktop" onMouseLeave={handleMouseLeave}>
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              left: hoverStyle.left,
+              width: hoverStyle.width,
+              height: hoverStyle.height,
+              backgroundColor: (!isSolidNav || isDark) ? 'rgba(4, 120, 87, 0.35)' : 'rgba(16, 185, 129, 0.15)',
+              borderRadius: '9999px',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              opacity: hoverStyle.opacity,
+              pointerEvents: 'none',
+              zIndex: 0
+            }} />
+            <div className="nav-link" style={{ ...styles.link(window.location.hash.includes('/about') || window.location.hash.includes('/explore'), false), zIndex: 1 }} onClick={() => { window.location.href = '/#/about'; }} onMouseEnter={handleMouseEnter}>
               Giới thiệu
-              {(window.location.hash.includes('/about') || window.location.hash.includes('/explore')) && <div style={styles.underline} />}
             </div>
-
-            <div style={styles.link(activeSection === 'home' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about'), false)} onClick={handleHomeClick}>
-              <FontAwesomeIcon icon={faHouse} style={{ fontSize: '18px', marginRight: '8px' }} />
+            <div className="nav-link" style={{ ...styles.link(activeSection === 'home' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about'), false), zIndex: 1 }} onClick={handleHomeClick} onMouseEnter={handleMouseEnter}>
               Trang chủ
-              {activeSection === 'home' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about') && <div style={styles.underline} />}
             </div>
-
-            <div style={{ position: 'relative' }}>
-              <div style={styles.link(isScheduleActive && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about'), isItineraryLocked)} onClick={handleItineraryClick}>
-                {isItineraryLocked ? <FontAwesomeIcon icon={faLock} style={{ fontSize: '18px' }} /> : <FontAwesomeIcon icon={faMapLocationDot} style={{ fontSize: '18px', marginRight: '6px' }} />}
+            <div style={{ position: 'relative', display: 'flex' }} onMouseEnter={handleMouseEnter}>
+              <div className="nav-link" style={{ ...styles.link(isScheduleActive && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about'), isItineraryLocked), zIndex: 1 }} onClick={handleItineraryClick}>
+                {isItineraryLocked && <FontAwesomeIcon icon={faLock} style={{ fontSize: '14px', marginRight: '4px' }} />}
                 Lịch trình
-                {isScheduleActive && !isItineraryLocked && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about') && <div style={styles.underline} />}
               </div>
               {showLockTip && (
                 <div style={styles.lockTooltip}>
                   <div style={styles.tooltipArrow} />
                   <FontAwesomeIcon icon={faCalendarDays} style={{ marginRight: '8px', color: '#10b981' }} />
-                  Hãy tìm kiếm chuyến đi trước nhé!
+                  Hãy tạo hoặc chọn chuyến đi trước nhé!
                 </div>
               )}
             </div>
-
-            <div style={styles.link(activeSection === 'featured' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about'), false)} onClick={() => handleNavigate('featured-section')}>
-              <FontAwesomeIcon icon={faEarthAsia} style={{ fontSize: '18px', marginRight: '4px' }} />
+            <div className="nav-link" style={{ ...styles.link(activeSection === 'featured' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about'), false), zIndex: 1 }} onClick={() => handleNavigate('featured-section')} onMouseEnter={handleMouseEnter}>
               Khám phá
-              {activeSection === 'featured' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about') && <div style={styles.underline} />}
             </div>
+          </nav>
 
+          <div style={styles.navRight} className="navbar-desktop">
             <div onClick={onToggleTheme} className={`theme-toggle-track ${isDark ? 'is-dark' : ''}`} title={isDark ? 'Chuyển sang sáng' : 'Chuyển sang tối'}>
               <div className="theme-toggle-thumb">
                 <span className="theme-toggle-icon">{isDark ? '🌙' : '☀️'}</span>
@@ -529,20 +512,19 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
               <div className="user-menu-wrapper" style={{ position: 'relative', flexShrink: 0 }}>
                 <div
                   onClick={() => { setMenuOpen(!menuOpen); setIsMobileMenuOpen(false); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 18px 10px 10px', borderRadius: 9999, cursor: 'pointer', background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.25)', transition: '0.2s', whiteSpace: 'nowrap' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px 8px 8px', borderRadius: 9999, cursor: 'pointer', background: isSolidNav && !isDark ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.15)', border: isSolidNav && !isDark ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.25)', transition: '0.2s', whiteSpace: 'nowrap' }}
                 >
                   {user.avatar
-                    ? <img src={user.avatar} alt={user.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 2px rgba(16,185,129,0.6)' }} />
-                    : <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#10b981,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color: 'white' }}>
+                    ? <img src={user.avatar} alt={user.name} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 2px rgba(16,185,129,0.6)' }} />
+                    : <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#10b981,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: 'white' }}>
                         {(user.name || user.email || '?')[0].toUpperCase()}
                       </div>
                   }
-                  <span style={{ color: 'white', fontWeight: 700, fontSize: 18, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ color: isSolidNav && !isDark ? '#111827' : 'white', fontWeight: 700, fontSize: 16, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {user.name || user.email}
                   </span>
-                  <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>▼</span>
+                  <span style={{ color: isSolidNav && !isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)', fontSize: 12 }}>▼</span>
                 </div>
-
                 {menuOpen && (
                   <div className="user-dropdown">
                     <div style={{ padding: '16px 20px', borderBottom: isDark ? '1px solid #334155' : '1px solid #f1f5f9' }}>
@@ -568,11 +550,11 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
               </div>
             ) : (
               <button style={styles.loginBtn} onClick={() => openModal(true)}>
+                <FontAwesomeIcon icon={faUser} style={{ fontSize: '14px' }} />
                 Đăng nhập
-                <FontAwesomeIcon icon={faArrowRightToBracket} />
               </button>
             )}
-          </nav>
+          </div>
         </div>
       </header>
 
