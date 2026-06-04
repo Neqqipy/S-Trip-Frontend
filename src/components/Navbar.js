@@ -213,7 +213,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
     container: {
       width: '92%', maxWidth: '1300px', display: 'flex',
       justifyContent: 'space-between', alignItems: 'center', padding: '0 30px',
-      height: isScrolled ? '72px' : '80px',
+      height: isScrolled ? '74px' : '80px',
       background: isSolidNav 
         ? (isDark ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.9)') 
         : 'rgba(255, 255, 255, 0.1)',
@@ -385,7 +385,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
         }
 
         @media (max-width: 768px) {
-          .s-navbar-header { height: 72px !important; }
+          .s-navbar-header { height: 74px !important; }
           .s-navbar-container { padding: 0 16px !important; }
           .s-navbar-logo-img { width: 52px !important; height: 52px !important; }
           .s-navbar-brand-title { font-size: 22px !important; }
@@ -400,7 +400,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
           .navbar-mobile-toggle .theme-toggle-icon { font-size: 12px !important; }
           .s-navbar-logo { order: 0; }
           .navbar-hamburger { order: 3; margin-left: 10px; }
-          .s-mobile-menu { animation: mobileSlideDown 0.22s ease; top: 72px !important; max-height: calc(100vh - 72px) !important; }
+          .s-mobile-menu { animation: mobileSlideDown 0.22s ease; top: 74px !important; max-height: calc(100vh - 74px) !important; }
           .s-auth-modal { width: calc(100vw - 32px) !important; max-width: 100% !important; padding: 28px 20px !important; border-radius: 24px !important; }
           .s-auth-modal h2 { font-size: 24px !important; }
           .s-auth-modal input { font-size: 16px !important; }
