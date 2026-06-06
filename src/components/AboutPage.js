@@ -557,7 +557,22 @@ const AboutPage = ({ isDark, onNavigate, setActiveSection }) => {
       </section>
 
       {/* Separator */}
-      <div style={{ width: '60px', height: '1px', background: `rgba(8,178,166,0.4)`, margin: '0 auto 80px', position: 'relative', zIndex: 2 }} />
+      <svg 
+        width="240" height="14" viewBox="0 0 400 24" fill="none" xmlns="http://www.w3.org/2000/svg" 
+        style={{ margin: '0 auto 80px', display: 'block', position: 'relative', zIndex: 2 }}
+      >
+        <circle cx="10" cy="12" r="2" fill="#f59e0b" />
+        <circle cx="18" cy="12" r="3" fill="#f59e0b" />
+        <path d="M 34 2 L 46 12 L 34 22 L 22 12 Z" fill="#f59e0b" />
+        <rect x="52" y="7" width="3" height="10" rx="1.5" fill="#f59e0b" />
+        
+        <rect x="55" y="10.5" width="290" height="3" fill="#f59e0b" />
+
+        <rect x="345" y="7" width="3" height="10" rx="1.5" fill="#f59e0b" />
+        <path d="M 366 2 L 378 12 L 366 22 L 354 12 Z" fill="#f59e0b" />
+        <circle cx="382" cy="12" r="3" fill="#f59e0b" />
+        <circle cx="390" cy="12" r="2" fill="#f59e0b" />
+      </svg>
 
       {/* ── 3. FEATURES ── */}
       <section style={{ padding: '0 2% 160px', position: 'relative', zIndex: 2 }}>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 // 1. Import Router
-import { HashRouter as Router, Routes, Route, useLocation, useSearchParams } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useLocation, useSearchParams, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import FeaturedDestinations from './components/FeaturedDestinations';
@@ -219,6 +219,15 @@ const HomePage = ({
       </div>
     </>
   );
+};
+
+const InitialRedirect = ({ children }) => {
+  const hasVisited = localStorage.getItem('sTripHasVisited');
+  if (!hasVisited) {
+    localStorage.setItem('sTripHasVisited', 'true');
+    return <Navigate to="/about" replace />;
+  }
+  return children;
 };
 
 function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
@@ -448,7 +457,8 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}> 
         <Routes>
           <Route path="/" element={
-            activeSection !== 'dashboard' ? (
+            <InitialRedirect>
+              {activeSection !== 'dashboard' ? (
               <HomePage 
                 handleSearch={handleSearch} isLoading={isLoading} 
                 searchData={searchData} editedPlans={editedPlans} 
@@ -457,7 +467,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
                 isDark={isDark} user={user}
               />
             ) : (
-              <div style={{ paddingTop: '110px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ paddingTop: '0px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                 {/* ✅ [THÊM MỚI] Truyền onUserChange để ProfilePage cập nhật avatar lên Navbar */}
                 <ProfilePage
                   onBack={() => setActiveSection('home')}
@@ -477,7 +487,8 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
                   }}
                 />
               </div>
-            )
+            )}
+            </InitialRedirect>
           } />
 
           <Route path="/about" element={

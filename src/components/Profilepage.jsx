@@ -362,7 +362,7 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
   const T = isDark ? THEME.dark : THEME.light;
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: T.bg, fontFamily: "'Segoe UI', sans-serif", color: T.text, transition: 'background 0.3s ease, color 0.3s ease' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: T.bg, fontFamily: "'Segoe UI', sans-serif", color: T.text, transition: 'background 0.3s ease, color 0.3s ease', paddingTop: '100px', paddingBottom: '100px' }}>
       <style>{`
         @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
         @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.5} }
@@ -438,7 +438,7 @@ export default function ProfilePage({ onBack, isDark = true, user: userProp = nu
       `}</style>
 
       {/* Header */}
-      <div style={{ background: T.headerBg, borderBottom: `1px solid ${T.headerBorder}`, backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 100 }}>
+      <div style={{ background: T.headerBg, borderBottom: `1px solid ${T.headerBorder}`, position: 'relative', zIndex: 100 }}>
         <div style={{ maxWidth: 1300, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', height: 68, gap: 16 }}>
           <button onClick={onBack} className="sp-btn" style={{ width: 42, height: 42, borderRadius: 12, border: `1px solid ${T.btnBorder}`, background: T.btnBg, color: T.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {Icon.back}
@@ -1240,6 +1240,7 @@ function SavedSchedules({ T, onLoadSchedule }) {
   const [schedules,        setSchedules]        = useState([]);
   const [loading,          setLoading]          = useState(true);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
+  const [searchQuery,      setSearchQuery]      = useState('');
 
   useEffect(() => {
     api.get('/api/schedules')
@@ -1282,7 +1283,7 @@ function SavedSchedules({ T, onLoadSchedule }) {
       `}</style>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.primary }}>{Icon.calendar}</div>
           <div>
@@ -1290,7 +1291,38 @@ function SavedSchedules({ T, onLoadSchedule }) {
             {schedules.length > 0 && <div style={{ fontSize: 13, color: C.primary, fontWeight: 700 }}>{schedules.length} mục</div>}
           </div>
         </div>
+        
+        {/* Search Input */}
+        {schedules.length > 0 && (
+          <div style={{ position: 'relative', width: '260px' }}>
+            <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+              {Icon.search}
+            </div>
+            <input 
+              className="sp-input"
+              type="text" 
+              placeholder="Tìm theo tên hoặc địa điểm..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%', padding: '10px 16px 10px 42px',
+                borderRadius: 14, border: `1px solid ${T?.cardBorder || 'rgba(255,255,255,0.1)'}`,
+                background: T?.inputBg || 'rgba(255,255,255,0.04)', color: T?.text || '#f1f5f9',
+                fontSize: 14, outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
+              }}
+            />
+          </div>
+        )}
       </div>
+
+      {/* Logic Filter */}
+      {(() => {
+        const filteredSchedules = schedules.filter(s => 
+          (s.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+          (s.location || '').toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        return (
+          <>
 
       {/* Loading skeleton */}
       {loading && [1, 2].map(i => (
@@ -1308,7 +1340,13 @@ function SavedSchedules({ T, onLoadSchedule }) {
 
       {/* Cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {schedules.map((s, i) => (
+        {filteredSchedules.length === 0 && searchQuery && !loading && (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
+            <div style={{ fontWeight: 800, fontSize: 15 }}>Không tìm thấy lịch trình nào khớp với "{searchQuery}"</div>
+          </div>
+        )}
+        {filteredSchedules.map((s, i) => (
           <div key={s.id} className="sp-card" onClick={() => handleOpen(s)} style={{ background: (T||{}).card || 'rgba(255,255,255,0.04)', border: `1px solid ${(T||{}).cardBorder || 'rgba(255,255,255,0.08)'}`, borderRadius: 24, padding: '22px 28px', display: 'flex', gap: 20, alignItems: 'center', cursor: 'pointer', animation: `fadeUp 0.3s ease ${i * 0.06}s both` }}>
             <div style={{ width: 80, height: 80, borderRadius: 18, flexShrink: 0, overflow: 'hidden', border: `2px solid ${T?.primary || '#10b981'}`, background: T?.inputBg || 'rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>
               {getProvinceAvatar(s.location)
@@ -1333,6 +1371,9 @@ function SavedSchedules({ T, onLoadSchedule }) {
           </div>
         ))}
       </div>
+          </>
+        );
+      })()}
 
       {/* Modal xem chi tiết */}
       {selectedSchedule && (
