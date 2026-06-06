@@ -104,13 +104,8 @@ const AboutPage = ({ isDark, onNavigate, setActiveSection }) => {
     },
   ];
 
-  const borderColor = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.1)';
   const subtleText = isDark ? 'rgba(255,255,255,0.5)' : '#475569';
   const labelText = isDark ? 'rgba(8,178,166,0.85)' : 'rgba(8,178,166,1)';
-  // Ghost numbers & outline text — rõ hơn ở cả 2 mode
-  const outlineStroke = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.18)';
-  // Ghost number màu tint để vừa thấy vừa không chói
-  const ghostNumColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(30,41,59,0.06)';
 
   return (
     <div style={{ backgroundColor: bgColor, color: textColor, minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>

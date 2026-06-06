@@ -5,19 +5,7 @@ import * as THREE from 'three';
 import { DEFAULT_REVIEWS } from '../FeaturedDestinations';
 import { provinceStats } from '../../data/provincesData';
 
-// Mock data for provinces
-const mockData = {
-  "Hà Nội": { population: "8.4 triệu", area: "3,359 km²", fact: "Thủ đô ngàn năm văn hiến, nổi tiếng với 36 phố phường và trà đá vỉa hè." },
-  "TP. Hồ Chí Minh": { population: "9.3 triệu", area: "2,061 km²", fact: "Trung tâm kinh tế lớn nhất Việt Nam, thành phố không ngủ." },
-  "Đà Nẵng": { population: "1.2 triệu", area: "1,285 km²", fact: "Thành phố đáng sống nhất Việt Nam, nổi tiếng với các cây cầu độc đáo." },
-  "Hải Phòng": { population: "2.1 triệu", area: "1,562 km²", fact: "Thành phố hoa phượng đỏ, cảng biển lớn nhất miền Bắc." },
-  "Cần Thơ": { population: "1.2 triệu", area: "1,439 km²", fact: "Thủ phủ miền Tây sông nước, nổi tiếng với chợ nổi Cái Răng." },
-  "Quảng Ninh": { population: "1.3 triệu", area: "6,178 km²", fact: "Sở hữu Vịnh Hạ Long - Di sản thiên nhiên thế giới." },
-  "Khánh Hòa": { population: "1.2 triệu", area: "5,197 km²", fact: "Nổi tiếng với thành phố biển Nha Trang, vịnh Cam Ranh tuyệt đẹp." },
-  "Lâm Đồng": { population: "1.3 triệu", area: "9,783 km²", fact: "Nổi tiếng với Đà Lạt - thành phố sương mù, vương quốc hoa." },
-  "Thừa Thiên Huế": { population: "1.1 triệu", area: "5,033 km²", fact: "Cố đô của Việt Nam với hệ thống lăng tẩm và nhã nhạc cung đình." },
-  "Kiên Giang": { population: "1.7 triệu", area: "6,348 km²", fact: "Sở hữu đảo ngọc Phú Quốc - thiên đường du lịch biển." },
-};
+
 
 const PALETTE = [
   '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',

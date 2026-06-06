@@ -937,13 +937,13 @@ const TYPE_ICON = {
 // 📸 COMPONENT ẢNH TỰ PHỤC HỒI CHO SCHEDULE MODAL
 // ════════════════════════════════════════════════════════════
 function ScheduleActivityImage({ act, cfg }) {
-  const getInitialImg = () => {
+  const getInitialImg = useCallback(() => {
     // 1. Kiểm tra xem đã có ảnh nét nào lưu trong cache chưa
     const cached = localStorage.getItem(`img_fix_${act.name}`);
     if (cached) return proxyImage(cached);
     // 2. Không có thì dùng ảnh mặc định
     return act.thumbnail ? proxyImage(act.thumbnail) : null;
-  };
+  }, [act.name, act.thumbnail]);
 
   const [imgUrl, setImgUrl] = useState(getInitialImg);
   const [error, setError] = useState(false);
@@ -951,7 +951,7 @@ function ScheduleActivityImage({ act, cfg }) {
   useEffect(() => {
     setImgUrl(getInitialImg());
     setError(false);
-  }, [act.thumbnail, act.name]);
+  }, [getInitialImg]);
 
   const handleError = async (e) => {
     if (error) {
