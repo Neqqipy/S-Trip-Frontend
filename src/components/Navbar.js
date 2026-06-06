@@ -425,7 +425,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
               onRefresh();
             }
           }}>
-            <img src='/S.jpg' alt="S-Trip Logo" style={styles.logoImage} className="s-navbar-logo-img" />
+            <img src='/S.png' alt="S-Trip Logo" style={styles.logoImage} className="s-navbar-logo-img" />
             <div style={styles.brandTextContainer}>
               <span style={styles.brandTitle} className="s-navbar-brand-title">S-Trip</span>
               <span style={styles.brandSubtitle} className="s-navbar-brand-subtitle">KHÁM PHÁ VIỆT NAM</span>

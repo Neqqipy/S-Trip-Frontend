@@ -69,7 +69,7 @@ const Footer = ({ onNavigate, noMarginTop }) => {
         {/* Brand */}
         <div className="footer-brand" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <div style={styles.logo} onClick={() => onNavigate('hero-section')}>
-            <img src="S.jpg" alt="S-Trip Logo" style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} />
+            <img src="S.png" alt="S-Trip Logo" style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} />
             S-Trip
           </div>
           <p style={{ color: '#9ca3af', fontSize: '16px', lineHeight: '1.6', margin: 0 }}>

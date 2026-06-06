@@ -934,10 +934,98 @@ const TYPE_ICON = {
 };
 
 // ════════════════════════════════════════════════════════════
+// 📸 COMPONENT ẢNH TỰ PHỤC HỒI CHO SCHEDULE MODAL
+// ════════════════════════════════════════════════════════════
+function ScheduleActivityImage({ act, cfg }) {
+  const getInitialImg = () => {
+    // 1. Kiểm tra xem đã có ảnh nét nào lưu trong cache chưa
+    const cached = localStorage.getItem(`img_fix_${act.name}`);
+    if (cached) return proxyImage(cached);
+    // 2. Không có thì dùng ảnh mặc định
+    return act.thumbnail ? proxyImage(act.thumbnail) : null;
+  };
+
+  const [imgUrl, setImgUrl] = useState(getInitialImg);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setImgUrl(getInitialImg());
+    setError(false);
+  }, [act.thumbnail, act.name]);
+
+  const handleError = async (e) => {
+    if (error) {
+      e.target.style.display = 'none';
+      if (e.target.parentNode) e.target.parentNode.innerHTML = `<span style='font-size:22px'>${cfg.emoji}</span>`;
+      return;
+    }
+    setError(true);
+
+    // Chặn gọi API liên tục trong cùng 1 phiên nếu API cũng không tìm thấy ảnh
+    if (sessionStorage.getItem(`img_fail_${act.name}`)) {
+      e.target.style.display = 'none';
+      if (e.target.parentNode) e.target.parentNode.innerHTML = `<span style='font-size:22px'>${cfg.emoji}</span>`;
+      return;
+    }
+    sessionStorage.setItem(`img_fail_${act.name}`, '1');
+
+    try {
+      const revData = await api.get(`/api/places/reviews?name=${encodeURIComponent(act.name)}`);
+      const photos = (revData?.reviews || []).flatMap(r => r.photos || []);
+      if (photos.length > 0) {
+        localStorage.setItem(`img_fix_${act.name}`, photos[0]); // LƯU CACHE TẠI BROWSER
+        setImgUrl(proxyImage(photos[0]));
+        return;
+      }
+      const imgData = await api.get(`/api/places/images?name=${encodeURIComponent(act.name)}`);
+      if (imgData?.images?.length > 0) {
+        localStorage.setItem(`img_fix_${act.name}`, imgData.images[0]); // LƯU CACHE TẠI BROWSER
+        setImgUrl(proxyImage(imgData.images[0]));
+        return;
+      }
+    } catch (_) {}
+    
+    e.target.style.display = 'none';
+    if (e.target.parentNode) e.target.parentNode.innerHTML = `<span style='font-size:22px'>${cfg.emoji}</span>`;
+  };
+
+  if (!imgUrl) return <span style={{ fontSize: 22 }}>{cfg.emoji}</span>;
+
+  return (
+    <img 
+      src={imgUrl} 
+      alt={act.name} 
+      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+      onError={handleError}
+    />
+  );
+}
+
+// ════════════════════════════════════════════════════════════
 // 🗓️ MODAL XEM CHI TIẾT LỊCH TRÌNH
 // ════════════════════════════════════════════════════════════
-function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
+function ScheduleModal({ schedule, onClose, onLoadToMain, onTitleChange, T }) {
   const [activeDay, setActiveDay] = useState(0);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState(schedule.title);
+
+  useEffect(() => {
+    setEditTitle(schedule.title);
+  }, [schedule.title]);
+
+  const handleTitleSubmit = async () => {
+    setIsEditingTitle(false);
+    if (!editTitle.trim() || editTitle.trim() === schedule.title) {
+      setEditTitle(schedule.title);
+      return;
+    }
+    const newTitle = editTitle.trim();
+    setEditTitle(newTitle);
+    if (onTitleChange) onTitleChange(newTitle);
+    try {
+      await api.put(`/api/schedules/${schedule.id}`, { ...schedule, title: newTitle });
+    } catch (_) {}
+  };
 
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
@@ -1004,6 +1092,7 @@ function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
         .act-row:hover { background: ${T?.rowBorder || 'rgba(255,255,255,0.05)'} !important; }
         .sm-btn:hover  { opacity: 0.8; transform: translateY(-1px); }
         .sm-btn        { transition: all 0.2s; }
+        .edit-title-hover:hover { background: rgba(16,185,129,0.15) !important; color: #10b981 !important; border-color: rgba(16,185,129,0.3) !important; }
       `}</style>
 
       {/* Overlay */}
@@ -1027,7 +1116,26 @@ function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
                 }
               </div>
               <div style={{ flex: 1, paddingRight: 40 }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: T?.text || '#f1f5f9', marginBottom: 6, lineHeight: 1.2 }}>{schedule.title}</div>
+                {isEditingTitle ? (
+                  <input
+                    autoFocus
+                    value={editTitle}
+                    onChange={e => setEditTitle(e.target.value)}
+                    onBlur={handleTitleSubmit}
+                    onKeyDown={e => e.key === 'Enter' && handleTitleSubmit()}
+                    style={{ fontSize: 22, fontWeight: 900, color: T?.text || '#f1f5f9', marginBottom: 6, lineHeight: 1.2, width: '100%', background: 'rgba(0,0,0,0.2)', border: `1px dashed #10b981`, borderRadius: 6, outline: 'none', padding: '2px 8px', margin: '0 -8px', boxSizing: 'border-box' }}
+                  />
+                ) : (
+                  <div 
+                    onClick={() => setIsEditingTitle(true)}
+                    className="edit-title-hover"
+                    style={{ fontSize: 22, fontWeight: 900, color: T?.text || '#f1f5f9', marginBottom: 6, lineHeight: 1.2, cursor: 'text', padding: '2px 8px', margin: '0 -8px', borderRadius: 6, border: '1px solid transparent', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8 }}
+                    title="Nhấn để sửa tên lịch trình"
+                  >
+                    {schedule.title}
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" style={{ opacity: 0.5 }}><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10 }}>
                   <span style={{ fontSize: 13, color: C.primary, display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.map} {schedule.location}</span>
                   <span style={{ fontSize: 13, color: T?.muted || '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>{Icon.plane} {schedule.days} ngày</span>
@@ -1093,10 +1201,7 @@ function ScheduleModal({ schedule, onClose, onLoadToMain, T }) {
                             return (
                               <div key={ai} className="act-row" style={{ display: 'flex', gap: 12, padding: '10px 12px', borderRadius: 14, transition: '0.2s', border: `1px solid ${border}`, background: bg, alignItems: 'center' }}>
                                 <div style={{ flexShrink: 0, width: 52, height: 52, borderRadius: 10, overflow: 'hidden', background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  {act.thumbnail
-                                    ? <img src={proxyImage(act.thumbnail)} alt={act.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display='none'; e.target.parentNode.innerHTML = `<span style='font-size:22px'>${cfg.emoji}</span>`; }} />
-                                    : <span style={{ fontSize: 22 }}>{cfg.emoji}</span>
-                                  }
+                                  <ScheduleActivityImage act={act} cfg={cfg} />
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
@@ -1231,7 +1336,16 @@ function SavedSchedules({ T, onLoadSchedule }) {
 
       {/* Modal xem chi tiết */}
       {selectedSchedule && (
-        <ScheduleModal schedule={selectedSchedule} onClose={handleClose} onLoadToMain={handleLoadToMainDashboard} T={T} />
+        <ScheduleModal 
+          schedule={selectedSchedule} 
+          onClose={handleClose} 
+          onLoadToMain={handleLoadToMainDashboard} 
+          onTitleChange={(newTitle) => {
+            setSelectedSchedule(prev => ({ ...prev, title: newTitle }));
+            setSchedules(prev => prev.map(s => s.id === selectedSchedule.id ? { ...s, title: newTitle } : s));
+          }}
+          T={T} 
+        />
       )}
 
       {/* Modal xác nhận xoá */}

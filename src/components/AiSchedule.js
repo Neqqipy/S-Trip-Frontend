@@ -4427,7 +4427,7 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
           letterSpacing: '0'
         }}>
           Lịch trình được thiết kế thông minh bởi <strong style={{ color: '#10b981', marginRight: '4px' }}>S-Trip</strong>
-          <img src="S.jpg" alt="S-Trip Logo" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #10b981' }} />
+          <img src="S.png" alt="S-Trip Logo" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #10b981' }} />
         </div>
       </div>
 

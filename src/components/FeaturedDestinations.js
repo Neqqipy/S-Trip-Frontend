@@ -300,7 +300,7 @@ const GalleryThumb = ({ src, alt, onClick }) => {
 // ─────────────────────────────────────────────
 // NHẬN XÉT MẶC ĐỊNH – biên soạn riêng từng tỉnh
 // ─────────────────────────────────────────────
-const DEFAULT_REVIEWS = {
+export const DEFAULT_REVIEWS = {
   'An Giang': 'An Giang là vùng đất hội tụ cả sông nước lẫn núi non – điều hiếm có ở miền Tây. Rừng tràm Trà Sư vào mùa nước nổi tháng 9–11 là thời điểm đẹp nhất: mặt nước xanh biếc phản chiếu hàng nghìn bông sen trắng, thuyền lướt nhẹ dưới tán tràm mát rượi tạo cảm giác lạc vào chốn bồng lai. Dãy Thất Sơn huyền bí với núi Cấm cao nhất đồng bằng, khí hậu mát mẻ quanh năm, lý tưởng để leo bộ và chiêm bái chùa Vạn Linh linh thiêng. Ẩm thực An Giang đậm đà phong vị Khmer – đừng bỏ qua bún cá Châu Đốc, mắm Châu Đốc nức tiếng và bánh bò thốt nốt.',
   'Bà Rịa - Vũng Tàu': 'Vũng Tàu là "bãi biển của Sài Gòn" – cách trung tâm chưa đến 2 tiếng lái xe nhưng đủ xa để cảm nhận gió biển mát lành. Bãi Sau rộng dài với sóng vừa phải, thích hợp cho cả gia đình. Bãi Trước êm ả hơn, lý tưởng ngắm hoàng hôn. Leo lên Hải Đăng trên Núi Nhỏ vào buổi sáng sớm để ngắm toàn cảnh vịnh mờ sương là trải nghiệm khó quên. Hải sản tươi ngon, giá hợp lý – ghẹ hấp bia, cua rang me và cá mú hấp gừng là những món không thể bỏ lỡ.',
   'Bắc Giang': 'Bắc Giang đẹp nhất vào tháng 6, khi vải thiều Lục Ngạn chín đỏ trải dài hàng nghìn héc-ta. Ngồi giữa vườn vải, nhìn ra bạt ngàn màu đỏ hồng rực rỡ dưới ánh nắng chiều là khoảnh khắc đáng giá cả chuyến đi. Chùa Vĩnh Nghiêm – bảo tàng mộc bản Phật giáo được UNESCO công nhận – là điểm dừng chân không thể bỏ qua. Đừng quên thưởng thức bánh đa Thổ Hà và mì Chũ dẻo thơm đặc trưng của vùng đất này.',

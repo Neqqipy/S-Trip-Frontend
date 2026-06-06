@@ -48,7 +48,7 @@ export default function ExploreVietnam({ isEmbedded, mode = 'full' }) {
             <h2 className="info-province-name" style={isHero ? { fontSize: '20px' } : {}}>{selectedProvince.displayName || selectedProvince.name}</h2>
             
             <div className="info-fact">
-              <div className="info-fact-title" style={isHero ? { fontSize: '12px' } : {}}>💡 Sự thật thú vị</div>
+              <div className="info-fact-title" style={isHero ? { fontSize: '12px' } : {}}>💡 Giới thiệu ngắn</div>
               <div className="info-fact-content" style={isHero ? { fontSize: '12px' } : {}}>{selectedProvince.fact}</div>
             </div>
 

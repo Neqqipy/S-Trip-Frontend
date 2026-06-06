@@ -135,7 +135,7 @@ const SplashScreen = ({ onFinish }) => {
         <div style={styles.logoWrapper}>
           <div style={styles.logoGlow} />
           <img
-            src="/S.jpg"
+            src="/S.png"
             alt="S-Trip Logo"
             style={styles.logo}
           />

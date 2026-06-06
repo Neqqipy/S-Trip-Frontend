@@ -2,6 +2,8 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
+import { DEFAULT_REVIEWS } from '../FeaturedDestinations';
+import { provinceStats } from '../../data/provincesData';
 
 // Mock data for provinces
 const mockData = {
@@ -85,21 +87,46 @@ function Province({ data, projection, color, isSelected, anySelected, onClick, o
 
   const { shapes, center } = useMemo(() => {
     const polys = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    
-    // Find bounding box
+    // Tìm đa giác lớn nhất (dựa trên diện tích bounding box) để tính tâm
+    let largestPoly = null;
+    let maxArea = -1;
+
     polys.forEach(polygon => {
+      let pMinX = Infinity, pMinY = Infinity, pMaxX = -Infinity, pMaxY = -Infinity;
       polygon[0].forEach((coord) => {
         const [x, y] = projection(coord);
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
+        if (x < pMinX) pMinX = x;
+        if (x > pMaxX) pMaxX = x;
+        if (y < pMinY) pMinY = y;
+        if (y > pMaxY) pMaxY = y;
       });
+      const area = (pMaxX - pMinX) * (pMaxY - pMinY);
+      if (area > maxArea) {
+        maxArea = area;
+        largestPoly = polygon[0];
+      }
     });
-    
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
+
+    let cx = 0, cy = 0;
+    if (largestPoly) {
+      let signedArea = 0;
+      for (let i = 0; i < largestPoly.length - 1; i++) {
+        const [x0, y0] = projection(largestPoly[i]);
+        const [x1, y1] = projection(largestPoly[i+1]);
+        const a = x0 * y1 - x1 * y0;
+        signedArea += a;
+        cx += (x0 + x1) * a;
+        cy += (y0 + y1) * a;
+      }
+      signedArea *= 0.5;
+      if (Math.abs(signedArea) > 0.0001) {
+        cx /= (6 * signedArea);
+        cy /= (6 * signedArea);
+      } else {
+        const [x0, y0] = projection(largestPoly[0]);
+        cx = x0; cy = y0;
+      }
+    }
     
     // Offset shapes to their own centroid
     const offsetShapes = [];
@@ -205,13 +232,13 @@ function Province({ data, projection, color, isSelected, anySelected, onClick, o
             (TEXT_OFFSETS[name]?.[1] || 0), 
             extrudeSettings.depth + 0.1
           ]}
-          fontSize={isSelected ? 0.35 : 0.14}
-          color="#1e293b"
+          fontSize={isSelected ? 0.45 : 0.22}
+          color="#000000"
           anchorX="center"
           anchorY="middle"
-          outlineWidth={0.012}
+          outlineWidth={0.02}
           outlineColor="#ffffff"
-          fontWeight="bold"
+          fontWeight="900"
         >
           {DISPLAY_NAMES[name] || name}
         </Text>
@@ -221,13 +248,13 @@ function Province({ data, projection, color, isSelected, anySelected, onClick, o
       {name === "Kiên Giang" && (!anySelected || isSelected) && (
         <Text
           position={[-1.3, 0.2, extrudeSettings.depth + 0.1]}
-          fontSize={isSelected ? 0.2 : 0.1}
-          color="#1e293b"
+          fontSize={isSelected ? 0.25 : 0.15}
+          color="#000000"
           anchorX="center"
           anchorY="middle"
-          outlineWidth={0.01}
+          outlineWidth={0.015}
           outlineColor="#ffffff"
-          fontWeight="bold"
+          fontWeight="900"
         >
           ĐẢO PHÚ QUỐC
         </Text>
@@ -242,22 +269,22 @@ function Archipelago({ name, position, isTruongSa, onSelectProvince, anySelected
 
   const islands = useMemo(() => {
     const dots = [];
-    const count = isTruongSa ? 25 : 12; // More islands for Truong Sa
-    const spreadX = isTruongSa ? 2.5 : 1.2;
-    const spreadY = isTruongSa ? 3.0 : 1.2;
-    
-    // Deterministic pseudo-random based on name
+    const count = isTruongSa ? 22 : 10;
+    const spreadX = isTruongSa ? 2.2 : 1.1;
+    const spreadY = isTruongSa ? 2.8 : 1.1;
+
     let seed = isTruongSa ? 1337 : 42;
     const random = () => {
       const x = Math.sin(seed++) * 10000;
       return x - Math.floor(x);
     };
 
-    for(let i = 0; i < count; i++) {
+    for (let i = 0; i < count; i++) {
       dots.push({
         x: (random() - 0.5) * spreadX,
         y: (random() - 0.5) * spreadY,
-        r: 0.04 + random() * 0.06 // tiny radius
+        // mix of small and slightly larger dots for natural atoll look
+        r: i % 5 === 0 ? 0.07 + random() * 0.04 : 0.03 + random() * 0.035,
       });
     }
     return { dots, spreadX, spreadY };
@@ -267,42 +294,56 @@ function Archipelago({ name, position, isTruongSa, onSelectProvince, anySelected
     if (groupRef.current) {
       const targetScale = isSelected ? 3.0 : 1.0;
       const targetZ = isSelected ? 3.0 : (hovered && !anySelected ? 0.3 : 0);
-      
       const heroOffsetX = isHero ? 3.0 : 0;
       const targetX = isSelected && mapCx !== undefined ? mapCx + heroOffsetX : position[0];
       const targetY = isSelected && mapCy !== undefined ? mapCy : position[1];
-      
       groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, 1), 0.15);
       groupRef.current.position.lerp(new THREE.Vector3(targetX, targetY, targetZ), 0.15);
     }
   });
 
   const isDimmed = anySelected && !isSelected;
-  const baseColor = hovered && !anySelected ? '#4facfe' : '#2563eb';
-  const emissive = hovered && !anySelected ? '#00f2fe' : '#1e40af';
-  const emissiveIntensity = hovered && !anySelected ? 0.6 : (isDimmed ? 0 : 0.3);
-  const opacity = isDimmed ? 0.2 : 0.95;
+  const opacity = isDimmed ? 0.15 : 1.0;
+
+  // Colours: warm sand/teal palette instead of dark navy
+  const islandColor   = hovered && !anySelected ? '#5eead4' : '#94d4cc';  // muted teal
+  const islandEmissive = hovered && !anySelected ? '#0d9488' : '#0f766e';
+  const ringColor     = hovered && !anySelected ? '#67e8f9' : '#a5f3fc';  // faint cyan ring
 
   return (
     <group position={position} ref={groupRef}>
-      {/* Scattered island dots */}
+      {/* Island dots — sphere shape looks more like real islands */}
       {islands.dots.map((dot, i) => (
-        <mesh key={i} position={[dot.x, dot.y, 0]}>
-          <cylinderGeometry args={[dot.r, dot.r, 0.1, 12]} rotation={[Math.PI / 2, 0, 0]} />
-          <meshStandardMaterial 
-            color={baseColor} 
-            emissive={emissive}
-            emissiveIntensity={emissiveIntensity}
-            roughness={0.2}
-            metalness={0.3}
-            transparent={true}
-            opacity={opacity}
-          />
-        </mesh>
+        <group key={i} position={[dot.x, dot.y, 0]}>
+          {/* Shallow water glow ring around each island */}
+          <mesh position={[0, 0, -0.01]}>
+            <circleGeometry args={[dot.r * 2.4, 16]} />
+            <meshBasicMaterial
+              color={ringColor}
+              transparent
+              opacity={isDimmed ? 0.03 : 0.09}
+            />
+          </mesh>
+          {/* Island body */}
+          <mesh>
+            <sphereGeometry args={[dot.r, 12, 12]} />
+            <meshStandardMaterial
+              color={islandColor}
+              emissive={islandEmissive}
+              emissiveIntensity={isDimmed ? 0 : 0.28}
+              roughness={0.35}
+              metalness={0.15}
+              transparent
+              opacity={opacity}
+            />
+          </mesh>
+        </group>
       ))}
 
-      {/* Invisible hitbox for easy hovering and clicking */}
-      <mesh 
+
+
+      {/* Invisible hitbox */}
+      <mesh
         position={[0, 0, -1]}
         onPointerOver={(e) => { e.stopPropagation(); if (!anySelected) setHovered(true); }}
         onPointerOut={() => setHovered(false)}
@@ -311,32 +352,51 @@ function Archipelago({ name, position, isTruongSa, onSelectProvince, anySelected
           if (anySelected) {
             onSelectProvince(null);
           } else {
+            const isHoangSa = name === "QUẦN ĐẢO HOÀNG SA";
             onSelectProvince({
               name: name,
-              population: "N/A",
-              area: "N/A",
-              fact: `Quần đảo thuộc chủ quyền thiêng liêng của Việt Nam.`
+              displayName: name,
+              population: isHoangSa ? 'Chưa có số liệu chính thức' : 'Khoảng 195 người (2019)',
+              area: isHoangSa ? '305 km² (huyện đảo)' : '496 km² (huyện đảo)',
+              fact: isHoangSa 
+                ? 'Quần đảo Hoàng Sa (thuộc thành phố Đà Nẵng) gồm hơn 30 đảo, rạn san hô và bãi ngầm ở Biển Đông. Đây là vùng lãnh thổ thiêng liêng có ý nghĩa đặc biệt quan trọng về quốc phòng và kinh tế biển của Việt Nam.'
+                : 'Quần đảo Trường Sa (thuộc tỉnh Khánh Hòa) trải rộng trên Biển Đông với hơn 100 đảo và rạn san hô. Nơi đây như một tiền đồn vững chắc, khẳng định chủ quyền và bảo vệ an ninh vùng biển thiêng liêng của Tổ quốc.',
             });
           }
         }}
       >
-        <planeGeometry args={[islands.spreadX + 1.5, islands.spreadY + 1.5]} />
+        <planeGeometry args={[islands.spreadX + 1.8, islands.spreadY + 1.8]} />
         <meshBasicMaterial visible={false} />
       </mesh>
-      
-      {/* Label */}
+
+      {/* Label — two lines, smaller caps label above main name */}
       <Text
-        position={[0, - (islands.spreadY / 2 + 0.6), 0.1]}
-        fontSize={0.4}
-        color="#ffffff"
+        position={[0, -(islands.spreadY / 2 + 0.55), 0.1]}
+        fontSize={0.38}
+        color={hovered && !anySelected ? '#7dd3d8' : '#b0cdd4'}
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.04}
+        outlineColor="#0c1a2e"
+        fontWeight="bold"
+        visible={!isDimmed}
+        letterSpacing={0.06}
+      >
+        {name}
+      </Text>
+      {/* Small "Việt Nam" sub-label */}
+      <Text
+        position={[0, -(islands.spreadY / 2 + 1.0), 0.1]}
+        fontSize={0.22}
+        color={'#6b9fa5'}
         anchorX="center"
         anchorY="middle"
         outlineWidth={0.03}
-        outlineColor="#0f172a"
-        fontWeight="bold"
+        outlineColor="#0c1a2e"
         visible={!isDimmed}
+        letterSpacing={0.08}
       >
-        {name}
+        VIỆT NAM
       </Text>
     </group>
   );
@@ -386,16 +446,18 @@ function MapModel({ geojson, onSelectProvince, selectedProvince, isHero, positio
     <group ref={groupRef} position={position} scale={scale}>
       {geojson.features.map((feature, idx) => {
         const name = feature.properties.name || feature.properties.ten_tinh || feature.properties["name:en"] || `Province ${idx}`;
-        const info = mockData[name] || {
-          population: "N/A",
-          area: "N/A",
-          fact: "Một vùng đất tươi đẹp của Việt Nam."
-        };
+        const displayName = DISPLAY_NAMES[name] || name;
+        
+        const stats = provinceStats[displayName] || { population: "N/A", area: "N/A" };
+        const fact = DEFAULT_REVIEWS[displayName] || "Một vùng đất tươi đẹp của Việt Nam.";
+
         const data = { 
           ...feature, 
           name, 
-          displayName: DISPLAY_NAMES[name] || name,
-          ...info 
+          displayName,
+          population: stats.population,
+          area: stats.area,
+          fact 
         };
         
         return (

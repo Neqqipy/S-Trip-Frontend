@@ -53,7 +53,7 @@ const ResetPassword = ({ isDark }) => {
 
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 32 }}>
-          <img src="/S.jpg" alt="S-Trip" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} />
+          <img src="/S.png" alt="S-Trip" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} />
           <span style={{ fontSize: 26, fontWeight: 900, color: '#10b981' }}>S-Trip</span>
         </div>
 

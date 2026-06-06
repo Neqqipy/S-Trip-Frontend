@@ -481,7 +481,7 @@ function AppContent({ isDarkProp, setIsDarkProp, userProp, setUserProp }) {
           } />
 
           <Route path="/about" element={
-            <AboutPage isDark={isDark} onNavigate={scrollToSection} />
+            <AboutPage isDark={isDark} onNavigate={scrollToSection} setActiveSection={setActiveSection} />
           } />
 
           <Route path="/reset-password" element={<ResetPassword isDark={isDark} />} />
