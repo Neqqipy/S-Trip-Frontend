@@ -1035,7 +1035,11 @@ function ScheduleModal({ schedule, onClose, onLoadToMain, onTitleChange, T }) {
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
+    document.documentElement.style.overflow = 'hidden';
+    return () => { 
+      document.body.style.overflow = ''; 
+      document.documentElement.style.overflow = ''; 
+    };
   }, []);
 
   if (!schedule) return null;

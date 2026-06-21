@@ -96,10 +96,10 @@
 .theme-dark [style*="background-color: #1e293b"],
 .theme-dark [style*="background-color: #111"] { background-color: #0f172a !important; }
 
-.theme-dark ::-webkit-scrollbar        { width: 8px; }
-.theme-dark ::-webkit-scrollbar-track  { background: #050914; }
-.theme-dark ::-webkit-scrollbar-thumb  { background: #1e293b; border-radius: 4px; }
-.theme-dark ::-webkit-scrollbar-thumb:hover { background: #334155; }
+.theme-dark ::-webkit-scrollbar        { width: 8px; height: 8px; }
+.theme-dark ::-webkit-scrollbar-track  { background: rgba(255, 255, 255, 0.02); }
+.theme-dark ::-webkit-scrollbar-thumb  { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+.theme-dark ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
 
 /* ═══════════════════════════════════════
    ANIMATIONS

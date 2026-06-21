@@ -227,9 +227,14 @@ Nếu bạn phát hiện lỗi, vui lòng:
 3. Nêu phiên bản browser và OS
 4. Thêm screenshot nếu có liên quan
 
-## 👨‍💻 Tác Giả
+## 🆕 Cập Nhật Mới (Tháng 6/2026)
 
-**S-Travel Team**
+- Cải thiện UI/UX phần hiển thị thẻ phương tiện và logo hãng hàng không (đặc biệt Vietnam Airlines).
+- Khắc phục các lỗi liên quan đến hiển thị và sai lệch ngày tháng trong lịch trình.
+- Đồng bộ thanh điều hướng (Navbar) và chân trang (Footer), tối ưu luồng trải nghiệm người dùng (đổi tên "Trang chủ" thành "Tìm kiếm", cuộn trang thông minh).
+- Tối ưu redirect khi lần đầu truy cập trang để người dùng xem phần "Giới thiệu" trước.
+
+## 👨‍💻 Tác Giả
 - Repository: [GitHub](https://github.com/Neqqipy/S-Trip-Project-Test)
 - Email: drakhung311@gmail.com
 

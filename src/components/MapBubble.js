@@ -540,9 +540,14 @@ const MapPanel = ({ data, editedPlans, currentHotel, onClose, isDark }) => {
   
   useEffect(() => {
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
-    return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
+    return () => { 
+      document.body.style.overflow = ''; 
+      document.documentElement.style.overflow = ''; 
+      window.removeEventListener('keydown', onKey); 
+    };
   }, [onClose]);
 
   // ✅ ĐÃ SỬA: Ưu tiên lấy khách sạn mới (currentHotel) thay vì mặc định

@@ -330,7 +330,11 @@ const DrinksPanel = ({ location, isOpen, onClose, isDark }) => {
   // Lock scroll khi mở
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
+    document.documentElement.style.overflow = isOpen ? 'hidden' : '';
+    return () => { 
+      document.body.style.overflow = ''; 
+      document.documentElement.style.overflow = ''; 
+    };
   }, [isOpen]);
 
   // Đóng bằng ESC
@@ -770,7 +774,11 @@ const SpecialtiesPanel = ({ location, isOpen, onClose, isDark }) => {
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
+    document.documentElement.style.overflow = isOpen ? 'hidden' : '';
+    return () => { 
+      document.body.style.overflow = ''; 
+      document.documentElement.style.overflow = ''; 
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -1005,10 +1013,12 @@ const SpecialtyCard = ({ item, location, isDark }) => {
 const MapModal = ({ placeName, query, placeId, lat, lng, onClose }) => {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleKey);
     return () => {
       document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
       window.removeEventListener('keydown', handleKey);
     };
   }, [onClose]);
@@ -1122,7 +1132,12 @@ const ReviewsModal = ({ placeName, placeId, onClose, locationName = '' , placeTy
     const onKey = (e) => { if (e.key === 'Escape') lightbox ? setLightbox(null) : onClose(); };
     window.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+    document.documentElement.style.overflow = 'hidden';
+    return () => { 
+      window.removeEventListener('keydown', onKey); 
+      document.body.style.overflow = ''; 
+      document.documentElement.style.overflow = ''; 
+    };
   }, [onClose, lightbox]);
 
   useEffect(() => {
@@ -1460,7 +1475,7 @@ const PlaceCard = ({ type, data, sessionLabel, locationName, setMapQuery, onShow
       </div>}
 
       {/* Thêm điều kiện isFlight ? 'white' : ... để ép nền trắng cho logo hãng bay */}
-      <div className="ais-place-card-img" style={{ width: '120px', height: '120px', flexShrink: 0, borderRadius: '14px', overflow: 'hidden', backgroundColor: isDark ? '#111827' : '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div className="ais-place-card-img" style={{ width: '120px', height: '120px', flexShrink: 0, borderRadius: '14px', overflow: 'hidden', backgroundColor: (displayImg && typeof displayImg === 'string' && displayImg.includes('vna.png')) ? '#006072' : (isDark ? '#111827' : '#f8fafc'), display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         {(data.thumbnail || fallbackImg) && displayImg ? (
           <img src={displayImg} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover', transform: isHovered ? 'scale(1.09)' : 'scale(1)', transition: 'transform 0.4s ease', display: 'block' }} onError={imgError ? (e => { e.target.onerror = null; e.target.src = 'https://placehold.co/120x120?text=S-Trip'; }) : handleImgError} />
         ) : (
@@ -1621,7 +1636,7 @@ const TransportCard = ({ opt, isCombined, isDark, noTickets }) => {
           return logoSrc && (
             <div style={{ 
               width: '50px', height: '50px', borderRadius: '12px', flexShrink: 0, overflow: 'hidden',
-              backgroundColor: isDark ? '#1e293b' : '#f8fafc',
+              backgroundColor: (logoSrc && typeof logoSrc === 'string' && logoSrc.includes('vna.png')) ? '#006072' : (isDark ? '#1e293b' : '#f8fafc'),
               border: `1px solid ${isDark ? '#4b5563' : '#e2e8f0'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '0'
@@ -3208,6 +3223,21 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
     return () => clearTimeout(delay);
   }, [addModal.query, addModal.show]);
 
+  useEffect(() => {
+    if (addModal.show || modal.show) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, [addModal.show, modal.show]);
+
+
   const handleSelectAddActivity = (placeName) => {
     if (!placeName.trim()) return;
     setAddModal(prev => ({ ...prev, selectedPlace: placeName }));
@@ -3690,8 +3720,8 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       )}
 
       {/* MODAL THÊM ĐỊA ĐIỂM */}
-      {addModal.show && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={closeAddModal}>
+      {addModal.show && ReactDOM.createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }} onClick={closeAddModal}>
           <div
             style={{ backgroundColor: isDark ? '#1e293b' : 'white', borderRadius: '35px', width: '550px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}
@@ -3802,12 +3832,13 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL ĐỔI LỰA CHỌN */}
-      {modal.show && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={() => setModal({ show: false })}>
+      {modal.show && ReactDOM.createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }} onClick={() => setModal({ show: false })}>
           <div
             style={{ backgroundColor: 'white', borderRadius: '35px', width: '550px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}
@@ -3835,7 +3866,8 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* HEADER — bọc từ đây đến hết dailyPlans bằng contentRef để chụp ảnh */}
@@ -4053,14 +4085,17 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
               <div style={{ fontSize: '24px', fontWeight: '900', color: isDark ? '#f8fafc' : '#1f2937', marginBottom: '16px' }}>
                 ✈️ Chi tiết chuyến bay tham khảo
               </div>
+              <div style={{ fontSize: '18px', fontWeight: '800', color: isDark ? '#cbd5e1' : '#475569', marginBottom: '15px' }}>
+                🛫 Lựa chọn vé 1 chiều
+              </div>
               <div className="ais-flight-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
                 {realFlights.slice(0, 2).map((f, i) => (
                   <PlaceCard 
-                    key={i} 
-                    type="Chuyến bay" 
+                    key={`ow-${i}`} 
+                    type="Chuyến bay (1 chiều)" 
                     data={{ 
                       airline:       f.airline, 
-                      price:         f.price?.toLocaleString() + "đ", 
+                      price:         <>{f.price?.toLocaleString()}đ <span style={{fontSize: '11px', color: '#9ca3af', fontWeight: 'normal'}}>(chưa thuế phí)</span></>,
                       thumbnail:     f.thumbnail, 
                       desc:          `Hãng bay: ${f.airline} • Thời gian bay: ${f.duration || 'N/A'}`,
                       booking_token: f.booking_token || '',
@@ -4072,6 +4107,33 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
                     isDark={isDark} 
                   />
                 ))}
+              </div>
+
+              <div style={{ fontSize: '18px', fontWeight: '800', color: isDark ? '#cbd5e1' : '#475569', marginTop: '30px', marginBottom: '15px' }}>
+                🔄 Lựa chọn vé khứ hồi
+              </div>
+              <div className="ais-flight-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
+                {(realFlights.length > 2 ? realFlights.slice(2, 4) : realFlights.slice(0, 2)).map((f, i) => {
+                  const rtPrice = realFlights.length > 2 ? f.price : f.price * 1.95; // Fake round-trip price if mocking
+                  return (
+                    <PlaceCard 
+                      key={`rt-${i}`} 
+                      type="Chuyến bay (Khứ hồi)" 
+                      data={{ 
+                        airline:       f.airline, 
+                        price:         <>{rtPrice?.toLocaleString()}đ <span style={{fontSize: '11px', color: '#9ca3af', fontWeight: 'normal'}}>(chưa thuế phí)</span></>,
+                        thumbnail:     f.thumbnail, 
+                        desc:          `Hãng bay: ${f.airline} • Thời gian bay: ${f.duration || 'N/A'}`,
+                        booking_token: f.booking_token || '',
+                        ticket_class:  f.ticket_class,
+                      }} 
+                      locationName={initialData.location} 
+                      onShowMap={handleShowMap} 
+                      guestCount={passengers} 
+                      isDark={isDark} 
+                    />
+                  );
+                })}
               </div>
             </div>
           )}
@@ -4189,15 +4251,34 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       </div>
 
       {dailyPlans.map(d => {
+        // Tính toán ngày thực tế từ departure_date
+        let displayDateStr = '';
+        if (initialData.departure_date) {
+          const [yyyy, mm, dd] = initialData.departure_date.split('-');
+          if (yyyy && mm && dd) {
+            const dObj = new Date(yyyy, mm - 1, dd);
+            dObj.setDate(dObj.getDate() + (d.day - 1));
+            const daysOfWeek = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+            displayDateStr = ` · ${daysOfWeek[dObj.getDay()]} ${dObj.getDate().toString().padStart(2, '0')}/${(dObj.getMonth() + 1).toString().padStart(2, '0')}`;
+          }
+        }
+        
         // 🌤️ Lấy dự báo thời tiết cho ngày tương ứng (d.day bắt đầu từ 1 → index 0)
-        const dayForecast = weatherData?.forecast?.[d.day - 1] || null;
+        let dayForecast = weatherData?.forecast?.[d.day - 1] || null;
+        
+        // Nếu API trả về thời tiết nhưng ngày bị sai lệch (do chọn ngày quá xa trong tương lai)
+        if (dayForecast && displayDateStr && !displayDateStr.includes(dayForecast.date)) {
+            dayForecast = null; // Ẩn badge thời tiết vì dự báo không áp dụng cho ngày này
+        } else if (dayForecast && !displayDateStr) {
+            displayDateStr = ` · ${dayForecast.day} ${dayForecast.date}`; // Fallback nếu không có departure_date
+        }
 
         return (
         <div key={d.day} className="ais-day-block" style={{ marginBottom: '45px', padding: '35px', backgroundColor: isDark ? '#1e293b' : '#f8fafc', borderRadius: '40px', marginTop: '40px' }}>
           {/* Header ngày + badge thời tiết */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '30px' }}>
             <div style={{ fontWeight: '900', color: '#10b981', fontSize: '26px' }}>
-              <FontAwesomeIcon icon={faRegularCalendar} /> Ngày {d.day}{dayForecast ? ` · ${dayForecast.day} ${dayForecast.date}` : ''}
+              <FontAwesomeIcon icon={faRegularCalendar} /> Ngày {d.day}{displayDateStr}
             </div>
 
             {/* 🌤️ Badge thời tiết ngày — chi tiết */}
@@ -4472,8 +4553,8 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
       </button>
     )}
       {/* MODAL EDIT DURATION */}
-      {durationEdit && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={() => { setDurationEdit(null); setCustomDuration(''); setCustomStartTime(''); }}>
+      {durationEdit && ReactDOM.createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }} onClick={() => { setDurationEdit(null); setCustomDuration(''); setCustomStartTime(''); }}>
           <div
             style={{ backgroundColor: isDark ? '#1e293b' : 'white', borderRadius: '25px', width: '380px', padding: '25px', display: 'flex', flexDirection: 'column' }}
             onClick={e => e.stopPropagation()}
@@ -4590,7 +4671,8 @@ const AiSchedule = ({ data: rawData, plan, onSave, onPlanChange, onSwap, isDark 
               Cập nhật thời gian
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

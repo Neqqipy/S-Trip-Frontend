@@ -481,7 +481,7 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
               Giới thiệu
             </div>
             <div className="nav-link" style={{ ...styles.link(activeSection === 'home' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about'), false), zIndex: 1 }} onClick={handleHomeClick} onMouseEnter={handleMouseEnter}>
-              Trang chủ
+              Tìm kiếm
             </div>
             <div style={{ position: 'relative', display: 'flex' }} onMouseEnter={handleMouseEnter}>
               <div className="nav-link" style={{ ...styles.link(isScheduleActive && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about'), isItineraryLocked), zIndex: 1 }} onClick={handleItineraryClick}>
@@ -568,10 +568,10 @@ const Navbar = ({ activeSection, onNavigate, onRefresh, hasItinerary, isDark, on
               ✨ Giới thiệu
             </div>
 
-            {/* Trang chủ */}
+            {/* Tìm kiếm */}
             <div style={{ ...styles.mobileMenuItem, ...(activeSection === 'home' && !window.location.hash.includes('/explore') && !window.location.hash.includes('/about') ? styles.mobileMenuItemActive : {}) }}
               onClick={() => { handleHomeClick(); setIsMobileMenuOpen(false); }}>
-              <FontAwesomeIcon icon={faHouse} /> Trang chủ
+              <FontAwesomeIcon icon={faHouse} /> Tìm kiếm
             </div>
 
             {/* Lịch trình */}

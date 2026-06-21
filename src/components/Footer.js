@@ -13,6 +13,17 @@ const Footer = ({ onNavigate, noMarginTop }) => {
     socialIcon: { fontSize: '24px', color: 'white', cursor: 'pointer', transition: '0.3s', textDecoration: 'none', display: 'flex', alignItems: 'center' },
   };
 
+  const handleNavigate = (sectionId) => {
+    if (window.location.hash.includes('/explore') || window.location.hash.includes('/about') || window.location.hash.includes('/reset-password')) {
+      window.location.href = '/#/';
+      setTimeout(() => {
+        if (onNavigate) onNavigate(sectionId);
+      }, 100);
+    } else {
+      if (onNavigate) onNavigate(sectionId);
+    }
+  };
+
   return (
     <footer style={styles.footer}>
       <style>{`
@@ -68,7 +79,7 @@ const Footer = ({ onNavigate, noMarginTop }) => {
       <div className="footer-grid">
         {/* Brand */}
         <div className="footer-brand" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <div style={styles.logo} onClick={() => onNavigate('hero-section')}>
+          <div style={styles.logo} onClick={() => handleNavigate('hero-section')}>
             <img src="S.png" alt="S-Trip Logo" style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} />
             S-Trip
           </div>
@@ -90,9 +101,10 @@ const Footer = ({ onNavigate, noMarginTop }) => {
         <div>
           <h3 style={styles.heading}>Liên kết</h3>
           <ul style={styles.linkList}>
-            <li style={styles.link} onClick={() => onNavigate('hero-section')}>Trang chủ</li>
-            <li style={styles.link} onClick={() => onNavigate('itinerary-section')}>Lịch trình</li>
-            <li style={styles.link} onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})}>Khám phá</li>
+            <li style={styles.link} onClick={() => { window.location.href = '/#/about'; }}>Giới thiệu</li>
+            <li style={styles.link} onClick={() => handleNavigate('hero-section')}>Tìm kiếm</li>
+            <li style={styles.link} onClick={() => handleNavigate('itinerary-section')}>Lịch trình</li>
+            <li style={styles.link} onClick={() => handleNavigate('featured-section')}>Khám phá</li>
           </ul>
         </div>
 

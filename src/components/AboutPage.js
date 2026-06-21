@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import ExploreVietnam from './ExploreVietnam/ExploreVietnam';
 
 const AboutPage = ({ isDark, onNavigate, setActiveSection }) => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const navigate = useNavigate();
   const accentColor = '#08B2A6';
   const secondaryAccent = '#8b5cf6';

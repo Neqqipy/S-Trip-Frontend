@@ -222,9 +222,9 @@ const HomePage = ({
 };
 
 const InitialRedirect = ({ children }) => {
-  const hasVisited = localStorage.getItem('sTripHasVisited');
+  const hasVisited = sessionStorage.getItem('sTripHasVisited');
   if (!hasVisited) {
-    localStorage.setItem('sTripHasVisited', 'true');
+    sessionStorage.setItem('sTripHasVisited', 'true');
     return <Navigate to="/about" replace />;
   }
   return children;
